@@ -65,7 +65,7 @@ agexact.fit <- function(x, y, strata, offset, init, control,
     var <- matrix(agfit$imat,nvar,nvar)
     coef <- agfit$coef
     if (agfit$flag < nvar) which.sing <- diag(var)==0
-    else which.sing <- rep(F,nvar)
+    else which.sing <- rep(FALSE,nvar)
 
     infs <- abs(agfit$u %*% var)
     if (control$iter.max >1) {

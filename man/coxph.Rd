@@ -17,10 +17,10 @@ and other extensions are incorporated using the counting process formulation
 of Andersen and Gill.
 }
 \usage{
-coxph(formula, data=sys.parent(), weights, subset,
+coxph(formula, data=parent.frame(), weights, subset,
        na.action, init, control, method=c("efron","breslow","exact"),
-       singular.ok=T, robust,
-       model=F, x=F, y=T,...
+       singular.ok=TRUE, robust=FALSE,
+       model=FALSE, x=FALSE, y=TRUE,...
        )
 }
 \arguments{

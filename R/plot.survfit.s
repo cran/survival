@@ -1,11 +1,11 @@
 #SCCS @(#)plot.survfit.s	4.19 07/09/00
-plot.survfit<- function(x, conf.int,  mark.time=T,
-			mark=3,col=1,lty=1, lwd=1, cex=1, log=F,
+plot.survfit<- function(x, conf.int,  mark.time=TRUE,
+			mark=3,col=1,lty=1, lwd=1, cex=1, log=FALSE,
 			xscale=1, yscale=1, 
 			firstx=0, firsty=1,
 			xmax, ymin=0,
 			fun,
-			xlab="", ylab="", xaxs='S', legend.text=NULL,
+			xlab="", ylab="", xaxs='S', bty=NULL,legend.text=NULL,
                         legend.pos=0,legend.bty="n",main=NULL,...) {
 
     mintime <- min(x$time)
@@ -18,7 +18,7 @@ plot.survfit<- function(x, conf.int,  mark.time=T,
 
     if (is.logical(log)) {
 	logy <- log
-	logx <- F
+	logx <- FALSE
 	if (logy) logax <- 'y'
 	else      logax <- ""
         }
@@ -32,8 +32,8 @@ plot.survfit<- function(x, conf.int,  mark.time=T,
 	    stop("First arg must be the result of survfit")
 
     if (missing(conf.int)) {
-	if (is.null(x$strata) && !is.matrix(x$surv)) conf.int <-T
-	else conf.int <- F
+	if (is.null(x$strata) && !is.matrix(x$surv)) conf.int <-TRUE
+	else conf.int <- FALSE
         }
 
     if (is.null(x$strata)) {
@@ -84,11 +84,11 @@ plot.survfit<- function(x, conf.int,  mark.time=T,
 	if (is.matrix(ssurv)) {
 	    if (length(yzero))
 		    ssurv[yzero,] <- firsty
-	    ssurv <- ssurv[keepy,,drop=F]
+	    ssurv <- ssurv[keepy,,drop=FALSE]
 	    if (!is.null(supper)) {
 		if (length(yzero)) supper[yzero,] <- slower[yzero,] <- firsty
-		supper <- supper[keepy,,drop=F]
-		slower <- slower[keepy,,drop=F]
+		supper <- supper[keepy,,drop=FALSE]
+		slower <- slower[keepy,,drop=FALSE]
 	        }
 	    }
 	else {
@@ -114,10 +114,10 @@ plot.survfit<- function(x, conf.int,  mark.time=T,
 			   'logpct'= function(x) 100*x,
 			   stop("Unrecognized function argument")
 			   )
-	    if (fun=='log'|| fun=='logpct') logy <- T
+	    if (fun=='log'|| fun=='logpct') logy <- TRUE
 
 	    if (fun=='cloglog') {
-		logx <- T
+		logx <- TRUE
 		if (logy) logax <- 'xy'
 		else logax <- 'x'
 	        }
@@ -134,7 +134,7 @@ plot.survfit<- function(x, conf.int,  mark.time=T,
 	ymin <- tfun(ymin)
         }
 
-    if (is.null(x$n.event)) mark.time <- F   #expected survival curve
+    if (is.null(x$n.event)) mark.time <- FALSE   #expected survival curve
 
     # set default values for missing parameters
     if (is.matrix(ssurv)) ncurve <- nstrat * ncol(ssurv)
@@ -179,7 +179,7 @@ plot.survfit<- function(x, conf.int,  mark.time=T,
     # Draw the basic box
     #
     plot(tempx, tempy*yscale, type='n', log=logax,
-	                  xlab=xlab, ylab=ylab, xaxs=xaxs,main=main,...)
+	                  xlab=xlab, ylab=ylab, xaxs=xaxs,main=main, bty=bty,...)
     if(yscale != 1) {
 	if (logy) par(usr =par("usr") -c(0, 0, log10(yscale), log10(yscale))) 
 	else par(usr =par("usr")/c(1, 1, yscale, yscale))   
@@ -249,7 +249,7 @@ plot.survfit<- function(x, conf.int,  mark.time=T,
 		xend <- c(xend,max(xx))
 		yend <- c(yend,min(yy))
 
-		if (conf.int==T && !is.null(supper)) {
+		if (conf.int && !is.null(supper)) {
 		    if (ncurve==1) lty[i] <- lty[i] +1
 		    yy <- c(firsty, supper[who,k])
 		    lines(dostep(xx,yy), lty=lty[i], col=col[i], lwd=lwd[i])
@@ -270,7 +270,7 @@ plot.survfit<- function(x, conf.int,  mark.time=T,
 		points(mark.time[indx<nn], yy[indx[indx<nn]],
 		       pch=mark[i],col=col[i],cex=cex)
 	        }
-	    else if (mark.time==T && any(deaths==zero.one)) {
+	    else if (mark.time && any(deaths==zero.one)) {
 		points(xx[deaths==zero.one], 
 		       yy[deaths==zero.one],
 		       pch=mark[i],col=col[i],cex=cex)
@@ -279,7 +279,7 @@ plot.survfit<- function(x, conf.int,  mark.time=T,
 	    xend <- c(xend,max(xx))
 	    yend <- c(yend,min(yy))
 
-	    if (conf.int==T && !is.null(supper)) {
+	    if (conf.int && !is.null(supper)) {
 		if (ncurve==1) lty[i] <- lty[i] +1
 		yy <- c(firsty, supper[who])
 		lines(dostep(xx,yy), lty=lty[i], col=col[i], lwd=lwd[i])

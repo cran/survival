@@ -1,33 +1,44 @@
 #
 # SCCS @(#)is.ratetable.s	4.6 08/01/98
 #
-is.ratetable <- function(x, verbose=F) {
+is.ratetable <- function(x, verbose=FALSE) {
     if (!verbose) {
-	if (!inherits(x, 'ratetable')) return(F)
+	if (!inherits(x, 'ratetable')) return(FALSE)
 	att <- attributes(x)
-	if (any(is.na(match(c("dim", "dimnames", "dimid", "factor", "cutpoints"),
-			    names(att))))) return(F)
+	if (any(is.na(match(c("dim", "dimnames", "dimid",
+                              "factor", "cutpoints"),
+			    names(att)))))
+            return(FALSE)
 	nd <- length(att$dim)
-	if (length(x) != prod(att$dim)) return(F)
+	if (length(x) != prod(att$dim))
+            return(FALSE)
 	if (!(is.list(att$dimnames) && is.list(att$cutpoints)))
 		 return(F)
 	if (length(att$dimnames)!=nd || length(att$factor)!=nd ||
-			 length(att$cutpoints)!=nd) return(F)
+			 length(att$cutpoints)!=nd)
+            return(FALSE)
 	fac <- as.numeric(att$factor)
-	if (any(is.na(fac))) return(F)
-	if (any(fac <0)) return(F)
+	if (any(is.na(fac)))
+            return(FALSE)
+	if (any(fac <0))
+            return(FALSE)
 	for (i in 1:nd) {
 	    n <- att$dim[i]
-	    if (length(att$dimnames[[i]]) !=n) return(F)
-	    if (fac[i]!=1 && length(att$cutpoints[[i]])!=n) return(F)
-	    if (fac[i]!=1 && any(order(att$cutpoints[[i]])!= 1:n)) return(F)
-	    if (fac[i]==1 && !is.null(att$cutpoints[[i]]))  return(F)
-	    if (fac[i]>1 && i<nd) return(F)
+	    if (length(att$dimnames[[i]]) !=n)
+                return(FALSE)
+	    if (fac[i]!=1 && length(att$cutpoints[[i]])!=n)
+                return(FALSE)
+	    if (fac[i]!=1 && any(order(att$cutpoints[[i]])!= 1:n))
+                return(FALSE)
+	    if (fac[i]==1 && !is.null(att$cutpoints[[i]]))
+                return(FALSE)
+	    if (fac[i]>1 && i<nd)
+                return(FALSE)
 	    }
-	return(T)
-	}
+	return(TRUE)
+    }
 
-    #verbose return messages, useful for debugging
+###verbose return messages, useful for debugging
     msg <- NULL
     if (!inherits(x, 'ratetable')) msg <- c(msg, "wrong class")
     att <- attributes(x)
@@ -55,6 +66,8 @@ is.ratetable <- function(x, verbose=F) {
 	if (fac[i]>1 && i<nd) 
 		msg <- c(msg, 'only the last dim can be interpolated')
 	}
-    if (length(msg)==0) T
-    else msg
+    if (length(msg)==0)
+        TRUE
+    else
+        msg
     }

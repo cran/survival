@@ -1,5 +1,5 @@
 # SCCS @(#)summary.survfit.s	5.1 08/30/98
-summary.survfit <- function(object, times, censored=F, scale=1, ...) {
+summary.survfit <- function(object, times, censored=FALSE, scale=1, ...) {
     fit<-object
     if (!inherits(fit, 'survfit'))
 	    stop("Invalid data")
@@ -36,11 +36,11 @@ summary.survfit <- function(object, times, censored=F, scale=1, ...) {
 	    n.risk <-  fit$n.risk[who]
 	    n.event <- fit$n.event[who]
 	    stemp <- stemp[who]
-	    surv <- surv[who,,drop=F]
+	    surv <- surv[who,,drop=FALSE]
 	    if (!is.null(std.err)) std.err <- std.err[who,,drop=F]
 	    if (!is.null(fit$lower)) {
-		lower <- lower[who,,drop=F]
-		upper <- upper[who,,drop=F]
+		lower <- lower[who,,drop=FALSE]
+		upper <- upper[who,,drop=FALSE]
 		}
 	    }
 	}
@@ -67,9 +67,9 @@ summary.survfit <- function(object, times, censored=F, scale=1, ...) {
 
 	times <- rep(times, nstrat)[keep]
 	n.risk <- fit$n.risk[indx+1 - (ties+ones)]
-	surv   <- surv[indx,,drop=F];   surv[ones,] <- 1
+	surv   <- surv[indx,,drop=FALSE];   surv[ones,] <- 1
 	if (!is.null(std.err)) {
-	    std.err<- std.err[indx,,drop=F]
+	    std.err<- std.err[indx,,drop=FALSE]
 	    std.err[ones,] <-0
 	    }
 	fit$n.event[stime>max(times)] <- 0
@@ -77,8 +77,8 @@ summary.survfit <- function(object, times, censored=F, scale=1, ...) {
 	n.event<-  diff(c(0, n.event))
 
 	if (!is.null(fit$lower)) {
-	    lower <- lower[indx,,drop=F];  lower[ones,] <- 1;
-	    upper <- upper[indx,,drop=F];  upper[ones,] <- 1;
+	    lower <- lower[indx,,drop=FALSE];  lower[ones,] <- 1;
+	    upper <- upper[indx,,drop=FALSE];  upper[ones,] <- 1;
 	    }
 
 	stemp <- stemp[indx]

@@ -45,7 +45,7 @@ print.summary.survfit <- function(x,
 
     if (!is.null(x$new.start)) {
 	mat.keep <- mat[,1] >= x$new.start
-	mat <- mat[mat.keep,,drop=F]
+	mat <- mat[mat.keep,,drop=FALSE]
 	if (is.null(dim(mat)))
 		stop(paste("No information available using new.start =", x$new.start, "."))
         }
@@ -76,7 +76,7 @@ print.summary.survfit <- function(x,
         }
     else 
 	stop("There are no events to print.  Please use the option ",
-	    "censored=T with the summary function to see the censored ",
+	    "censored=TRUE with the summary function to see the censored ",
 	    "observations.")
     invisible(x)
     }

@@ -8,7 +8,7 @@ frailty.controlaic <- function(parms, iter, old, n, df, loglik) {
     if (iter==0) {  # initial call
 	if (is.null(parms$init)) theta <-0.005
 	else theta <- parms$init[1]
-	return(list(theta=theta, done=F))
+	return(list(theta=theta, done=FALSE))
 	}
     
     # by default, do the corrected AIC
@@ -22,14 +22,16 @@ frailty.controlaic <- function(parms, iter, old, n, df, loglik) {
 		     df=df, aic=loglik-df, aicc=loglik - dfc)
 	if (length(parms$init) <2) theta <-1
 	else theta <- parms$init[2]
-	temp <- list(theta=theta, done=F, history=history)
+	temp <- list(theta=theta, done=FALSE, history=history)
 	return(temp)
 	}
 
     history <- rbind(old$history,c(old$theta, loglik, df, loglik-df, 
 				   loglik -dfc))
-    if (is.null(parms$trace)) trace <-F
-    else trace <- parms$trace
+    if (is.null(parms$trace))
+        trace <-FALSE
+    else
+        trace <- parms$trace
     
     if (iter==2) {  #Third guess
 	theta <- mean(history[,1])

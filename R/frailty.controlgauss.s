@@ -30,7 +30,7 @@ frailty.controlgauss <- function(opt, iter, old, fcoef, trH, loglik){
 		if (resid>0)  theta <- theta*3
 		else          theta <- theta/3  	        }
 	    else theta <- opt$init[2]
-	    list(theta=theta, done=F, history=history)
+	    list(theta=theta, done=FALSE, history=history)
 	    }
 	else {
             history <- rbind(old$history,
@@ -43,7 +43,7 @@ frailty.controlgauss <- function(opt, iter, old, fcoef, trH, loglik){
 		    print(history)
 		    cat("    new theta=", theta, "\n\n")
 		    }
-		list(theta=theta, done=F, history=history)
+		list(theta=theta, done=FALSE, history=history)
 		}
 	    else {
 		done <- (abs(history[iter,2]) < opt$eps)
@@ -54,7 +54,7 @@ frailty.controlgauss <- function(opt, iter, old, fcoef, trH, loglik){
 		#  y must be positive near 0, and negative for large x
 		if (all(tempy>0))  newtheta <- 2*max(tempx)
 		else if (all(tempy<0)) newtheta <- .5 * min(tempx)
-		else{
+		else{##FIXME: should use uniroot().
 		    #find the latest point, and one on each side of 0
 		    b1 <- (1:iter)[ord==iter]
 		    if (b1==1) b1 <-2

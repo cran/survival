@@ -42,7 +42,7 @@ print.summary.survreg <- function(x, digits = max(options()$digits - 4, 3),
             ll <- lower.tri(correl)
             correl[ll] <- format(round(correl[ll], digits=digits))
             correl[!ll] <- ""
-            print(correl[-1,  - p, drop = F], quote = F)
+            print(correl[-1,  - p, drop = FALSE], quote = FALSE)
             }
         }
     cat("\n")

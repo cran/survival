@@ -37,13 +37,13 @@ coxph.fit <- function(x, y, strata, offset, init, control,
 	#  (This is why I need the rownames arg- can't use x' names)
 	# Set things up for 0 iterations on a dummy variable
 	x <- as.matrix(rep(1.0, n))
-	nullmodel <- T
+	nullmodel <- TRUE
 	nvar <- 1
 	init <- 0
 	maxiter <- 0
 	}
     else {
-	nullmodel <- F
+	nullmodel <- FALSE
 	maxiter <- control$iter.max
 	if (!missing(init) && !is.null(init)) {
 	    if (length(init) != nvar) stop("Wrong length for inital values")

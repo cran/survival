@@ -70,7 +70,8 @@ coxpenal.fit <- function(x, y, strata, offset, init, control,
     #   in the same relative order as the terms in 'assign' 
     #
     ## can't compute assign attribute in R without terms
-    ## if (missing(assign)) assign <- attr(x, 'assign')[-1]   #Remove 'intercept'
+    ## if (missing(assign)) assign <- attr(x, 'assign')[-1]
+    ##Remove 'intercept'
     pterms <- rep(0, length(assign))
     names(pterms) <- names(assign)
     pindex <- rep(0, npenal)
@@ -170,9 +171,9 @@ coxpenal.fit <- function(x, y, strata, offset, init, control,
 		if (!is.null(temp$recenter))
 		    coxlist2$coef[pen.col] <- coxlist2$coef[pen.col]- 
 			                               temp$recenter
-		if (temp$flag) coxlist2$flag[pen.col] <- T
+		if (temp$flag) coxlist2$flag[pen.col] <- TRUE
 		else {
-		    coxlist2$flag[pen.col] <- F
+		    coxlist2$flag[pen.col] <- FALSE
 		    coxlist2$first[pen.col] <- -temp$first
 		    if (full.imat) {
 			tmat <- matrix(coxlist2$second, nvar, nvar)
@@ -203,7 +204,7 @@ coxpenal.fit <- function(x, y, strata, offset, init, control,
         ## in R, f.expr2 is passed as an argument later
 	##.C("init_coxcall2", as.integer(sys.nframe()), expr2)
         }
-    else full.imat <- F
+    else full.imat <- FALSE
 
     #
     # Set up initial values for the coefficients
@@ -383,7 +384,7 @@ coxpenal.fit <- function(x, y, strata, offset, init, control,
 	#
 	# Call the control function(s)
 	#
-	done <- T
+	done <- TRUE
 	for (i in 1:length(cfun)) {
 	    pen.col <- pcols[[i]]
 	    temp <- eval(calls[i])

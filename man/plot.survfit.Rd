@@ -4,10 +4,10 @@
 Plot Method for `survfit'
 }
 \usage{
-plot.survfit(x, conf.int=<<see below>>, mark.time=T,
- mark=3, col=1, lty=1, lwd=1, cex=1, log=F, xscale=1, yscale=1, 
+plot.survfit(x, conf.int=<<see below>>, mark.time=TRUE,
+ mark=3, col=1, lty=1, lwd=1, cex=1, log=FALSE, xscale=1, yscale=1, 
  firstx=0, firsty=1, xmax, ymin=0, fun,
- xlab="", ylab="", xaxs="S",
+ xlab="", ylab="", xaxs="S", bty=NULL,
 legend.text=NULL,legend.pos=0,legend.bty="n",main=NULL,\dots)
 }
 \arguments{
@@ -102,7 +102,7 @@ Survival curves are usually displayed with the curve touching the y-axis,
 but not touching the bounding box of the plot on the other 3 sides.
 Type \code{"S"} accomplishes this by manipulating the plot range and then using
 the \code{"i"} style internally.
-}\item{legend.pos}{position for the legend: a vector of length 2, or
+}\item{bty}{see \code{\link{par}}}\item{legend.pos}{position for the legend: a vector of length 2, or
   0 to put the legend in the lower left, 1 to put it in the upper
   right. These may not work well with transformed curves.}
 \item{legend.bty}{Box type, see \code{\link{legend}}}
@@ -149,6 +149,7 @@ plot(lsurv2, lty=2:3, fun="cumhaz",
 plot(leukemia.surv,lty=1:2,legend.pos=0,col=c("Red","Blue"),legend.text=c("Maintenance",
 "No Maintenance"))
 if (interactive()){
+cat("Click on the graphics device to place a legend\n")
 plot(leukemia.surv,lty=2:3,legend.pos=locator(1),legend.text=c("Maintenance",
 "No Maintenance"))
 }

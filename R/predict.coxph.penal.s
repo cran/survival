@@ -35,7 +35,7 @@ predict.coxph.penal <- function(object,  newdata,
 		}
 	    xvar <- match(sparsename, dimnames(x)[[2]])
 	    indx <- as.numeric(as.factor(x[,xvar]))
-	    object$x <- x[, -xvar, drop=F]
+	    object$x <- x[, -xvar, drop=FALSE]
 	    }
 	
 	if (nvar==1) {

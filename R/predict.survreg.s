@@ -2,7 +2,7 @@
 predict.survreg <-
     function(object, newdata, type=c('response', "link", 'lp', 'linear',
 				     'terms', 'quantile','uquantile'),
-				se.fit=F,  terms=NULL,
+				se.fit=FALSE,  terms=NULL,
 	                        p=c(.1, .9),...)
     {
 #
@@ -36,8 +36,8 @@ predict.survreg <-
     vv <- object$var[1:nvar, 1:nvar]
     fixedscale <- (nvar == ncol(object$var)) || ripley
 
-    if (missing(newdata) && (type=='terms' || se.fit)) need.x <- T
-    else  need.x <- F
+    if (missing(newdata) && (type=='terms' || se.fit)) need.x <- TRUE
+    else  need.x <- FALSE
 
     if (length(strata) && (type=='quantile' || type=='uquantile') &&
 	      !fixedscale) {
@@ -194,19 +194,19 @@ predict.survreg <-
         }
         for (i in 1:nterms){
           ii<-asgn[[i]]
-          pred[,i]<-x[,ii,drop=F]%*%(coef[ii])
+          pred[,i]<-x[,ii,drop=FALSE]%*%(coef[ii])
           if (se.fit){
             for(j in (1:NROW(x))){
-              xi<-x[j,ii,drop=F]*(coef[ii])
+              xi<-x[j,ii,drop=FALSE]*(coef[ii])
               vci<-R[ii,ii]
               se[j,i]<-sqrt(sum(xi%*% vci %*%t( xi)))
             }
           }
         }
         if (!is.null(terms)){
-          pred<-pred[,terms,drop=F]
+          pred<-pred[,terms,drop=FALSE]
           if (se.fit)
-            se<-se[,terms,drop=F]
+            se<-se[,terms,drop=FALSE]
         }
       }
     if (type=='terms') attr(pred, 'constant') <- if (hasintercept) coef(object)["(Intercept)"] else 0

@@ -1,5 +1,5 @@
 #SCCS @(#)plot.cox.zph.s	4.6 08/13/96
-plot.cox.zph <- function(x, resid=T, se=T, df=4, nsmo=40, var, ...) {
+plot.cox.zph <- function(x, resid=TRUE, se=TRUE, df=4, nsmo=40, var, ...) {
     require(splines)
     xx <- x$x
     yy <- x$y
@@ -8,7 +8,7 @@ plot.cox.zph <- function(x, resid=T, se=T, df=4, nsmo=40, var, ...) {
     nvar <- ncol(yy)
     pred.x <- seq(from=min(xx), to=max(xx), length=nsmo)
     temp <- c(pred.x, xx)
-    lmat <- ns(temp, df=df, intercept=T)
+    lmat <- ns(temp, df=df, intercept=TRUE)
     pmat <- lmat[1:nsmo,]       # for prediction
     xmat <- lmat[-(1:nsmo),]
     qmat <- qr(xmat)
@@ -64,7 +64,8 @@ plot.cox.zph <- function(x, resid=T, se=T, df=4, nsmo=40, var, ...) {
 	    plot(range(xx), yr, type='n', xlab="Time", ylab=ylab[i], log='x',
 			...)
 	else {
-	    plot(range(xx), yr, type='n', xlab="Time", ylab=ylab[i], axes=F,...)
+	    plot(range(xx), yr, type='n', xlab="Time", ylab=ylab[i],
+                 axes=FALSE,...)
 	    axis(1, xaxisval, xaxislab)
 	    axis(2)
 	    box()

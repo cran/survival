@@ -12,7 +12,9 @@
 Regression for a Parametric Survival Model
 }
 \description{
-Regression for a parametric survival model
+Regression for a parametric survival model. These are all
+time-transformed location models, with the most useful case being the
+accelerated failure models that use a log transformation.
 }
 \usage{
 survreg(formula=formula(data), data=parent.frame(), weights, 
@@ -41,8 +43,8 @@ assumed distribution for y variable.
 If the argument is a character string, then it is assumed to name an
 element from \code{\link{survreg.distributions}}. These include
 \code{"weibull"}, \code{"exponential"}, \code{"gaussian"}, \code{"logistic"}, \code{"lognormal"} and \code{"loglogistic"}.
-Otherwise, it is assumed to be a user defined list conforming to this
-standard.
+Otherwise, it is assumed to be a user defined list conforming to the
+format described in \code{\link{survreg.distributions}}.
 }
 \item{parms}{
 a list of fixed parameters.  For the t-distribution for instance this is
@@ -73,18 +75,14 @@ other arguments which will be passed to \code{survreg.control}.
 \value{
 an object of class \code{survreg} is returned.
 }
+
 \section{Compatibility note}{
 This routine underwent significant changes from survival4 to
 survival5. The \link{survreg.old} function gives a backwards-compatible
 interface.  In S-PLUS the new function is called \code{survReg} and
 the old one \code{survreg}.
 }
-\section{COMPUTATION}{
-The routine uses a Newton-Raphson iteration with step halving, 
-with provision for general penalized term.
-Fisher scoring is used for intermediate steps where the information matrix
-is not positive definite.
-}
+
 \seealso{
 \code{\link{survreg.object}}, \code{\link{survreg.distributions}},
 \code{\link{pspline}}, \code{\link{frailty}}, \code{\link{ridge}},

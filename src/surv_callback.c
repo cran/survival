@@ -15,7 +15,7 @@
 ** This part is called by the survreg5 function, to get the distribution
 */
 void surv_callback (double *z, double *dist, int n, SEXP fn, SEXP rho) {
-    SEXP survlist, temp, data;
+    SEXP survlist, temp, data,index;
     int i;
     /* copy in the argument */
     PROTECT(data=allocVector(REALSXP,n));
@@ -28,7 +28,8 @@ void surv_callback (double *z, double *dist, int n, SEXP fn, SEXP rho) {
     PROTECT(survlist);
     
     /* Grab the updated values from the list */
-    PROTECT(temp=lang3(install("[["),survlist,install("density")));
+    PROTECT(index=mkString("density"));
+    PROTECT(temp=lang3(install("[["),survlist,index));
     PROTECT(data=eval(temp,rho));
     if (!isNumeric(data))
                 error("density:invalid type\n");
@@ -36,6 +37,6 @@ void surv_callback (double *z, double *dist, int n, SEXP fn, SEXP rho) {
       dist[i]=REAL(data)[i];
     }
     /* tidy up */
-    UNPROTECT(3);	
+    UNPROTECT(4);	
 
     }

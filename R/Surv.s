@@ -86,7 +86,7 @@ Surv <- function(time, time2, event,
     ss
     }
 
-print.Surv <- function(x, quote=F, ...)
+print.Surv <- function(x, quote=FALSE, ...)
     invisible(print(as.character.Surv(x), quote=quote, ...))
 
 as.character.Surv <- function(xx) {
@@ -114,7 +114,7 @@ as.character.Surv <- function(xx) {
 	temp2 <- ifelse(stat==3,
 			 paste("[", format(xx[,1]), ", ",format(xx[,2]), sep=''),
 			 format(xx[,1]))
-	ifelse(is.na(stat), "NA", paste(temp2, temp, sep=''))
+	ifelse(is.na(stat), as.character(NA), paste(temp2, temp, sep=''))
 	}
     }
 
@@ -138,14 +138,14 @@ as.character.Surv <- function(xx) {
 ##	}
 ##    }
 
-"[.Surv" <- function(x, i,j, drop=F) {
+"[.Surv" <- function(x, i,j, drop=FALSE) {
     # If only 1 subscript is given, the result will still be a Surv object
     #  If the second is given extract the relevant columns as a matrix
     if (missing(j)) {
 	temp <- class(x)
 	type <- attr(x, "type")
 	class(x) <- NULL
-	x <- x[i, , drop=F]
+	x <- x[i, , drop=FALSE]
 	class(x) <- temp
 	attr(x, "type") <- type
 	x

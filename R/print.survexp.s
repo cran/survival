@@ -1,5 +1,5 @@
 #SCCS @(#)print.survexp.s	4.12 12/29/97
-print.survexp <- function(x, scale=1, digits = max(options()$digits - 4, 3), naprint=F, ...) {
+print.survexp <- function(x, scale=1, digits = max(options()$digits - 4, 3), naprint=FALSE, ...) {
     if (!inherits(x, 'survexp'))
 	    stop("Invalid data")
     savedig <- options(digits=digits)
@@ -21,7 +21,7 @@ print.survexp <- function(x, scale=1, digits = max(options()$digits - 4, 3), nap
 	mat <- cbind(x$time/scale, x$n.risk, x$surv, x$std.err)
 	if (!naprint) {
 	    miss <- (is.na(mat)) %*% rep(1,ncol(mat))
-	    mat <- mat[miss<(ncol(mat)-2),,drop=F]
+	    mat <- mat[miss<(ncol(mat)-2),,drop=FALSE]
 	    }
 	if (is.matrix(x$surv)) cname <- dimnames(x$surv)[[2]]
 	else                     cname <- "survival"

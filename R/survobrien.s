@@ -4,31 +4,31 @@
 #
 survobrien <- function(formula, data= sys.frame(sys.parent())) {
 
-  unprotect<-function(Terms){
-    namei<-as.name("I")
-    namefactor<-as.name("factor")
-    unprotect1<-function(aterm){
-      if (is.name(aterm))
-        return(aterm)
-      if (is.name(aterm[[1]])){
-        if (aterm[[1]]==namei | aterm[[1]]==namefactor)
-          return(aterm[[2]])
-        if (length(aterm)==1)
-          return(aterm)
-      for (i in 2:length(aterm)){
-        aterm[[i]]<-unprotect1(aterm[[i]])
-      }
-      }
-      aterm
+    unprotect<-function(Terms){
+        namei<-as.name("I")
+        namefactor<-as.name("factor")
+        unprotect1<-function(aterm){
+            if (is.name(aterm))
+                return(aterm)
+            if (is.name(aterm[[1]])){
+                if (aterm[[1]]==namei | aterm[[1]]==namefactor)
+                    return(aterm[[2]])
+                if (length(aterm)==1)
+                    return(aterm)
+                for (i in 2:length(aterm)){
+                    aterm[[i]]<-unprotect1(aterm[[i]])
+                }
+            }
+            aterm
+        }
+        if (length(Terms)==3)
+            Terms[[3]]<-unprotect1(Terms[[3]])
+        else
+            Terms[[2]]<-unprotect1(Terms[[2]])
+        terms.formula(Terms)
     }
-    if (length(Terms)==3)
-      Terms[[3]]<-unprotect1(Terms[[3]])
-    else
-      Terms[[2]]<-unprotect1(Terms[[2]])
-    terms.formula(Terms)
-  }
-
-
+    
+    
   
     m <- model.frame(formula, data, na.action= function(x) x )
     n <- nrow(m)
@@ -73,7 +73,7 @@ survobrien <- function(formula, data= sys.frame(sys.parent())) {
 	who <- (time >=i)
 	nrisk <- sum(who)
 
-	temp <- apply(x[who,,drop=F], 2, rank)
+	temp <- apply(x[who,,drop=FALSE], 2, rank)
 	temp <- (2*temp -1)/ (2* nrisk)   #percentiles
 	logit<- log(temp/(1-temp))           #logits
 	deaths <- (status[who]==1 & time[who]==i)
@@ -89,7 +89,7 @@ survobrien <- function(formula, data= sys.frame(sys.parent())) {
 	}
 
     if (any(keepers)){
-	temp <- m[keep.index, keepers, drop=F]
+	temp <- m[keep.index, keepers, drop=FALSE]
 	names(temp) <- kname
 	data.frame(start, stop, event, temp, xx)
         }

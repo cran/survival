@@ -1,25 +1,25 @@
 # SCCS @(#)lines.survfit.s	4.16  01/14/99
 lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
-			  mark.time =T, xscale=1, 
+			  mark.time =TRUE, xscale=1, 
 			  firstx=0, firsty=1, xmax, fun,
-			  conf.int=F, ...) {
+			  conf.int=FALSE, ...) {
 
     if (inherits(x, 'survexp')) {
 	if (missing(type)) type <- 'l'
-	if (!is.numeric(mark.time)) mark.time <- F
+	if (!is.numeric(mark.time)) mark.time <- FALSE
 	}
     if (inherits(x, 'survfit.coxph')) {
-	if (!is.numeric(mark.time)) mark.time <- F
+	if (!is.numeric(mark.time)) mark.time <- FALSE
 	}
 
     if (is.character(conf.int)) {
 	if (conf.int=='only') {
-	    conf.int <- T
-	    plot.surv<- F
+	    conf.int <- TRUE
+	    plot.surv<- TRUE
 	    }
 	else stop("Unrecognized option for conf.int")
 	}
-    else plot.surv <- T
+    else plot.surv <- TRUE
 
     if (is.numeric(mark.time)) mark.time<- sort(unique(mark.time[mark.time>0]))
 
@@ -84,8 +84,8 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 	    ssurv <- ssurv[keepy,,drop=F]
 	    if (!is.null(supper)) {
 		if (length(yzero)) supper[yzero,] <- slower[yzero,] <- firsty
-		supper <- supper[keepy,,drop=F]
-		slower <- slower[keepy,,drop=F]
+		supper <- supper[keepy,,drop=FALSE]
+		slower <- slower[keepy,,drop=FALSE]
 		}
 	    }
 	else {
@@ -103,15 +103,15 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
     if (!missing(fun)) {
 	if (is.character(fun)) {
 	    tfun <- switch(fun,
-		            'log' = function(x) x,
-			    'event'=function(x) 1-x,
-			    'cumhaz'=function(x) -log(x),
-			    'cloglog'=function(x) log(-log(x)),
-			    'pct' = function(x) x*100,
-			    'logpct'= function(x) 100*x,
-			    stop("Unrecognized function argument")
-			    )
-	    }
+                           'log' = function(x) x,
+                           'event'=function(x) 1-x,
+                           'cumhaz'=function(x) -log(x),
+                           'cloglog'=function(x) log(-log(x)),
+                           'pct' = function(x) x*100,
+                           'logpct'= function(x) 100*x,
+                           stop("Unrecognized function argument")
+                           )
+        }
 	else if (is.function(fun)) tfun <- fun
 	else stop("Invalid 'fun' argument")
 	
@@ -144,7 +144,7 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 		# (1, .2), (1.4, .2), (1.8, .2), (2.3, .2), (2.9, .2), (3, .1)
 		# with (1, .2), (3, .1).  They are slow, and can smear the 
 		# looks of the line type.
-		dupy <- c(T, diff(y[-n]) !=0, T)
+		dupy <- c(TRUE, diff(y[-n]) !=0, TRUE)
 		n2 <- sum(dupy)
 		
 		#create a step function
@@ -199,7 +199,7 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 		points(mark.time[indx<nn], yy[indx[indx<nn]],
 		       pch=mark[k],col=col[k], ...)
 		}
-	    else if (mark.time==T) {
+	    else if (mark.time==TRUE) {
 		if ( any(deaths==0))
 			points(xx[deaths==0], yy[deaths==0],
 				   pch=mark[k],col=col[k], ...)

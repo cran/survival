@@ -4,7 +4,7 @@
 residuals.survreg <- function(object, type=c('response', 'deviance',
 		      'dfbeta', 'dfbetas', 'working', 'ldcase',
 		      'ldresp', 'ldshape', 'matrix'), 
-		      rsigma =T, collapse=F, weighted=F, ...) {
+		      rsigma =TRUE, collapse=FALSE, weighted=FALSE, ...) {
     type <-match.arg(type)
     n <- length(object$linear.predictors)
     Terms <- object$terms
@@ -21,13 +21,13 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
     #
     # What do I need to do the computations?
     #
-    if (type=='response' || type=='deviance') need.x <-F
-    else need.x <- T
+    if (type=='response' || type=='deviance') need.x <-FALSE
+    else need.x <- TRUE
 
-    if (type=='ldshape' || type=='ldcase') need.strata <- T
-    else need.strata <- F
+    if (type=='ldshape' || type=='ldcase') need.strata <- TRUE
+    else need.strata <- FALSE
     
-    need.y <- T
+    need.y <- TRUE
 
     # grab what I need
     if (need.strata || (need.y && is.null(object$y)) || 

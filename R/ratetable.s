@@ -43,7 +43,7 @@ is.na.ratetable2 <- function(x) {
        }
     aa <- attributes(x)
     attributes(x) <- aa[c("dim", "dimnames")]
-    y <- x[rows,,drop=F]
+    y <- x[rows,,drop=FALSE]
     attr(y,'constants') <- aa$constants
     attr(y,'levlist')   <- aa$levlist
     class(y) <- 'ratetable2'
@@ -54,10 +54,10 @@ is.na.ratetable2 <- function(x) {
 # Functions to manipulate rate tables
 #
 
-"[.ratetable" <- function(x, ..., drop=T) {
+"[.ratetable" <- function(x, ..., drop=TRUE) {
     aa <- attributes(x)
     attributes(x) <- aa[c("dim", "dimnames")]
-    y <- NextMethod("[", drop=F)
+    y <- NextMethod("[", drop=FALSE)
     newdim <- attr(y, 'dim')
     if (is.null(newdim)) stop("Invalid subscript")
     dropped <- (newdim==1)

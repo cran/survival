@@ -1,5 +1,4 @@
 # SCCS @(#)anova.survreg.s	1.1 01/18/99
-#  The Statsci anova.survreg, updated for the new code
 anova.survreg <- function(object, ..., test = c("Chisq", "none")) {
     test <- match.arg(test)
     margs <- function(...)
@@ -29,8 +28,6 @@ anova.survreg <- function(object, ..., test = c("Chisq", "none")) {
 	    df.res[iterm] <- sum(fit$df)
 	    }
 	dev <- c(NA,  - diff(loglik))
-        ## df.res goes up as you add terms, not down
-	##df <- c(NA,  - diff(df.res))
         df <- c(NA,  diff(df.res)) 
 	}
     else {
@@ -46,7 +43,7 @@ anova.survreg <- function(object, ..., test = c("Chisq", "none")) {
 		 "Terms added sequentially (first to last)")
     aod <- data.frame(Df = df, Deviance = dev, "Resid. Df" = df.res, 
 		      "-2*LL" = loglik, row.names = c("NULL", term.labels), 
-		      check.names = F)
+		      check.names = FALSE)
     attr(aod, "heading") <- heading
     class(aod) <- c("anova", "data.frame")
     if(test == "none")

@@ -1,7 +1,7 @@
 # SCCS @(#)strata.s	5.2 08/30/98
 # Create a strata variable, possibly from many objects
 #
-strata <- function(..., na.group=F, shortlabel=F) {
+strata <- function(..., na.group=FALSE, shortlabel=FALSE) {
     words <- as.character((match.call())[-1])
     if (!missing(na.group)) words <- words[-1]
     allf <- list(...)
@@ -17,10 +17,12 @@ strata <- function(..., na.group=F, shortlabel=F) {
     wlab <- levels(what)
     if (na.group && any(is.na(what))){
 	levs[is.na(levs)] <- length(wlab)
-	wlab <- c(wlab, "NA")
+	wlab <- c(wlab, as.character(NA))
 	}
-    if (shortlabel) labs <- wlab
-    else            labs <- paste(words[1], wlab, sep='=')
+    if (shortlabel)
+        labs <- wlab
+    else
+        labs <- paste(words[1], wlab, sep='=')
     for (i in (1:nterms)[-1]) {
 	what <- allf[[i]]
 	if(is.null(levels(what)))
@@ -29,7 +31,7 @@ strata <- function(..., na.group=F, shortlabel=F) {
 	wlev <- unclass(what) - 1
 	if (na.group && any(is.na(wlev))){
 	    wlev[is.na(wlev)] <- length(wlab)
-	    wlab <- c(wlab, "NA")
+	    wlab <- c(wlab, as.character(NA))
 	    }
 	if (!shortlabel) wlab <- format(paste(words[i], wlab, sep='='))
 	levs <- wlev + levs*(length(wlab))
@@ -40,8 +42,5 @@ strata <- function(..., na.group=F, shortlabel=F) {
     ulevs <- sort(unique(levs[!is.na(levs)]))
     levs <- match(levs, ulevs)
     labs <- labs[ulevs]
-#    levels(levs) <- labs
-#    class(levs) <- "factor"
-#    levs
     factor(levs, labels=labs)
     }

@@ -1,6 +1,6 @@
 
-R : Copyright 2001, The R Development Core Team
-Version 1.4.0 Under development (unstable) (2001-12-07)
+R : Copyright 2002, The R Development Core Team
+Version 1.5.0 Under development (unstable) (2002-04-07)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -306,6 +306,9 @@ Likelihood ratio test=19.4  on 4.9 df, p=0.00149  n= 26
 + round(rbind(quantile(temp2, c(.8, .9, .95, .99)), 
 + 	     qchisq( c(.8, .9, .95, .99), sum(fit1$df))), 3)
 + }
+       80%   90%   95%    99%
+[1,] 4.290 5.729 7.179 10.301
+[2,] 4.313 5.874 7.399 10.861
 > # From:	McGilchrist and Aisbett, Biometrics 47, 461-66, 1991
 > # Data on the recurrence times to infection, at the point of insertion of
 > #  the catheter, for kidney patients using portable dialysis equipment.

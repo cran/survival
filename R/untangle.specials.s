@@ -7,7 +7,7 @@ untangle.specials <- function(tt, special, order=1) {
 
     facs <- attr(tt, 'factor')
     fname <- dimnames(facs)
-    ff <- apply(facs[spc,,drop=F], 2, sum)
+    ff <- apply(facs[spc,,drop=FALSE], 2, sum)
     list(vars= (fname[[1]])[spc],
 	     terms= seq(ff)[ff & match(attr(tt, 'order'), order, nomatch=0)])
     }

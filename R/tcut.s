@@ -34,7 +34,7 @@ tcut <-  function (x, breaks, labels, scale=1){
     temp
     }
 
-"[.tcut" <- function(x, ..., drop=F) {
+"[.tcut" <- function(x, ..., drop=FALSE) {
     atts <- attributes(x)
     class(x) <- NULL
     x <- x[..1]

@@ -29,8 +29,8 @@ survobrien 	 O'Brien's test for association of a variable with survival
 survreg 	 Regression for a parametric survival model 
 survreg.object 	 Parametric Survival Model Object 
 anova.survreg    ANOVA tables for survreg objects
-survsum 	 Kaplan-Meier survival curve and percentages at selected times 
 untangle.specials  Help process the 'specials' argument of the terms function. 
+
 -------- date functions --------------
 as.date          Coerce Data to Dates
 date.ddmmmyy     Format a Julian date

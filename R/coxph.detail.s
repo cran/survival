@@ -16,7 +16,7 @@ coxph.detail <-  function(object) {
     strats <- attr(Terms, "specials")$strata
 
     if (is.null(y)  ||  is.null(x)) {
-	temp <- coxph.getdata(object, y=T, x=T, strata=T)
+	temp <- coxph.getdata(object, y=TRUE, x=TRUE, strata=TRUE)
 	y <- temp$y
 	x <- temp$x
 	if (length(strats)) strat <- temp$strata

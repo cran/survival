@@ -1,7 +1,7 @@
 # SCCS @(#)cox.zph.s	5.2 09/25/98
 #  Test proportional hazards
 #
-cox.zph <- function(fit, transform='km', global=T) {
+cox.zph <- function(fit, transform='km', global=TRUE) {
     call <- match.call()
     if (!inherits(fit, 'coxph')) stop ("Argument must be the result of coxph")
     if (inherits(fit, 'coxph.null'))
@@ -24,7 +24,7 @@ cox.zph <- function(fit, transform='km', global=T) {
 			   'log'     = log(times),
 			   'km' = {
 				temp <- survfit.km(factor(rep(1,nrow(fit$y))),
-						    fit$y, se.fit=F)
+						    fit$y, se.fit=FALSE)
 				# A nuisance to do left cont KM
 				t1 <- temp$surv[temp$n.event>0]
 				t2 <- temp$n.event[temp$n.event>0]
@@ -62,10 +62,10 @@ cox.zph <- function(fit, transform='km', global=T) {
     temp
     }
 
-"[.cox.zph" <- function(x, ..., drop=F) {
+"[.cox.zph" <- function(x, ..., drop=FALSE) {
     i <- ..1
-    z<- list(table=x$table[i,,drop=F], x=x$x, y=x$y[ ,i,drop=F],
-		var=x$var[i,i, drop=F], call=x$call,
+    z<- list(table=x$table[i,,drop=FALSE], x=x$x, y=x$y[ ,i,drop=FALSE],
+		var=x$var[i,i, drop=FALSE], call=x$call,
 		transform=x$transform)
     attributes(z) <- attributes(x)
     z

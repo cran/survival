@@ -5,11 +5,12 @@ Survival Curve Object
 }
 \description{
 This class of objects is returned by the \code{survfit} class of functions
-to represent a fitted survival curve.
-
+to represent a fitted survival curve. 
 
 Objects of this class have methods for the functions \code{print},
-\code{summary}, \code{plot}, \code{points} and \code{lines}.
+\code{summary}, \code{plot}, \code{points} and \code{lines}. The
+\code{\link{print.survfit}} method does more computation than is typical
+for a print method and is documented on a separate page.
 }
 \section{COMPONENTS}{
 The following components must be included in a legitimate \code{survfit} object.
@@ -65,7 +66,8 @@ be used.
 (In this case \code{summary.survfit} will also print the data as a matrix).
 }
 \seealso{
-\code{\link{survfit}}, \code{\link{plot.survfit}}, \code{\link{summary.survfit}}.
+\code{\link{survfit}}, \code{\link{plot.survfit}},
+\code{\link{summary.survfit}}, \code{\link{print.survfit}}.
 }
 \keyword{survival}
 % Converted by Sd2Rd version 0.3-2.

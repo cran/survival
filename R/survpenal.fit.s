@@ -213,9 +213,9 @@ survpenal.fit<- function(x, y, weights, offset, init, controlvals, dist,
 		if (!is.null(temp$recenter))
 		    coxlist2$coef[pen.col] <- coxlist2$coef[pen.col]- 
 			                               temp$recenter
-		if (temp$flag) coxlist2$flag[pen.col] <- T
+		if (temp$flag) coxlist2$flag[pen.col] <- TRUE
 		else {
-		    coxlist2$flag[pen.col] <- F
+		    coxlist2$flag[pen.col] <- FALSE
 		    coxlist2$first[pen.col] <- -temp$first
 		    if (full.imat) {
 			tmat <- matrix(coxlist2$second, nvar2, nvar2)
@@ -244,7 +244,7 @@ survpenal.fit<- function(x, y, weights, offset, init, controlvals, dist,
 	    }
 	###.C("init_coxcall2", as.integer(sys.nframe()), expr2)
         }
-    else full.imat <- F
+    else full.imat <- FALSE
 
     #
     # "Unpack" the passed in paramter list, 
@@ -452,7 +452,7 @@ survpenal.fit<- function(x, y, weights, offset, init, controlvals, dist,
 	#
 	# Call the control function(s)
 	#
-	done <- T
+	done <- TRUE
 	for (i in 1:length(cfun)) {
 	    pen.col <- pcols[[i]]
 	    temp <- eval(calls[i])

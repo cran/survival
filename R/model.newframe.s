@@ -10,7 +10,7 @@
 # If you know this isn't so, then safe=T uses a method that is much longer,
 #   but is guarranteed to work, see predict.gam
 
-model.newframe <- function(object, newdata, safe=F, response=F, ...) {
+model.newframe <- function(object, newdata, safe=FALSE, response=FALSE, ...) {
     if (inherits(object, 'terms'))  Terms <- object
     else {
 	Terms <- object$terms
@@ -44,7 +44,7 @@ model.newframe <- function(object, newdata, safe=F, response=F, ...) {
 	Call[[1]] <- as.name("model.frame")
 	Call$formula <- terms.inner(formula(object))
    #might need to tack on the response here!
-	if (response) stop("Not implimented yet for safe=T, response=T")
+	if (response) stop("Not implimented yet for safe=TRUE, response=TRUE")
 	Call$na.action <- function(x)  x
 	Call <- Call[match(c("", "formula", "data", "subset", "na.action"),
 	    names(Call), 0)]
@@ -59,7 +59,7 @@ model.newframe <- function(object, newdata, safe=F, response=F, ...) {
 	    stop("0 rows in newdata")
 	d1 <- dim(data)
 	if(d1[2] != d2[2])  #newdata missing some variables
-	    data <- data[, names(newdata), drop = F]
+	    data <- data[, names(newdata), drop = FALSE]
 	data[seq(d1[1] + 1, d1[1] + d2[1]),  ] <- newdata  #rbind the new on
 	attr(data, "row.names") <- c(rep("OLD DATA",d1[1]), row.names(newdata))
 	#Now compute the combined model frame, excluding the response

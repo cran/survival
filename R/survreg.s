@@ -9,7 +9,7 @@ survreg <- function(formula=formula(data), data=parent.frame(),
 	model=FALSE, x=FALSE, y=TRUE, ...) {
 
     call <- match.call()
-    m <- match.call(expand=F)
+    m <- match.call(expand=FALSE)
     temp <- c("", "formula", "data", "weights", "subset", "na.action")
     m <- m[ match(temp, names(m), nomatch=0)]
     m[[1]] <- as.name("model.frame")
@@ -72,7 +72,7 @@ survreg <- function(formula=formula(data), data=parent.frame(),
 	else stop("Invalid distribution object")
 	}
     else {
-	if (!is.character(dlist$name) || !is.character(dlist$dist) ||
+	if (!is.character(dlist$name) || is.null(dlist$dist) ||
 	    !is.function(dlist$trans) || !is.function(dlist$dtrans))
 		stop("Invalid distribution object")
 	}	
@@ -110,8 +110,12 @@ survreg <- function(formula=formula(data), data=parent.frame(),
 			   "has a fixed scale, user specified value ignored"))
 	scale <- dlist$scale
 	}
-    if (!is.null(dlist$dist)) dlist <- survreg.distributions[[dlist$dist]]
-
+    if (!is.null(dlist$dist)){
+        if (is.atomic(dlist$dist))
+            dlist <- survreg.distributions[[dlist$dist]]
+        else
+            dlist<-dlist$dist #<TSL>
+    }
     if (missing(control)) control <- survreg.control(...)
 
     if (scale < 0) stop("Invalid scale value")

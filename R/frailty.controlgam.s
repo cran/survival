@@ -15,7 +15,7 @@ frailty.controlgam <- function(opt, iter, old, group, status, loglik){
         }
     
     else {
-	if (is.null(opt$trace)) trace <-F
+	if (is.null(opt$trace)) trace <-FALSE
 	else trace <- opt$trace
 
 	theta <- old$theta
@@ -29,7 +29,7 @@ frailty.controlgam <- function(opt, iter, old, group, status, loglik){
 	    }
 
 	if (!is.null(opt$theta)) # fixed theta case
-	    list(theta=theta, done=T, c.loglik=loglik + correct)
+	    list(theta=theta, done=TRUE, c.loglik=loglik + correct)
 	else {
 	    # save history of the iteration, and get the next theta
 	    if (iter==1) history <- c(theta=theta, loglik=loglik, 
@@ -41,7 +41,7 @@ frailty.controlgam <- function(opt, iter, old, group, status, loglik){
 	    if (iter==1) {
 		if (is.null(opt$init )) theta <-1
 		else                    theta <- opt$init[2]
-		list(theta=theta, done=F, history=history,
+		list(theta=theta, done=FALSE, history=history,
 		     c.loglik= loglik+correct)
 	        }
 	    else if (iter ==2) {

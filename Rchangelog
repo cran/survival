@@ -1,3 +1,8 @@
+2.9 Change T/F to TRUE/FALSE everywhere, fix segfault in coxph with no
+events, make survreg with user-defined distributions actually work and add
+examples. Add option "show.rmean" to print.survfit, currently TRUE by
+default but may become FALSE in future. Fixed bty option in plot.survfit
+
 2.8 survival passes CMD check for the first time ever (though users won't 
     notice many of the changes). A few little bugs
     here and there. Some better examples added (eg survexp, plot.survfit)

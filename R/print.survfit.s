@@ -1,7 +1,7 @@
 #SCCS @(#)print.survfit.s	4.19 07/09/00
 print.survfit <- function(x, scale=1, 
 			  digits = max(options()$digits - 4, 3),
-                          print.n=getOption("survfit.print.n"),...) {
+                          print.n=getOption("survfit.print.n"),show.rmean=getOption("survfit.print.mean"),...) {
 
     ##<TSL> different definitions of N....
     print.n<-match.arg(print.n,c("none","start","records","max"))
@@ -41,8 +41,10 @@ print.survfit <- function(x, scale=1,
 	if (is.matrix(surv)) {
 	    n <- nrow(surv)
 	    mean <- dif.time * rbind(1, surv)
-	    if (n==1) temp <- mean[2,,drop=F]
-	    else temp <- (apply(mean[(n+1):2,,drop=F], 2, cumsum))[n:1,,drop=F]
+	    if (n==1)
+                temp <- mean[2,,drop=F]
+	    else
+                temp <- (apply(mean[(n+1):2,,drop=F], 2, cumsum))[n:1,,drop=F]
 	    varmean <- c(hh %*% temp^2)
 	    med <- apply(surv, 2, minmin, stime)
 	    #nused <- as.list(nused)
@@ -74,7 +76,7 @@ print.survfit <- function(x, scale=1,
 
     stime <- x$time/scale
     surv <- x$surv
-    plab <- c("n", "events", "mean", "se(mean)", "median")
+    plab <- c("n", "events", "rmean", "se(rmean)", "median")
     if (!is.null(x$conf.int))
 	    plab2<- paste(x$conf.int, c("LCL", "UCL"), sep='')
 
@@ -99,7 +101,10 @@ print.survfit <- function(x, scale=1,
 	    else
 		    names(x1) <- c(plab, plab2)
  	    }
-	print(x1)
+        if (show.rmean)
+            print(x1)
+        else
+            print(x1[,!(colnames(x1) %in% c("rmean","se(rmean)"))])
         }
     else {   #strata case
 	nstrat <- length(x$strata)
@@ -120,9 +125,9 @@ print.survfit <- function(x, scale=1,
                               records=strata.var[i],
                               max=max(x$n.risk[who]))
 	    if (is.matrix(surv)) {
-		temp <- pfun(nsubjects, stime[who], surv[who,,drop=F],
+		temp <- pfun(nsubjects, stime[who], surv[who,,drop=FALSE],
 			  x$n.risk[who], x$n.event[who],
-			  x$lower[who,,drop=F], x$upper[who,,drop=F])
+			  x$lower[who,,drop=FALSE], x$upper[who,,drop=FALSE])
 		x1 <- rbind(x1, temp)
 	        }
 	    else  {
@@ -144,10 +149,14 @@ print.survfit <- function(x, scale=1,
 	else
 		dimnames(x1) <- list(temp, c(plab, plab2))
 
-	print(x1)
-        }
-    invisible(x)
+	if (show.rmean)
+            print(x1)
+        else
+            print(x1[,!(colnames(x1) %in% c("rmean","se(rmean)"))])
+        
     }
+invisible(x)
+}
 
 
 

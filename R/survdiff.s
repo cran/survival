@@ -1,7 +1,7 @@
 #SCCS 08/30/98 @(#)survdiff.s	5.1
 survdiff <- function(formula, data, subset, na.action, rho=0) {
     call <- match.call()
-    m <- match.call(expand=F)
+    m <- match.call(expand=FALSE)
     m$rho <- NULL
 
     Terms <- if(missing(data)) terms(formula, 'strata')
@@ -66,7 +66,7 @@ survdiff <- function(formula, data, subset, na.action, rho=0) {
 	if (sum(df) <2) chi <- 0         # No test, actually
 	else {
 	    temp2 <- ((otmp - etmp)[df])[-1]
-	    vv <- (fit$var[df,df])[-1,-1, drop=F]
+	    vv <- (fit$var[df,df])[-1,-1, drop=FALSE]
 	    chi <- sum(solve(vv, temp2) * temp2)
 	    }
 

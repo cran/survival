@@ -12,7 +12,7 @@ events in each cell.
 }
 \usage{
 pyears(formula, data, weights, subset, na.action, ratetable=survexp.us,
-scale=365.25, expect=c('event', 'pyears'), model=F, x=F, y=F)
+scale=365.25, expect=c('event', 'pyears'), model=FALSE, x=FALSE, y=FALSE)
 }
 \arguments{
 \item{formula}{

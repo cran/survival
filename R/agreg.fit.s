@@ -7,6 +7,7 @@ agreg.fit <- function(x, y, strata, offset, init, control,
     start <- y[,1]
     stopp <- y[,2]
     event <- y[,3]
+    if(all(event==0)) stop("Can't fit a Cox model with zero failures")
 
     # Sort the data (or rather, get a list of sorted indices)
     #  For both stop and start times, the indices go from last to first
@@ -31,10 +32,10 @@ agreg.fit <- function(x, y, strata, offset, init, control,
 	nvar <- 1
 	x <- matrix(1:n, ncol=1)
 	maxiter <- 0
-	nullmodel <- T
+	nullmodel <- TRUE
 	}
     else {
-	nullmodel <- F
+	nullmodel <- FALSE
 	maxiter <- control$iter.max
 	}
 
@@ -68,7 +69,7 @@ agreg.fit <- function(x, y, strata, offset, init, control,
     var <- matrix(agfit$imat,nvar,nvar)
     coef <- agfit$coef
     if (agfit$flag < nvar) which.sing <- diag(var)==0
-	else which.sing <- rep(F,nvar)
+	else which.sing <- rep(FALSE,nvar)
 
     infs <- abs(agfit$u %*% var)
     if (maxiter >1) {

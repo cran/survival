@@ -1,7 +1,7 @@
 # SCCS @(#)survfit.coxph.s	5.6 07/09/00
 
 survfit.coxph <-
-  function(object, newdata, se.fit=T, conf.int=.95, individual=F,
+  function(object, newdata, se.fit=TRUE, conf.int=.95, individual=FALSE,
 	    type, vartype,
 	    conf.type=c('log', 'log-log', 'plain', 'none'),
 	    call = match.call()) {
@@ -36,7 +36,7 @@ survfit.coxph <-
 
     # Recreate a copy of the data
     #  (The coxph.getdata routine never returns cluster() terms).
-    data <- coxph.getdata(object, y=T, x=se.fit,
+    data <- coxph.getdata(object, y=TRUE, x=se.fit,
 			           strata=(length(strat)))
     y <- data$y
     ny <- ncol(y)
@@ -125,7 +125,7 @@ survfit.coxph <-
 		strata.all <- object$n
 		if (length(strat)) {
 		    strata2 <- factor(x2[,strat], levels=levels(stratum))
-		    x2 <- x2[, -strat, drop=F]
+		    x2 <- x2[, -strat, drop=FALSE]
 		    }
 		else strata2 <- rep(1, nrow(x2))
 		y2 <- model.extract(m2, 'response')

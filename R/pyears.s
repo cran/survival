@@ -2,11 +2,11 @@
 pyears <- function(formula=formula(data), data=sys.frame(sys.parent()),
 	weights, subset, na.action,
 	ratetable=survexp.us, scale=365.25,  expect=c('event', 'pyears'),
-	model=F, x=F, y=F) {
+	model=FALSE, x=FALSE, y=FALSE) {
 
     expect <- match.arg(expect)
     call <- match.call()
-    m <- match.call(expand=F)
+    m <- match.call(expand=FALSE)
     m$ratetable <- m$model <- m$x <- m$y <- m$scale<- m$expect <- NULL
 
     Terms <- if(missing(data)) terms(formula, 'ratetable')

@@ -1,7 +1,7 @@
 #SCCS @(#)survfit.km.s	4.16 07/09/00
 survfit.km <- function(x, y, casewt=rep(1,n),
 		       type=c('kaplan-meier', 'fleming-harrington', 'fh2'),
-		       error=c('greenwood', "tsiatis"), se.fit=T,
+		       error=c('greenwood', "tsiatis"), se.fit=TRUE,
 		       conf.int= .95,
 		       conf.type=c('log',  'log-log',  'plain', 'none'),
 		       conf.lower=c('usual', 'peto', 'modified'),
@@ -27,11 +27,11 @@ survfit.km <- function(x, y, casewt=rep(1,n),
 
     if (!missing(new.start)) { # checking if not starting at first time
 	keep <- (y[,ny.all-1] >= new.start)
-	if (all(keep==F))
+	if (all(keep==FALSE))
 		stop(paste("new.start =", new.start,
 			   "is greater than all time points."))
 	x <- x[keep]
-	y <- y[keep,,drop=F]
+	y <- y[keep,,drop=FALSE]
         }
 
     ny <- ncol(y) # getting working total observations and strata
@@ -51,7 +51,7 @@ survfit.km <- function(x, y, casewt=rep(1,n),
     nstrat <- length(unique(strata.temp))
 
     if (attr(y, 'type') == 'right') # list of times is created differently 
-	    times <- y[,1, drop=F]  # depending on censoring
+	    times <- y[,1, drop=FALSE]  # depending on censoring
     else if (attr(y, 'type') == 'counting')
 	    times <- cbind(y[,1],y[,2])
 

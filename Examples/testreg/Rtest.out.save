@@ -1,6 +1,6 @@
 
-R : Copyright 2001, The R Development Core Team
-Version 1.4.0 Under development (unstable) (2001-12-07)
+R : Copyright 2002, The R Development Core Team
+Version 1.5.0 Under development (unstable) (2002-04-07)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -843,7 +843,7 @@ rfit1  4.902437 -0.2189405 0.2025429
   0.1346009   0.1346009   0.1224049   0.1207863 
 > apply(temp,2,mean)
          surv   surv.sparse           cox    cox.sparse 
--2.252972e-18  4.965646e-19  3.642919e-19 -3.330669e-18 
+-3.111660e-18  4.965646e-19 -1.804112e-18 -3.330669e-18 
 > 
 > # The parametric model gives the coefficients less variance for the
 > #  two fits, for the same df, but the scaled results are similar.

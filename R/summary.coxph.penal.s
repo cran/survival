@@ -1,6 +1,6 @@
 #SCCS @(#)summary.coxph.penal.s	1.2 01/14/99
 summary.coxph.penal <-
- function(object, conf.int = 0.95, scale = 1, terms=F, maxlabel=25,
+ function(object, conf.int = 0.95, scale = 1, terms=FALSE, maxlabel=25,
 			digits = max(options()$digits - 4, 3),...) {
     if (!is.null(object$call)) {
 	cat("Call:\n")
@@ -96,7 +96,7 @@ summary.coxph.penal <-
     temp <- ifelse(is.na(print1), "", temp)
     dimnames(temp) <- list(substring(pname1,1, maxlabel), 
 			     c("coef","se(coef)", "se2", "Chisq","DF","p"))
-    prmatrix(temp, quote=F)
+    prmatrix(temp, quote=FALSE)
 
     if(conf.int & length(coef) >0 ) {
         z <- qnorm((1 + conf.int)/2, 0, 1)

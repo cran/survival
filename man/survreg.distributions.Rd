@@ -12,7 +12,8 @@ survreg.distributions
 
 \format{
  
-  There are two basic formats
+  There are three basic formats; only the first two are used in the
+  built-in distributions
   \tabular{ll}{
     name:\tab name of distribution\cr
     variance:\tab Variance \cr
@@ -28,6 +29,15 @@ survreg.distributions
   \tabular{ll}{
     name:\tab name of distribution\cr
     dist:\tab name of transformed distribution\cr
+    trans:\tab transformation (eg log)\cr
+    dtrans:\tab derivative of transformation\cr
+    itrans:\tab inverse of transformation\cr
+    scale:\tab Optional fixed value for scale parameter\cr
+  }
+  For transformations of user-defined families use
+  \tabular{ll}{
+    name:\tab name of distribution\cr
+    dist:\tab transformed distribution in first format\cr
     trans:\tab transformation (eg log)\cr
     dtrans:\tab derivative of transformation\cr
     itrans:\tab inverse of transformation\cr
@@ -52,6 +62,35 @@ The other predefined distributions are defined in terms of these. The
 distributions with fixed \code{scale} of 1 and 0.5 respectively, and
 \code{loggaussian} is a synonym for \code{lognormal}.
 
+Parts of the built-in distributions are hardcoded in C, so the elements
+of \code{survreg.distributions} in the first format above must not be
+changed and new ones must not be added.  The examples show how to
+specify user-defined distributions to \code{survreg}.
+
+
 } \seealso{\code{\link{survreg}},
-\code{\link{pnorm}},\code{\link{plogis}}, \code{\link{pt}}}}
+  \code{\link{pnorm}},\code{\link{plogis}}, \code{\link{pt}}}}
+\examples{
+data(ovarian)
+## not a good fit, but a useful example
+survreg(Surv(futime,fustat)~ecog.ps+rx,data=ovarian,dist='extreme')
+## 
+my.extreme<-survreg.distributions$extreme
+my.extreme$name<-"Xtreme"
+survreg(Surv(futime,fustat)~ecog.ps+rx,data=ovarian,dist=my.extreme)
+
+## time transformation
+survreg(Surv(futime,fustat)~ecog.ps+rx,data=ovarian,dist='weibull',scale=1)
+my.weibull<-survreg.distributions$weibull
+my.weibull$dist<-my.extreme
+survreg(Surv(futime,fustat)~ecog.ps+rx,data=ovarian,dist=my.weibull,scale=1)
+
+## change the transformation to work in years
+## intercept changes by log(365), other coefficients stay the same
+my.weibull$trans<-function(y) log(y/365)
+my.weibull$itrans<-function(y) exp(365*y)
+survreg(Surv(futime,fustat)~ecog.ps+rx,data=ovarian,dist=my.weibull,scale=1)
+
+
+}
 \keyword{survival}

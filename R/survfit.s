@@ -134,7 +134,10 @@ basehaz<-function(fit,centered=TRUE){
         bz0<-sum(z0*coef(fit))
         H<- H*exp(-bz0)
     }
-        
-    return(data.frame(hazard=H,time=surv$time,strata=strata))
+
+    if (is.null(strata))
+      return(data.frame(hazard=H,time=sfit$time))
+    else
+      return(data.frame(hazard=H,time=sfit$time,strata=strata))
 
 }

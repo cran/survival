@@ -17,8 +17,8 @@
 #   +new  : new X matrix and the old means + I matrix
 predict.coxph <-
 function(object, newdata, type=c("lp", "risk", "expected", "terms"),
-		se.fit=F,
-		terms=names(object$assign), collapse, safe=F, ...)
+		se.fit=FALSE,
+		terms=names(object$assign), collapse, safe=FALSE, ...)
 
     {
     type <-match.arg(type)

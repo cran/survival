@@ -1,11 +1,11 @@
 #SCCS  @(#)coxph.s	5.12 06/12/00
 # Version with general penalized likelihoods
 
-coxph <- function(formula=formula(data), data=sys.frame(sys.parent()),
+coxph <- function(formula=formula(data), data=parent.frame(),
 	weights, subset, na.action, init,
 	control, method= c("efron", "breslow", "exact"),
-	singular.ok =T, robust=F,
-	model=F, x=F, y=T, ...) {
+	singular.ok =TRUE, robust=FALSE,
+	model=FALSE, x=FALSE, y=TRUE, ...) {
 
     method <- match.arg(method)
     call <- match.call()
@@ -41,7 +41,7 @@ coxph <- function(formula=formula(data), data=sys.frame(sys.parent()),
     cluster<- attr(Terms, "specials")$cluster
     dropx <- NULL
     if (length(cluster)) {
-	if (missing(robust)) robust <- T
+	if (missing(robust)) robust <- TRUE
 	tempc <- untangle.specials(Terms, 'cluster', 1:10)
 	ord <- attr(Terms, 'order')[tempc$terms]
 	if (any(ord>1)) stop ("Cluster can not be used in an interaction")
@@ -65,7 +65,7 @@ coxph <- function(formula=formula(data), data=sys.frame(sys.parent()),
         newTerms<-Terms
     X<-model.matrix(newTerms,m)
     assign<-lapply(attrassign(X,newTerms)[-1],function(x) x-1)
-    X<-X[,-1,drop=F]
+    X<-X[,-1,drop=FALSE]
     
     
     type <- attr(Y, "type")

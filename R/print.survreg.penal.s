@@ -1,5 +1,5 @@
 # SCCS @(#)print.survreg.penal.s	1.1 11/25/98
-print.survreg.penal <-  function(x, terms=F, maxlabel=25,
+print.survreg.penal <-  function(x, terms=FALSE, maxlabel=25,
 			       digits=max(options()$digits - 4, 3), ...) {
     if (!inherits(x, 'survreg.penal')) stop("Invalid object")
 

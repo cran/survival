@@ -10,7 +10,7 @@ The function verifies not only the \code{class} attribute, but the
 structure of the object.
 }
 \usage{
-is.ratetable(x, verbose=F)
+is.ratetable(x, verbose=FALSE)
 }
 \arguments{
 \item{x}{
