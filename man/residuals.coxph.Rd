@@ -10,10 +10,13 @@ Calculates martingale, deviance, score or Schoenfeld residuals for a
 Cox proportional hazards model.
 }
 \usage{
-resid(object,
+\method{residuals}{coxph}(object,
        type=c("martingale", "deviance", "score", "schoenfeld",
 	      "dfbeta", "dfbetas", "scaledsch"),
-       collapse=F, weighted=F)
+       collapse=FALSE, weighted=FALSE, ...)
+\method{residuals}{coxph.null}(object,
+       type=c("martingale", "deviance"),
+       collapse=FALSE, weighted=FALSE, ...)
 }
 \arguments{
 \item{object}{
@@ -38,7 +41,7 @@ obtain per subject rather than per observation residuals.
 \item{weighted}{
 if \code{TRUE} and the model was fit with case weights, then the weighted
 residuals are returned.
-}}
+}\item{...}{other unused arguments}}
 \value{
 For martingale and deviance residuals, the returned object is a vector
 with one element for each subject (without \code{collapse}).
@@ -68,7 +71,7 @@ T. Therneau, P. Grambsch, and T. Fleming. "Martingale based residuals
 for survival models", \emph{Biometrika}, March 1990.
 }
 \seealso{
-\code{\link{coxph}}
+\code{\link{coxph}}}
 \examples{
  data(heart)
  fit <- coxph(Surv(start, stop, event) ~ (age + surgery)* transplant,

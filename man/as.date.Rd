@@ -1,6 +1,5 @@
 \name{as.date}
 \alias{as.date}
-\alias{as.data.POSIXt}
 \title{Coerce Data to Dates}
 \description{
   Converts any of the following character forms to a Julian date:

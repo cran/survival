@@ -4,6 +4,11 @@
 \alias{print.Surv}
 \alias{Math.Surv}
 \alias{Summary.Surv}
+\alias{[.Surv}
+\alias{format.Surv}
+\alias{as.data.frame.Surv}
+\alias{as.character.Surv}
+\alias{is.na.Surv}
 \alias{Ops.Surv}
 \title{
 Create a Survival Object
@@ -95,7 +100,7 @@ If 1/2 coding is used and all the subjects are censored, it will
 guess wrong.  Use 0/1 coding in this case.
 }
 \seealso{
-\code{\link{coxph}}, \code{\link{survfit}}, \code{\link{survreg}}.
+\code{\link{coxph}}, \code{\link{survfit}}, \code{\link{survreg}}.}
 \examples{
 data(aml)
 Surv(aml$time, aml$status)

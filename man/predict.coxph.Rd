@@ -18,6 +18,7 @@ predict.coxph(object, newdata, type=c("lp", "risk", "expected", "terms"), se.fit
   \item{terms}{If \code{type="terms"}, which terms to return.}
   \item{collapse}{identifier for which rows correspond to different individuals}
   \item{safe}{Use a more intensive `safe' prediction method}
+  \item{...}{other unused arguments}
 }
 
 \value{

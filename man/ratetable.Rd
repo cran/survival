@@ -1,5 +1,10 @@
 \name{ratetable}
 \alias{ratetable}
+\alias{[.ratetable}
+\alias{[.ratetable2}
+\alias{print.ratetable}
+\alias{is.na.ratetable}
+\alias{summary.ratetable}
 \title{Ratetable reference in formula}
 \description{
 This function matches variable names in data to those in a ratetable for

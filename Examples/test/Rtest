@@ -606,10 +606,6 @@ row.names(jasa) <- temp$id
 rm(temp, temp3, temp4, temp5, temp6)
 
 
-
-# don't have survexp.uswhite
-#expect <- survexp(futime ~ ratetable(age=(accept.dt - birth.dt), sex=1,
-#                year=accept.dt), jasa, cohort=F, ratetable=survexp.uswhite)
 data(ratetables)
 expect <- survexp(futime ~ ratetable(age=(accept.dt - birth.dt), sex=1,year=accept.dt,race="white"), jasa, cohort=F, ratetable=survexp.usr)
 
@@ -868,7 +864,7 @@ exp1 <- survexp(~ratetable(year=temp2, age=(temp2-temp1), sex=1,race="white"),
 # remember, a first subscript of "1" is for age 0
 
 ##xx <- survexp.uswhite[,1,]
-xx <- survexp.usr[,1,1,]
+xx <- survexp.usr[,1,"white",]
 check <- c(       (.6*xx[19,2] + .4*xx[19,3])    +
 	     365* (.5*xx[20,2] + .5*xx[20,3]) ,
 

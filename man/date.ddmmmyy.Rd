@@ -10,7 +10,7 @@ date.ddmmmyy(sdate)
 }
 \arguments{
   \item{sdate}{A vector of Julian dates, e.g., as returned by
-    \code{mdy.date()}.
+    \code{mdy.date()}.}
 }
 \value{
   A vector of character strings containing the formatted dates.

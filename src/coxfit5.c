@@ -84,7 +84,7 @@ static double *mark, *wtave;
 static double *a, *oldbeta, *a2;
 static double *offset, *weights;
 static int    *status, *frail, *sort;
-static double *score, *time;
+static double *score, *thetime;  /*HP-UX doesn't even like static 'time' */
 static double *tmean;
 static int    ptype, pdiag;
 static double *ipen, *upen, logpen;
@@ -140,7 +140,7 @@ void coxfit5_a(int *nusedx, int *nvarx, double *yy,
     offset  = weights + nused;
     score   = offset + nused;
     tmean   = score + nused;
-    time    = tmean + nvar2;
+    thetime    = tmean + nvar2;
     status  = Calloc(2*nused, int);
     sort    = status + nused;
     for (i=0; i<nused; i++) {
@@ -148,7 +148,7 @@ void coxfit5_a(int *nusedx, int *nvarx, double *yy,
 	offset[i]  = offset2[i];
 	status[i]  = yy[nused +i];
 	sort[i]    = sorted[i];
-	time[i]    = yy[i];
+	thetime[i]    = yy[i];
         }
 
     /* scratch space for penalty 
@@ -186,7 +186,7 @@ void coxfit5_a(int *nusedx, int *nvarx, double *yy,
 	    ndead=0;
 	    for (j=i; j<nused; j++) {
 		k = sort[j];
-		if ((time[k] != time[p]) || (j==strata[istrat])) break;
+		if ((thetime[k] != thetime[p]) || (j==strata[istrat])) break;
 		ndead += status[p];
 		temp += weights[k];
 		}

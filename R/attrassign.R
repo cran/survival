@@ -4,13 +4,13 @@
 ##
 attrassign<-function (object, ...) UseMethod("attrassign")
 
-attrassign.lm<-function(lmobj){
-	attrassign(model.matrix(lmobj),terms(lmobj))}
+attrassign.lm<-function(object,...){
+	attrassign(model.matrix(object),terms(object))}
 
-attrassign.default<-function(mmat,tt){
+attrassign.default<-function(object,tt,...){
         if (!inherits(tt,"terms"))
                 stop("need terms object")
-        aa<-attr(mmat,"assign")
+        aa<-attr(object,"assign")
         if (is.null(aa))
                 stop("argument is not really a model matrix")
         ll<-attr(tt,"term.labels")

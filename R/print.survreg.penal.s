@@ -5,7 +5,7 @@ print.survreg.penal <-  function(x, terms=F, maxlabel=25,
 
     if (!is.null(x$call)) {
 	cat("Call:\n")
-	dput(x$call)
+	dput(x$call) 
 	cat("\n")
 	}
     if (!is.null(x$fail)) {

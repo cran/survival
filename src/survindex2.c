@@ -1,205 +1,71 @@
-/*    SCCS @(#)survindex2.c	5.6 09/08/00
-** A subroutine for summary.survfit
+/*     SCCS @(#)survindex2.c	5.2 10/27/98
+/* A subroutine for surv.fit.print
 **
 ** Input --
 **      n:      number of survival times
-**      stime:  list of times people entered and left the study
+**      stime:  survival times, must be >0
 **      strata: strata values   data is sorted by time within strata
-**      ntime:  number of time values specified
+**      ntime:  number of time values
 **      time:   time values for printout, must be >=0 and in increasing order
-**      nstrat: number of strata
-**      o_n_risk: original total (weighted) number of observations
-**                still in the study at each time point
-**      o_n_event: original number of (weighted) events at each time point
-**      o_surv: original survival at each time point
-**      o_std_err: null or original calculated standard error for each time 
-**                 point
-**      o_upper: null or original upper confidence interval for each 
-**               time point
-**      o_lower: null or original lower confidence interval for each
-**               time point
-**      n_risk, n_event, surv, std_err, upper, lower: work arrays
-**      new_start: if user specified a time to start other than first time
-**      num_extend: if calculate points beyond curve
-**      times_strata: number of times for each group, used if num_extend=0
-**      temp_times: time values used for each group, used if num_extend=0
+**      nstrat: number of strata.
 **
 ** Output --
-**      n_risk: (weighted) number of observations still in study for 
-**              specified time points
-**      n_event: (weighted) events for specified time points
-**      surv: survival for specified time points
-**      std_err: standard error for specified time points
-**      upper: upper confidence interval for specified time points
-**      lower: lower confidence interval for specified time points
+**      indx:   a list of indices for the first strata, then for the second,
+**                 and so on.  For each strata, for each time value, the
+**                 index of the last survival time with stime <= time is
+**                 entered.  (Remember that S uses indices starting at 1, not
+**                 zero, and enter the appropriate S index).
+**               If time is less than any survival time within the strata,
+**                 then the index of the first obs of the next strata is
+**                 returned. The proper thing to print will be
+**                 a survival value of 1.
+**               If there are no survival times >=time, a -1 is entered.
+**                 There is  no extrapolation beyond the end of
+**                 the K-M curve.
+**      indx2:  when =1 indicates a time less than any survival.  When =2
+**                 indicates an exact tie.
 */
 #include "survS.h"
 #include "survproto.h"
-void survindex2(int   *n,          double *stime,      int   *strata,
-		int   *ntime,      double *time,       int   *nstrat,
-		int   *o_n_risk,   int   *o_n_event,  double *o_surv,
-		double *o_std_err,  double *o_upper,    double *o_lower, 
-		int   *n_risk,     int   *n_event,    double *surv,
-		double *std_err,    double *upper,      double *lower,
-		double *new_start,  int   *num_extend, int   *times_strata,
-		double *temp_times)
 
-{
-  int i,j,k;
-  int nn, cc, current_strata, sum_event, /*last, last_time, (-Wall unused)*/ sum_times, 
-      strata_count;
+void survindex2(long   *n,     double *stime,   long   *strata, 
+		long   *ntime, double *time,    long   *nstrat, 
+		long   *indx,  long   *indx2)
+    {
+    register int i,j;
+    int nn;
+    int current_strata;
+    double start_time;
 
-  double start_time, starting_time;
+    current_strata = strata[0];
+    nn=0;
+    start_time = -1;
+    j=0;
 
-  current_strata = strata[0];
-  starting_time = stime[0] - 1;
-  start_time = starting_time;
-  j=0;
-  nn = 0;
-  cc = 0;
-  sum_event = 0;
-  strata_count = 0;
-  sum_times = 0;
-  
-  for (i=0; i<*n; i++) { /* for i 1 */
+    for (i=0; i< *nstrat * *ntime; i++) indx[i] = -1;
 
-    if (strata[i] != current_strata) { /* if 1 */
-      starting_time = stime[i] - 1;
-      start_time = starting_time;
-      current_strata = strata[i];
-      times_strata[strata_count] = sum_times;
-      sum_event = 0;
-      sum_times = 0;
-      j=0;
-      strata_count++;
-      } /* end if 1 */
-
-    if (stime[i] >= *new_start) {
-      sum_event += o_n_event[i];
-      for (; j< *ntime && time[j] <= stime[i]; j++) { /* for j 1 */
-	temp_times[cc] = time[j];
-	sum_times = sum_times + 1;
-	if (start_time < time[j]) { /* if 2 */
-	  if (time[j] < stime[i]) { /* if 3 */
-	    if (start_time > starting_time) { /* if 4 */
-	      n_event[nn] = sum_event - o_n_event[i];
-	      n_risk[nn] = o_n_risk[i];
-	      surv[nn] = o_surv[i-1];
-	      std_err[nn] = o_std_err[i-1];
-	      upper[nn] = o_upper[i-1];
-	      lower[nn] = o_lower[i-1];
-	      }
-	    else { /* end if 4, start else 4 */
-	      n_event[nn] = 0;
-	      n_risk[nn] = o_n_risk[i];
-	      surv[nn] = 1;
-	      std_err[nn] = 0;
-	      upper[nn] = 1;
-	      lower[nn] = 1;
-	      } /* end else 4 */
+    for (i=0; i<*n; i++) {
+	if (strata[i] != current_strata) {
+	    start_time= -1;
+	    current_strata = strata[i];
+	    nn += *ntime- j;
+	    j=0;
 	    }
-	  else { /* end if 3, start else 3 */
-	    n_event[nn] = sum_event;
-	    n_risk[nn] = o_n_risk[i];
-	    surv[nn] = o_surv[i];
-	    std_err[nn] = o_std_err[i];
-	    upper[nn] = o_upper[i];
-	    lower[nn] = o_lower[i];
-	    } /* end else 3 */
-	  } /* end if 2 */
-	/* fixed n_risk on output to reflect everyone starts */
-	/* at time zero - cmb 8/25/2000 */
-	  else if (j == 0) {
-	    n_event[nn] = 0;
-	    n_risk[nn] = o_n_risk[i]; /* changed - cmb 8/25/2000 */
-	    surv[nn] = 1;
-	    std_err[nn] = 0;
-	    upper[nn] = 1;
-	    lower[nn] = 1;
+	for (; j< *ntime && time[j] <= stime[i]; j++) {
+	    if (start_time < time[j]) {
+		if (time[j] < stime[i]) {
+		    if (start_time >0) indx[nn++] =i;
+		    else {
+			indx[nn] =i+1;
+			indx2[nn++] = 1;
+			}
+		    }
+		else {
+		    indx2[nn] = 2;
+		    indx[nn++] = i+1;
+		    }
+		}
 	    }
-	    else { /* added - cmb 8/25/2000 */
-	      n_event[nn] = n_event[nn-1];
-	      n_risk[nn] = n_risk[nn-1];
-	      surv[nn] = surv[nn-1];
-	      std_err[nn] = std_err[nn-1];
-	      upper[nn] = upper[nn-1];
-	      lower[nn] = lower[nn-1];
-	    }
-	nn++; cc++;
-        } /* end for j 1 */
-      
-      if (i+1 != *n) { /* if 5 */
-	if (strata[i+1] != strata[i]) { /* if 6 */
-	  for (k=0; k < *ntime; k++) { /* for k 1 */
-	    if (time[k] > stime[i] && *num_extend == 1) { /* if 7 */
-	      n_event[nn] = sum_event;
-	      n_risk[nn] = 0;
-	      surv[nn] = o_surv[i];
-	      std_err[nn] = o_std_err[i];
-	      upper[nn] = o_upper[i];
-	      lower[nn] = o_lower[i];
-	      nn++;
-	      } /* end if 7 */
-	    } /* end for k 1 */
-	  } /* end if 6 */
-        }
-      else { /* end if 5, start else 5 */
-	for (k=0; k < *ntime; k++) { /* for k 2 */
-	  if (time[k] > stime[i] && *num_extend == 1) { /* if 8 */
-	    n_event[nn] = sum_event;
-	    n_risk[nn] = 0;
-	    surv[nn] = o_surv[i];
-	    std_err[nn] = o_std_err[i];
-	    upper[nn] = o_upper[i];
-	    lower[nn] = o_lower[i];
-	    nn++;
-	    } /* end if 8 */
-	  } /* end for k 2 */
-        } /* end else 5 */
-      }
-    start_time = stime[i];
-    } /* end for i 1 */
-    times_strata[strata_count] = sum_times;
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+	start_time = stime[i];
+	}
+    }

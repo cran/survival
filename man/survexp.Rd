@@ -1,5 +1,7 @@
 \name{survexp}
 \alias{survexp}
+\alias{survexp.cfit}
+\alias{print.survexp}
 \title{
 Compute Expected Survival
 }
@@ -69,7 +71,7 @@ compute the standard error of the predicted survival.
 The default is to compute this whenever the routine can, which at this time
 is only for the Ederer method and a Cox model as the rate table.
 }
-\item{model,}{
+\item{model,x,y}{
 flags to control what is returned.  If any of these is true, then the
 model frame, the model matrix, and/or the vector of response times will be
 returned as components of the final result, with the same names as the
@@ -123,9 +125,9 @@ H. Verheul, E. Dekker, P. Bossuyt, A. Moulijn, and A. Dunning.  Background
 mortality in clinical survival studies.  \emph{Lancet} 1993, 341:872-5.
 }
 \seealso{
-\code{\link{survfit}}, \code{\link{survexp.us}}, \code{\link{survexp.fit}}, \code{\link{pyears}}, \code{\link{date}}
+\code{\link{survfit}}, \code{\link{survexp.us}}, \code{\link{survexp.fit}}, \code{\link{pyears}}, \code{\link{date}}}
 \examples{
-if (require(date)){
+## comparing data to population
 data(ratetables)	
 data(cancer)
 ## compare survival to US population
@@ -133,7 +135,18 @@ cancer$year<-rep(as.date("1/1/1980"),nrow(cancer))
 efit <- survexp( ~ ratetable(sex=sex, year=year, age=age*365), times=(1:4)*365,data=cancer)
 plot(survfit(Surv(time, status) ~1,data=cancer))
 lines(efit)
-}
+## compare data to Cox model
+## Mayo PBC data
+data(pbc)
+## fit to randomised patients
+m<-coxph(Surv(time,status)~edtrt+log(bili)+log(protime)+age+platelet,data=pbc,
+      subset=trt>0)
+##compare Kaplan-Meier to fitted model for 2 edema groups in
+##unrandomised patients
+plot(survfit(Surv(time,status)~edtrt,data=pbc,subset=trt==-9))
+lines(survexp(~edtrt+ratetable(edtrt=edtrt,bili=bili,platelet=platelet,age=age,
+  protime=protime),data=pbc,subset=trt==-9,ratetable=m,cohort=TRUE),col="purple")
+
 }
 \keyword{survival}
 % Converted by Sd2Rd version 0.3-2.

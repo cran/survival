@@ -1,7 +1,7 @@
 #SCCS @(#)summary.coxph.penal.s	1.2 01/14/99
 summary.coxph.penal <-
  function(object, conf.int = 0.95, scale = 1, terms=F, maxlabel=25,
-			digits = max(options()$digits - 4, 3)) {
+			digits = max(options()$digits - 4, 3),...) {
     if (!is.null(object$call)) {
 	cat("Call:\n")
 	dput(object$call)

@@ -23,7 +23,7 @@ The function's only action is semantic, to mark a variable as the
 cluster indicator.
 }
 \seealso{
-\code{\link{coxph}}, \code{\link{Surv}}
+\code{\link{coxph}}, \code{\link{Surv}}}
 \examples{\dontrun{
 coxph(Surv(futime, fustat) ~ age + cluster(group), data = ovarian)
 }}

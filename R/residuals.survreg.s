@@ -4,7 +4,7 @@
 residuals.survreg <- function(object, type=c('response', 'deviance',
 		      'dfbeta', 'dfbetas', 'working', 'ldcase',
 		      'ldresp', 'ldshape', 'matrix'), 
-		      rsigma =T, collapse=F, weighted=F) {
+		      rsigma =T, collapse=F, weighted=F, ...) {
     type <-match.arg(type)
     n <- length(object$linear.predictors)
     Terms <- object$terms

@@ -43,7 +43,7 @@ additional arguments passed to the \code{plot} function.
 a plot is produced on the current graphics device.
 }
 \seealso{
-\code{\link{cox.zph}}, \code{\link{coxph}}
+\code{\link{cox.zph}}, \code{\link{coxph}}}
 \examples{
 data(veteran)
 vfit <- coxph(Surv(time,status) ~ trt + factor(celltype) +

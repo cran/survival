@@ -52,7 +52,7 @@ should the output table include the expected number of events, or the
 expected number of person-years of observation.  This is only valid with
 a rate table.
 }
-\item{model,}{
+\item{model,x,y}{
 If any of these is true, then the
 model frame, the model matrix, and/or the vector of response times will be
 returned as components of the final result.
@@ -125,22 +125,27 @@ Death rates change with age, of course, so the result is carved into
 1 year increments of time.  Males and females were done separately.
 }
 \seealso{
-\code{\link{ratetable}}, \code{\link{survexp}}, \code{\link{Surv}}
-\examples{\dontrun{
-library(date)
+\code{\link{ratetable}}, \code{\link{survexp}}, \code{\link{Surv}}}
+\examples{
 data(ratetables)
 # 
 # Simple case: a single male subject, born 6/6/36 and entered on study 6/6/55.
 #
 
 temp1 <- mdy.date(6,6,36)
-temp2 <- mdy.date(6,6,55)# Now compare the results from person-years
+temp2 <- mdy.date(6,6,55)
+# Now compare the results from person-years
 #
 temp.age <- tcut(temp2-temp1, floor(c(-1, (18:31 * 365.24))),
         labels=c('0-18', paste(18:30, 19:31, sep='-')))
 temp.yr  <- tcut(temp2, mdy.date(1,1,1954:1965), labels=1954:1964)
 temp.time <- 3700   #total days of fu
 py1 <- pyears(temp.time ~ temp.age + temp.yr, scale=1) #output in days
-}}
+data(ratetables)
+survexp.uswhite<-survexp.usr[,,"white",]
+py2 <- pyears(temp.time ~ temp.age + temp.yr
+		+ ratetable(age=temp2-temp1, year=temp2, sex=1),
+	     scale=1, ratetable=survexp.uswhite ) #output in days
+}
 \keyword{survival}
 % Converted by Sd2Rd version 0.3-2.

@@ -1,6 +1,7 @@
 \name{ratetables}
 \alias{ratetables}
 \alias{survexp.us}
+\alias{survexp.uswhite}
 \alias{survexp.usr}
 \alias{survexp.az}
 \alias{survexp.azr}
@@ -12,20 +13,23 @@
 \title{
 Census Data Sets for the Expected Survival and Person Years Functions
 }
-\usage{
-data(ratetables)
-}
 \description{
 Census data sets for the expected survival and person years functions
 
-
+}\usage{
+data(ratetables)
+survexp.uswhite<-survexp.usr[,,"white",]
 }
-\arguments{
+
+\details{
+\describe{
 \item{us}{
 total United States population, by age and sex, 1960 to 1980.
 }
 \item{uswhite}{
-United States white population, by age and sex, 1950 to 1980.
+United States white population, by age and sex, 1950 to 1980. This is
+no longer included, but can be extracted from \code{survexp.usr} as
+shown above.
 }
 \item{usr}{
 United States population, by age, sex and race, 1960 to 1980.  Race is
@@ -55,7 +59,7 @@ white versus nonwhite.  For 1970 the nonwhite population values
 were not reported separately.
 In order to make the rate table be a matrix, the 1980 values were
 repeated.  (White and non-white values are quite different).
-
+}}
 
 Each of these tables contains the daily hazard rate for a matched subject
 from the population, defined as -log(1-q)/365.24 where q is the 1 year
@@ -71,8 +75,7 @@ the denominator is based on 24 leap years per century.)
 Each table is stored as an array, with additional attributes, and
 can be subset and manipulated as standard S arrays.
 Interpolation between calendar years is done "on the fly" by the survexp
-routine.  Judging from past experience, the 1990 data should become
-available in 1995 or 96.
+routine. 
 
 
 Some of the deficiencies, e.g. 1970 Arizona non-white, are a result of
@@ -80,12 +83,13 @@ local conditions.  The data probably exists, but we don't have a copy
 it in the library.
 
 
-In November 1994 all of the tables were augmented to contain extrapolated
+The tables have  been augmented to contain extrapolated
 values for 1990 and 2000.  The details can be found in Mayo Clinic Biostatistics 
-technical report 55.
-}}
+technical report 63 at \url{http://www.mayo.edu/hsr/techrpt.html}
+}
 \keyword{survival}
-% Converted by Sd2Rd version 0.3-2.
+\keyword{datasets}
+
 
 
 

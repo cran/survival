@@ -69,7 +69,7 @@ Proportional hazards tests and diagnostics based on weighted residuals.
 \bold{81}, 515-26.
 }
 \seealso{
-\code{\link{coxph}}, \code{\link{Surv}}.
+\code{\link{coxph}}, \code{\link{Surv}}.}
 \note{The \code{plot} method requires the \code{splines} library}
 \examples{
 data(ovarian)

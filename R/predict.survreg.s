@@ -3,7 +3,7 @@ predict.survreg <-
     function(object, newdata, type=c('response', "link", 'lp', 'linear',
 				     'terms', 'quantile','uquantile'),
 				se.fit=F,  terms=NULL,
-	                        p=c(.1, .9))
+	                        p=c(.1, .9),...)
     {
 #
 # What do I need to do predictions ?

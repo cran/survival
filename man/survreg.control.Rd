@@ -24,12 +24,13 @@ coxph.control (eps = 1e-04, toler.chol = .Machine$double.eps^0.75,
   \item{outer.max}{maximum number of outer iterations for choosing
     penalty parameters}
   \item{eps}{Tolerance to declare convergence for Cox model}
+  \item{toler.inf}{An undocumented parameter}
 }
 \value{
  A list with the same elements as the input
 }
 
-\seealso{ \code{\link{survreg}}, \code{\link{coxph}  }
+\seealso{ \code{\link{survreg}}, \code{\link{coxph}}  }
 
 \examples{
 

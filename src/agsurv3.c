@@ -59,7 +59,7 @@ static double   *y,
 		**used,
 		**tvar;
 static double   *strata,
-		time,
+	        thetime, /* Some HP-UX don't like even static 'time' */
 		**imat,
 		*mean;
 static int      death,
@@ -182,11 +182,11 @@ void agsurv3(int   *sn,    int   *snvar,    int   *sncurve,
 		a[i] =0;
 		a2[i]=0;
 		}
-	    time = stop[person];
+	    thetime = stop[person];
 	    nrisk =0;
 	    deaths=0;
 	    for (k=person; k<cn; k++) {
-		if (start[k] < time) {
+		if (start[k] < thetime) {
 		    nrisk++;
 		    weight = score[k];
 		    denom += weight;
@@ -194,7 +194,7 @@ void agsurv3(int   *sn,    int   *snvar,    int   *sncurve,
 			a[i] += weight*(oldx[i][k]);
 			}
 		     }
-		if (stop[k]==time && event[k]==1) {
+		if (stop[k]==thetime && event[k]==1) {
 		    kk=k;
 		    deaths++;
 		    e_denom += weight;
@@ -205,11 +205,11 @@ void agsurv3(int   *sn,    int   *snvar,    int   *sncurve,
 		}
 
 	    /*
-	    ** Now compute the increment in the hazard and variance at "time"
+	    ** Now compute the increment in the hazard and variance at "thetime"
 	    */
 	    if (method <3) for (i=0; i<nvar2; i++) mean[i] = a[i]/denom;
 	    if (method==1) {
-		for (psave=person; psave<cn && stop[psave]==time; psave++) 
+		for (psave=person; psave<cn && stop[psave]==thetime; psave++) 
 		/*
 		** kalbfleisch estimator requires iteration;
 		*/
@@ -243,11 +243,11 @@ void agsurv3(int   *sn,    int   *snvar,    int   *sncurve,
 
 	    else if (method==2) {
 		addup(itime, deaths/denom, deaths/(denom*denom));
-		for (; person<cn && stop[person]==time; person++);
+		for (; person<cn && stop[person]==thetime; person++);
 		}
 	    else {
 		temp =0;  haz=0; varhaz=0;
-		for (k=person; k<cn && stop[k]==time; k++) {
+		for (k=person; k<cn && stop[k]==thetime; k++) {
 		    if (event[k]==1) {
 			downwt = temp++/deaths;
 			d2 = (denom - downwt*e_denom);
@@ -260,7 +260,7 @@ void agsurv3(int   *sn,    int   *snvar,    int   *sncurve,
 		    person++;
 		    }
 		}
-	    start[itime] = time;
+	    start[itime] = thetime;
 	    stop[itime] = nrisk;
 	    event[itime]= deaths;
 	    itime++;
@@ -304,7 +304,7 @@ double haz, var;
 	totvar =0;
 	for (i=pstart; i<n && strata[i]==ic; i++) {
 	    nn++;
-	    if (y[i] >= time) {
+	    if (y[i] >= thetime) {
 		temp =  -haz*nscore[i];  /*increment to the individual hazard*/
 		if  (death==0) {
 		    wt += isurv[i];

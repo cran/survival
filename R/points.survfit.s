@@ -1,7 +1,7 @@
 #SCCS 04/14/92 @(#)points.survfit.s	4.2
-points.survfit <- function(object, ...) {
-    if (!is.matrix(object$surv))
-	    points(object$time, object$surv, ...)
+points.survfit <- function(x, ...) {
+    if (!is.matrix(x$surv))
+	    points(x$time, x$surv, ...)
     else
-	    matpoints(object$time, object$surv, ...)
+	    matpoints(x$time, x$surv, ...)
     }

@@ -1,5 +1,12 @@
+2.8 survival passes CMD check for the first time ever (though users won't 
+    notice many of the changes). A few little bugs
+    here and there. Some better examples added (eg survexp, plot.survfit)
+
+2.7 More CMD check stuff.  HP-UX compilers don't like even static
+    variables called 'time' (Peter Kleiweg). 
+
 2.6 documentation/code incompatibilities, three more
-sys.frame(sys.parent() fixes.
+sys.frame(sys.parent()) fixes.
 
 2.5 GPL, fixed segfault in frailty
 	model with all coefficients NA, predict.coxph standard errors for

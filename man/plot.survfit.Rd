@@ -8,7 +8,7 @@ plot.survfit(x, conf.int=<<see below>>, mark.time=T,
  mark=3, col=1, lty=1, lwd=1, cex=1, log=F, xscale=1, yscale=1, 
  firstx=0, firsty=1, xmax, ymin=0, fun,
  xlab="", ylab="", xaxs="S",
-legend.text=NULL,legend.pos=0,legend.bty="n",\dots)
+legend.text=NULL,legend.pos=0,legend.bty="n",main=NULL,\dots)
 }
 \arguments{
 \item{x}{
@@ -62,7 +62,7 @@ changed, not the actual plot coordinates, so that adding a curve with
 "\code{lines(surv.exp(\dots{}))}", say, 
 will perform as it did without the \code{yscale} argument.
 }
-\item{firstx,}{
+\item{firstx,firsty}{
 the starting point for the survival curves.  If either of these is set to
 \code{NA} the plot will start at the first time point of the curve.
 }
@@ -107,6 +107,8 @@ the \code{"i"} style internally.
   right. These may not work well with transformed curves.}
 \item{legend.bty}{Box type, see \code{\link{legend}}}
 \item{legend.text}{Text for legend, see \code{\link{legend}}}
+\item{main}{Plot title}
+\item{...}{other graphical parameters}
 }
 \value{
 a list with components \code{x} and \code{y}, containing the coordinates of the last point
@@ -118,6 +120,8 @@ A plot of survival curves is produced, one curve for each strata.
 The \code{log=T} option does extra work to avoid log(0), and to try to create a
 pleasing result.  If there are zeros, they are plotted by default at
 0.8 times the smallest non-zero value on the curve(s).
+
+If \code{legend.text} is supplied a legend is created.
 }
 \section{BUGS}{
 Survival curve objects created from a \code{coxph} model does not include
@@ -142,7 +146,7 @@ lsurv2 <- survfit(Surv(time, status) ~ x, aml, type='fleming')
 plot(lsurv2, lty=2:3, fun="cumhaz",
 	xlab="Months", ylab="Cumulative Hazard")
 
-plot(leukemia.surv,lty=2:3,legend.pos=0,legend.text=c("Maintenance",
+plot(leukemia.surv,lty=1:2,legend.pos=0,col=c("Red","Blue"),legend.text=c("Maintenance",
 "No Maintenance"))
 if (interactive()){
 plot(leukemia.surv,lty=2:3,legend.pos=locator(1),legend.text=c("Maintenance",

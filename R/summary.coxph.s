@@ -1,8 +1,9 @@
 #SCCS 03/25/97 @(#)summary.coxph.s	4.8
 summary.coxph <-
- function(cox, table = TRUE, coef = TRUE, conf.int = 0.95, scale = 1,
-			digits = max(options()$digits - 4, 3))
+ function(object, table = TRUE, coef = TRUE, conf.int = 0.95, scale = 1,
+			digits = max(options()$digits - 4, 3), ...)
     {
+        cox<-object
     if (!is.null(cl<- cox$call)) {
 	cat("Call:\n")
 	dput(cl)

@@ -2,7 +2,8 @@
 #
 # Print out information about a rate table: it's dimensions and keywords
 #
-summary.ratetable <- function(rtable, ...) {
+summary.ratetable <- function(object, ...) {
+    rtable<-object
     if (!inherits(rtable, 'ratetable')) stop("Argument is not a rate table")
 
     att <- attributes(rtable)

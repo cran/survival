@@ -6,7 +6,7 @@ plot.survfit<- function(x, conf.int,  mark.time=T,
 			xmax, ymin=0,
 			fun,
 			xlab="", ylab="", xaxs='S', legend.text=NULL,
-                        legend.pos=0,legend.bty="n",...) {
+                        legend.pos=0,legend.bty="n",main=NULL,...) {
 
     mintime <- min(x$time)
     firstx <- min(firstx,mintime)
@@ -179,7 +179,7 @@ plot.survfit<- function(x, conf.int,  mark.time=T,
     # Draw the basic box
     #
     plot(tempx, tempy*yscale, type='n', log=logax,
-	                  xlab=xlab, ylab=ylab, xaxs=xaxs,...)
+	                  xlab=xlab, ylab=ylab, xaxs=xaxs,main=main,...)
     if(yscale != 1) {
 	if (logy) par(usr =par("usr") -c(0, 0, log10(yscale), log10(yscale))) 
 	else par(usr =par("usr")/c(1, 1, yscale, yscale))   
@@ -305,7 +305,7 @@ plot.survfit<- function(x, conf.int,  mark.time=T,
             llx<-0.95*min(tempx)+0.05*max(tempx)
             lly<-ymin+(2+length(legend.text))*max(strheight(legend.text))
         }
-        legend(llx,lly,legend=legend.text,lty=lty,bty=legend.bty,...)
+        legend(llx,lly,legend=legend.text,lty=lty,bty=legend.bty,col=col,...)
     }
     invisible(list(x=xend, y=yend))
     }

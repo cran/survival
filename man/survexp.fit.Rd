@@ -4,7 +4,7 @@
 Work Function to Compute Expected Survival
 }
 \description{
-Compute expected survival
+Compute expected survival. This function is not to be called by the user.
 }
 \usage{
 survexp.fit(x, y, times, death, ratetable)
@@ -22,7 +22,7 @@ the follow up time for each subject.
 \item{times}{
 the vector of times at which a result will be computed.
 }
-
+\item{death}{death indicator}
 \item{ratetable}{
 a rate table, such as \code{survexp.uswhite}.
 }}

@@ -1,6 +1,6 @@
 \name{survdiff}
 \alias{survdiff}
-\alias{survdiff.fit}
+\alias{print.survdiff}
 \title{
 Test Survival Curve Differences
 }
@@ -84,7 +84,7 @@ group, rather than being omitted, use the \code{factor} function with its
 Harrington, D. P. and Fleming, T. R. (1982).
 A class of rank test procedures for censored survival data.
 \emph{Biometrika}
-\bold{69}, 553-566.
+\bold{69}, 553-566.}
 \examples{
 ## Two-sample test
 data(ovarian)
@@ -95,8 +95,6 @@ data(lung)
 survdiff(Surv(time, status) ~ pat.karno + strata(inst), data=lung)
 rm(lung)
 
-## need "date" package for this example
-if (require("date",quietly=TRUE)){
   data(heart)
   data(ratetables)
   ## Expected survival for heart transplant patients based on
@@ -106,9 +104,8 @@ sex=1,year=accept.dt,race="white"), jasa, cohort=F,
 ratetable=survexp.usr)
   ## actual survival is much worse (no surprise)
   print(survdiff(Surv(jasa$futime, jasa$fustat) ~ offset(expect)))
-  detach("package:date")
   rm(jasa,jasa1,heart,survexp.az,survexp.azr,survexp.fl,survexp.flr,survexp.mn,survexp.mnwhite,survexp.us,survexp.usr,survexp.wnc)
-}
+
 }
 \keyword{survival}
 % Converted by Sd2Rd version 0.3-2. and hand edited.

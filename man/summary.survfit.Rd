@@ -9,10 +9,10 @@ Returns a list containing the survival curve, confidence limits for the
 curve, and other information.
 }
 \usage{
-summary.survfit(fit, times, censored=F, scale=1,extend=F, ...)
+summary.survfit(object, times, censored=F, scale=1, ...)
 }
 \arguments{
-\item{fit}{
+\item{object}{
 output from a call to \code{survfit}.
 }
 \item{times}{
@@ -30,7 +30,7 @@ This is ignored if the \code{times} argument is present.
 \item{scale}{
 rescale the survival time, e.g., if the input data to \code{survfit} were in
 days, \code{scale=365.25} would scale the output to years.
-}\item{extend}{Estimate survival beyond the last observed time?}}
+}\item{extend}{Estimate survival beyond the last observed time?}\item{...}{other unused arguments}}
 \value{
 a list with the following components
 }
@@ -75,7 +75,7 @@ the statement used to create the \code{fit} object.
 passed through from \code{fit}, if present.
 }}
 \seealso{
-\code{\link{survfit}}, \code{\link{print.summary.survfit}}.
+\code{\link{survfit}}, \code{\link{print.summary.survfit}}.}
 \examples{
 data(ovarian)
 summary( survfit( Surv(futime, fustat),data=ovarian))

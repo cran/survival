@@ -1,12 +1,12 @@
 \name{coxph}
 \alias{coxph}
 \alias{print.coxph.null}
-\alias{coxph.fit}
-\alias{coxph.wtest}
-\alias{coxpenal.df}
+\alias{print.coxph.penal}
+\alias{model.frame.coxph}
+\alias{coxph.penalty}
+\alias{[.coxph.penalty}
 \alias{coxph.getdata}
-\alias{agreg.fit}
-\alias{agexact.fit}
+\alias{summary.coxph.penal}
 \title{
 Fit Proportional Hazards Regression Model
 }
@@ -85,7 +85,9 @@ model includes a \code{cluster()} operative, \code{FALSE} otherwise.
 flags to control what is returned.  If these are true, then the model
 frame, the model matrix, and/or the response is returned as components
 of the fitted model, with the same names as the flag arguments. 
-}}
+}\item{x}{Return the design matrix in the model object?}\item{y}{return
+  the response in the model object?}
+\item{...}{Who knows?}}
 \value{
 an object of class \code{"coxph"}. See \code{coxph.object} for details.
 }
@@ -146,7 +148,7 @@ March 1990.
 
 }
 \seealso{
-\link{\code{cluster}}, \link{\code{survfit}}, \link{\code{Surv}}, \link{\code{strata}},\link{\code{ridge}}, \link{\code{pspline}},\link{\code{frailty}}.
+\code{\link{cluster}}, \code{\link{survfit}}, \code{\link{Surv}}, \code{\link{strata}},\code{\link{ridge}}, \code{\link{pspline}},\code{\link{frailty}}.}
 \examples{
 # Create the simplest test data set
 #

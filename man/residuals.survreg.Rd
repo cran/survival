@@ -1,12 +1,13 @@
 \name{residuals.survreg}
 \alias{residuals.survreg}
+\alias{residuals.survreg.penal}
 \title{Compute Residuals for `survreg' Objects}
 \description{
 This is a method for the function \code{\link{residuals}} for objects
 inheriting from class \code{survreg}.  
 }
 \usage{
-residuals.survreg(object, type, rsigma=T, collapse=F, weighted=F)
+residuals.survreg(object, type, rsigma=T, collapse=F, weighted=F,...)
 }
 \arguments{
 \item{object}{
@@ -29,7 +30,7 @@ length as the residuals, and causes the result to be per group residuals.
 }
 \item{weighted}{
 give weighted residuals?  Normally residuals are unweighted.
-}}
+}\item{...}{other unused arguments}}
 \value{
 A vector or matrix of residuals is returned.
 Response residuals are on the scale of the original data,

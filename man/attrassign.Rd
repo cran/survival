@@ -10,14 +10,14 @@ come from which terms in the model formula. It has two version. R uses
 the original version, but the newer version is sometimes useful.
 }
 \usage{
-\method{attrassign}{default}(mmat, tt)
-\method{attrassign}{lm}(lmobj)
+\method{attrassign}{default}(object, tt,...)
+\method{attrassign}{lm}(object,...)
 }
 %- maybe also `usage' for other objects documented here.
 \arguments{
-  \item{mmat}{Model matrix}
+  \item{object}{model matrix or linear model object}
   \item{tt}{terms object}
-  \item{lm}{linear model}
+  \item{...}{ignored}
 }
 
 \value{

@@ -9,17 +9,18 @@ standard error, and the median survival with confidence limits for the
 median.
 }
 \usage{
-print.survfit(x, scale=1,digits = max(options()$digits - 4, 3),print.n=getOption("survfit.print.n"),...)
+\method{print}{survfit}(x, scale=1,digits = max(options()$digits - 4, 3),print.n=getOption("survfit.print.n"),...)
 }
 \arguments{
 \item{x}{
 the result of a call to the \code{survfit} function.
-}
+}\item{print.n}{What to use for number of subjects (see below)}
+\item{digits}{Number of digits to print}
 \item{scale}{
 a numeric value to rescale the survival time, e.g.,
 if the input data to survfit were in days,
 \code{scale=365} would scale the printout to years.
-}}
+}\item{...}{other unused arguments}}
 \value{
 \code{x}, with the invisible flag set.
 }

@@ -61,7 +61,7 @@ extensions to the Cox model.  The example below shows one way to calculate
 the Schoenfeld residuals.
 }
 \seealso{
-\code{\link{coxph}}, \code{\link{residuals.coxph}}
+\code{\link{coxph}}, \code{\link{residuals.coxph}}}
 \examples{
 data(ovarian)
 fit   <- coxph(Surv(futime,fustat) ~ age + rx + ecog.ps, ovarian, x=T)

@@ -1,7 +1,7 @@
 \name{stanford2}
 \alias{stanford2}
 \title{More Stanford Heart Transplant data}
-\usage{data(stanford2)
+\usage{data(stanford2)}
 
 \format{
     \tabular{ll}{

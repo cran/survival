@@ -8,10 +8,10 @@ Predicted Values for a `survreg' Object
 Predicted values for a \code{survreg} object
 }
 \usage{
-predict.survreg(object, newdata, 
+\method{predict}{survreg}(object, newdata, 
 type=c("response", "link", "linear", "response", "terms", "quantile", 
 	"uquantile"), 
-se.fit=F, terms=labels.lm(object), p=c(0.1, 0.9))
+se.fit=F, terms=labels.lm(object), p=c(0.1, 0.9),...)
 }
 \arguments{
 \item{object}{
@@ -39,7 +39,7 @@ one column for every term (excluding the intercept) in the model.
 }
 \item{p}{
 vector of percentiles.  This is used only for quantile predictions.
-}
+}\item{...}{other arguments}
 }
 \value{
 a vector or matrix of predicted values.
@@ -49,7 +49,7 @@ Escobar and Meeker (1992). Assessing influence in regression analysis with
 censored data. \emph{Biometrics,} 48, 507-528.
 }
 \seealso{
-\code{\link{survreg}}, \code{\link{residuals.survreg}}
+\code{\link{survreg}}, \code{\link{residuals.survreg}}}
 \examples{
 # Draw figure 1 from Escobar and Meeker
 data(stanford2)

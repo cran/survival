@@ -1,5 +1,5 @@
 # SCCS @(#)summary.survreg.s	4.15 02/11/99
-summary.survreg<- function(object, correlation = FALSE)
+summary.survreg<- function(object, correlation = FALSE,...)
 {
     if (!is.null(object$fail)) {
 	warning(" Survreg failed.", x$fail, "   No summary provided\n")

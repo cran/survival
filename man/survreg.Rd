@@ -1,6 +1,12 @@
 \name{survreg}
 \alias{survreg}
+\alias{model.frame.survreg}
+\alias{labels.survreg}
+\alias{print.survreg.penal}
+\alias{print.summary.survreg}
 \alias{survReg}
+\alias{anova.survreg}
+\alias{anova.survreglist}
 \alias{censorReg}
 \title{
 Regression for a Parametric Survival Model
@@ -67,10 +73,11 @@ other arguments which will be passed to \code{survreg.control}.
 \value{
 an object of class \code{survreg} is returned.
 }
-\section{NOTE}{
+\section{Compatibility note}{
 This routine underwent significant changes from survival4 to
 survival5. The \link{survreg.old} function gives a backwards-compatible
-interface. 
+interface.  In S-PLUS the new function is called \code{survReg} and
+the old one \code{survreg}.
 }
 \section{COMPUTATION}{
 The routine uses a Newton-Raphson iteration with step halving, 

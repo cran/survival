@@ -32,19 +32,16 @@ specials.
 \item{terms}{
 a numeric vector, suitable for subscripting the terms structure, that indexes
 the terms in the expanded model formula which involve the special.
-}
-\examples{\dontrun{
-# This is code from within the coxph program, m is the data frame and TT
-#  the terms structure for the formula.  We wish to exclude first order
-#  strata() terms from the final X matrix, and also to extract these terms
-#  to a second data frame
-TT <- terms(formula, specials='strata')
-temp <- untangle.specials(TT, 'strata')
-if (length(temp$vars)) {
-    X <- model.matrix( TT[-temp$terms], m)
-    m.strat <- m[temp$vars]
-    }
-else X <- model.matrix(TT, m)
 }}
+\examples{
+formula<-Surv(tt,ss)~x+z*strata(id)
+tms<-terms(formula,specials="strata")
+## the specials attribute
+attr(tms,"specials")
+## main effects 
+untangle.specials(tms,"strata")
+## and interactions
+untangle.specials(tms,"strata",order=1:2)
+}
 \keyword{survival}
 % Converted by Sd2Rd version 0.3-2.

@@ -86,8 +86,8 @@ Surv <- function(time, time2, event,
     ss
     }
 
-print.Surv <- function(xx, quote=F, ...)
-    invisible(print(as.character.Surv(xx), quote=quote, ...))
+print.Surv <- function(x, quote=F, ...)
+    invisible(print(as.character.Surv(x), quote=quote, ...))
 
 as.character.Surv <- function(xx) {
     class(xx) <- NULL

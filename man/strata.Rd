@@ -29,7 +29,7 @@ The result is identical to the \code{interaction} function,
 but for the labeling of the factors (\code{strata} is more verbose).
 }
 \seealso{
-\code{\link{coxph}}
+\code{\link{coxph}},\code{\link{interaction}}}
 \examples{
 a<-factor(rep(1:3,4))
 b<-factor(rep(1:4,3))

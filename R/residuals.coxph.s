@@ -2,7 +2,7 @@
 residuals.coxph <-
   function(object, type=c("martingale", "deviance", "score", "schoenfeld",
 			  "dfbeta", "dfbetas", "scaledsch","partial"),
-	    collapse=F, weighted=F)
+	    collapse=F, weighted=F,...)
     {
     type <- match.arg(type)
     otype <- type

@@ -14,10 +14,9 @@
 \alias{summary.date}
 \title{Date Objects}
 \description{
-  Creates and tests for objects of class \code{"date"}.
+  Objects of class \code{"date"}.
 }
 \usage{
-as.date(x)
 is.date(x)
 }
 \arguments{
