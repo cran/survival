@@ -5,9 +5,9 @@
 
 #include <R_ext/Mathlib.h>
 #ifndef erf
-#define erf(x) 2*pnorm5(x*M_SQRT2,0,1,1,0)-1
+#define erf(x) (2*pnorm5((x)*M_SQRT2,0,1,1,0)-1)
 #endif
 #ifndef erfc
-#define erfc(x) 2*pnorm5(-x*M_SQRT2,0,1,1,0)
+#define erfc(x) (2*pnorm5(-(x)*M_SQRT2,0,1,1,0))
 #endif
 

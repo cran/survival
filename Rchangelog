@@ -1,3 +1,7 @@
+2.8-9 more T/F, remove [.terms, depends 1.7.0
+
+2.9-7 Use pnorm5 instead of erf/erfc
+
 2.9-6 two .C calls missing PACKAGE argument
 
 2.9-5 bug fix for identity link in predict.survreg from Therneau.

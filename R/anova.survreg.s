@@ -13,11 +13,11 @@ anova.survreg <- function(object, ..., test = c("Chisq", "none")) {
     y <- model.extract(m, "response")
     if(!inherits(y, "Surv"))
 	    stop("Response must be a survival object")
-    loglik <- double(nt + 1)
+    loglik <- numeric(nt + 1)
     df.res <- loglik
     if(nt) {
 	loglik[nt + 1] <- -2 * object$loglik[2]
-	df.res[nt + 1] <- sum(object$df)
+	df.res[nt + 1] <- object$df.residual 
 	fit <- object
 	for(iterm in seq(from = nt, to = 1, by = -1)) {
 	    argslist <- list(object = fit, 
@@ -25,14 +25,14 @@ anova.survreg <- function(object, ..., test = c("Chisq", "none")) {
 						    term.labels[iterm]))))
 	    fit <- do.call("update", argslist)
 	    loglik[iterm] <- -2 * fit$loglik[2]
-	    df.res[iterm] <- sum(fit$df)
+	    df.res[iterm] <- fit$df.residual
 	    }
 	dev <- c(NA,  - diff(loglik))
         df <- c(NA,  diff(df.res)) 
 	}
     else {
 	loglik[1] <- -2 * object$loglik[2]
-	df.res[1] <- dim(y)[1] - attr(Terms, "intercept")
+	df.res[1] <- object$df.residual #dim(y)[1] - attr(Terms, "intercept")
 	dev <- df <- as.numeric(NA)
 	}
     heading <- c("Analysis of Deviance Table\n", 
@@ -40,6 +40,9 @@ anova.survreg <- function(object, ..., test = c("Chisq", "none")) {
 		       "link\n"), 
 		 paste("Response: ", as.character(formula(object))[2], 
 		       "\n", sep = ""),
+                 if (nrow(fit$var) == length(fit$coefficients))
+        paste("Scale fixed at", format(x$scale, digits = digits),"\n")
+                 else "Scale estimated\n",
 		 "Terms added sequentially (first to last)")
     aod <- data.frame(Df = df, Deviance = dev, "Resid. Df" = df.res, 
 		      "-2*LL" = loglik, row.names = c("NULL", term.labels), 
