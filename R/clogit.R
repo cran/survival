@@ -4,10 +4,12 @@
 ##
 
 clogit<-function(formula,data,method=c("exact","approximate"),
-                 na.action=getOption("na.action"),subset=NULL){
+                 na.action=getOption("na.action"),subset=NULL,
+                 control=coxph.control()){
+    
     mf<-match.call()
     mf[[1]]<-as.name("model.frame")
-    mf$method<-NULL
+    mf$method<-mf$control<-NULL
     mfn<-mf
 
     mfn$na.action<-"I"

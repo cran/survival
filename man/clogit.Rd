@@ -11,7 +11,7 @@
   with older software.
 }
 \usage{
-clogit(formula, data, method=c("exact", "approximate"), na.action=getOption("na.action"), subset=NULL)
+clogit(formula, data, method=c("exact", "approximate"), na.action=getOption("na.action"), subset=NULL,control=coxph.control())
 }
 %- maybe also `usage' for other objects documented here.
 \arguments{
@@ -20,6 +20,7 @@ clogit(formula, data, method=c("exact", "approximate"), na.action=getOption("na.
   \item{method}{correct or approximate conditonal likelihood?}
   \item{na.action}{missing value handling}
   \item{subset}{subset of records to use }
+  \item{control}{control values}
 }
 
 \value{

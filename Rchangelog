@@ -1,4 +1,7 @@
-2.8-9 more T/F, remove [.terms, depends 1.7.0
+2.9-10    Tightened convergence tolerances. 
+	  added survSplit.			
+	
+2.9-9 more T/F, remove [.terms, depends 1.7.0
 
 2.9-7 Use pnorm5 instead of erf/erfc
 
