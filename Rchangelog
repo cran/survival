@@ -1,3 +1,7 @@
+2.9-12  Changed R_ext/Mathlib to Rmath.h
+
+2.9-11	vcov
+
 2.9-10    Tightened convergence tolerances. 
 	  added survSplit.			
 	
