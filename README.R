@@ -1,9 +1,8 @@
 This is an R port of survival5.1; the author, Terry Therneau, provided the
-same code to MathSoft (as then then were) for version 6 of S-PLUS(tm) so
+same code to MathSoft (as they then were) for version 6 of S-PLUS(tm) so
 it should be compatible.
 
-It requires version 1.2.3 or later of R. Version 1.3.0 or lated is
-recommended.
+It requires version 1.4.0 or later of R.
 
 The main new feature since survival4 is penalised (partial) likelihood.
 Both survreg() and coxph() can now fit frailty models, smoothing splines,

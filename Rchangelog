@@ -1,3 +1,7 @@
+2.9-6 two .C calls missing PACKAGE argument
+
+2.9-5 bug fix for identity link in predict.survreg from Therneau.
+	
 2.9-4 centered= argument was backwards for basehaz (Martyn Plummer);
 	add vcov.coxph, vcov.survreg if vcov exists and they don't,
 	add anova.coxph[list]

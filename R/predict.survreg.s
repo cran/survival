@@ -98,7 +98,8 @@ predict.survreg <-
     if (is.character(object$dist)) dd <- survreg.distributions[[object$dist]]
     else dd <- object$dist
     if (is.null(dd$itrans)) {
-	itrans <- dtrans <-function(x)x
+	itrans <- function(x) x
+        dtrans <- function (x) 1 ## bug fix from TMT, 2002-17-6
 	}
     else {
 	itrans <- dd$itrans

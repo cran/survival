@@ -58,7 +58,8 @@ coxph.detail <-  function(object) {
 			  means= c(method=='efron', double(ndeath*nvar)),
 			  u = double(ndeath*nvar),
 			  i = double(ndeath*nvar*nvar),
-			  double(nvar*(3 + 2*nvar)) )
+			  double(nvar*(3 + 2*nvar)),
+             PACKAGE="survival")
     keep <- 1:ff$ndeath
     vname<- dimnames(x)[[2]]
     time <- y[ff$index[keep],2]
