@@ -2,7 +2,8 @@
 
 survSplit<-function(data, cut, end,event,start,id=NULL,
                     zero=0,episode=NULL){
-  
+
+  cut<-sort(cut)
   ntimes <- length(cut)
   n <- nrow(data)
   p <- ncol(data)
@@ -21,7 +22,6 @@ survSplit<-function(data, cut, end,event,start,id=NULL,
   starttime<-c(starttime, rep(cut,each=n))
 
   epi<-rep(0:ntimes,each=n)
-  
   
   status <- ifelse( eventtime <= endtime & eventtime>starttime,
                    newdata[[event]], 0)

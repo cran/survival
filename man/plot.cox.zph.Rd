@@ -7,7 +7,7 @@ Graphical Test of Proportional Hazards
 Displays a graph of the scaled Schoenfeld residuals, along with a smooth curve.
 }
 \usage{
-plot.cox.zph(x, resid=TRUE, se=TRUE, df=4, nsmo=40, var, \dots)
+\method{plot}{cox.zph}(x, resid=TRUE, se=TRUE, df=4, nsmo=40, var, \dots)
 }
 \arguments{
 \item{x}{

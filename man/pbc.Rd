@@ -2,7 +2,9 @@
 \alias{pbc}
 \title{Mayo Clinic Primary Biliary Cirrhosis Data}
 \usage{data(pbc)}
-\description{Followup of 312 randomised and 108 unrandomised patients with primary biliary cirrhosis, a rare autoimmune liver disease, at Mayo Clinic. 
+\description{Followup of 312 randomised and 108 unrandomised patients
+  with primary biliary cirrhosis, a rare autoimmune liver disease, at
+  Mayo Clinic. Most variables have some missing data, coded as -9.
 }
 \format{
     \tabular{ll}{
