@@ -167,7 +167,7 @@ print.date <- function(x, quote, prefix, ...) {
         x <- get(fun)(x)
     if (missing(quote))
         quote <- FALSE
-    invisible(print.atomic(x, quote))
+    invisible(print(x, quote=quote))
 }
 
 summary.date <- function(object, ...) {
