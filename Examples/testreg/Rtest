@@ -366,7 +366,7 @@ apply(temp,2,mean)
 # 13 df is near to the rmle for the rats
 
 rm(temp, rfit2a, rfit2b, rfit3a, rfit3b, rfitnull, rfit0, rfit1)
-
+options(na.action="na.exclude")
 temp <- matrix(scan("data.mpip", skip=23), ncol=13, byrow=T)
 dimnames(temp) <- list(NULL, c('ved', 'angina', 'education', 'prior.mi',
                      'nyha', 'rales', 'ef', 'ecg', 'angina2', 'futime', 

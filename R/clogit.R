@@ -27,8 +27,16 @@ clogit<-function(formula,data,method=c("exact","approximate"),
     coxcall$method<-switch(match.arg(method),exact="exact","breslow")
 
     coxcall<-eval(coxcall,sys.frame(sys.parent()))
-    coxcall$call<-sys.call()
+    coxcall$userCall<-sys.call()
     
     class(coxcall)<-c("clogit","coxph")
     coxcall
+}
+
+
+print.clogit<-function(x,...){
+
+    x$call<-x$userCall
+    NextMethod()
+
 }

@@ -1,7 +1,10 @@
 
 if (exists("vcov") & !exists("vcov.coxph")){                            
-    vcov.coxph<-function (object, ...) 
-        object$var
+    vcov.coxph<-function (object, ...) {
+        rval<-object$var
+        dimnames(rval)<-list(names(coef(object)),names(coef(object)))
+        rval
+    }
     vcov.survreg<-function (object, ...) 
         object$var
 }

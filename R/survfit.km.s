@@ -60,6 +60,8 @@ survfit.km <- function(x, y, casewt=rep(1,n),
     ntimes.strata <- sapply(sort.times, length)
     times <- unlist(sort.times)
 
+    if (n<1) stop("No observations")
+    
     if (attr(y, 'type') == 'right') # call correct surv program based 
 	    surv <- .C("survfit2",  # on censoring 
 		       as.integer(n),

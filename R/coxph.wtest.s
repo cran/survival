@@ -17,7 +17,13 @@ coxph.wtest <- function(var, b, toler.chol=1e-9) {
     if (length(var)==1) {
         if (nvar ==1) return(list(test=b*b/var, df=1, solve=b/var))
         else stop("Argument lengths do not match")
-        }
+    }
+
+    if (length(var)==0){
+        if (nvar==0) return(list(test=numeric(0),df=0,solve=0))
+        else  stop("Argument lengths do not match")
+    }
+
 
     if (!is.matrix(var) || (nrow(var) != ncol(var)))
             stop("First argument must be a square matrix")

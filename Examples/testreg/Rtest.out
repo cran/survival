@@ -1,6 +1,6 @@
 
 R : Copyright 2004, The R Foundation for Statistical Computing
-Version 2.0.0 Under development (unstable) (2004-04-26), ISBN 3-900051-00-3
+Version 2.0.0 Under development (unstable) (2004-07-26), ISBN 3-900051-00-3
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -296,7 +296,7 @@ Degrees of freedom for terms= 0.4 2.1 1.0
 Likelihood ratio test=5.2  on 1.5 df, p=0.0441  n= 228 
 > lfit7$coef
  (Intercept) 
-1.478891e-09 
+1.478892e-09 
 > 
 > rm(lfit1, lfit2, lfit3, lfit4, lfit5, lfit6, lfit7)
 > rm(xx, lfit0)
@@ -833,14 +833,14 @@ rfit1  4.902438 -0.2189410 0.2025434
   0.1346218   0.1346218   0.1224049   0.1207863 
 > apply(temp,2,mean)
          surv   surv.sparse           cox    cox.sparse 
- 1.318390e-18 -2.879641e-18 -6.106227e-18  1.013079e-17 
+-1.665335e-18 -1.838807e-18 -3.469447e-17 -1.887379e-17 
 > 
 > # The parametric model gives the coefficients less variance for the
 > #  two fits, for the same df, but the scaled results are similar.
 > # 13 df is near to the rmle for the rats
 > 
 > rm(temp, rfit2a, rfit2b, rfit3a, rfit3b, rfitnull, rfit0, rfit1)
-> 
+> options(na.action="na.exclude")
 > temp <- matrix(scan("data.mpip", skip=23), ncol=13, byrow=T)
 > dimnames(temp) <- list(NULL, c('ved', 'angina', 'education', 'prior.mi',
 +                      'nyha', 'rales', 'ef', 'ecg', 'angina2', 'futime', 
@@ -857,3 +857,26 @@ rfit1  4.902438 -0.2189410 0.2025434
 + 	                  temp$fit[,4] - 1.96*temp$se[,4])
 > index <- order(mpip$ef)
 > index<-index[!is.na(yy[index,1])]
+> matplot(mpip$ef[index], yy[index,], type='l', lty=c(1,2,2), col=1,
++         xlab="Ejection Fraction", ylab="Cox model risk", 
++         main="Post-Infarction Survival")
+> 
+> fit2 <- coxph(Surv(futime, status) ~ lved + factor(nyha) + rales +
++ 	      pspline(ef, df=0), mpip)
+> temp <- predict(fit2, type='terms', se.fit=T)
+> yy <- cbind(temp$fit[,4], temp$fit[,4] + 1.96*temp$se[,4],
++ 	                  temp$fit[,4] - 1.96*temp$se[,4])
+> matplot(mpip$ef[index], yy[index,], type='l', lty=c(1,2,2), col=1,
++         xlab="Ejection Fraction", ylab="Cox model risk", 
++         main="Post-Infarction Survival, AIC")
+> 
+> 
+> fit3 <- survreg(Surv(futime, status) ~ lved + factor(nyha) + rales +
++ 		pspline(ef, df=2), mpip, dist='lognormal')
+> temp <- predict(fit3, type='terms', se.fit=T)
+> yy <- cbind(temp$fit[,4], temp$fit[,4] + 1.96*temp$se[,4],
++ 	                  temp$fit[,4] - 1.96*temp$se[,4])
+> matplot(mpip$ef[index], yy[index,], type='l', lty=c(1,2,2), col=1,
++         xlab="Ejection Fraction", ylab="Log-normal model predictor", 
++         main="Post-Infarction Survival")
+> q()

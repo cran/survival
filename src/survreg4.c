@@ -383,6 +383,9 @@ void survreg4(int   *maxiter,   int   *nx,       int   *nvarx,
     for (i=0; i<nvar2; i++)
 	beta[i] = newbeta[i];
     *flag += 1000;
+
+    Free(upen);Free(zflag);
+
     return;
     }
     
@@ -732,7 +735,7 @@ static void gauss_d(double z, double ans[4], int j)
 **   evaluating exp(x) for x<0.  By symmetry, I could get what I need for
 **   x >0.  The extreme value dist is asymmetric, and I don't yet see the
 **   numeric tricks that I need.
-** Probobly, a Taylor series will need to be used for large z.
+** Probably, a Taylor series will need to be used for large z.
 */
 
 static void exvalue_d(double z, double ans[4], int j)

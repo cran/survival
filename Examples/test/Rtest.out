@@ -1,6 +1,6 @@
 
 R : Copyright 2004, The R Foundation for Statistical Computing
-Version 2.0.0 Under development (unstable) (2004-04-26), ISBN 3-900051-00-3
+Version 2.0.0 Under development (unstable) (2004-07-26), ISBN 3-900051-00-3
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -206,8 +206,14 @@ Likelihood ratio test=2.77  on 1 df, p=0.0959  n=6 (1 observations deleted due t
         1         2         3         4         5         6         7 
 1.3333333        NA 0.2712864 0.2712864 1.4574271 0.3333333 0.3333333 
 > predict(fit, type='terms') 
-         1          2          3          4          5          6          7 
--0.7376425         NA  0.7376425  0.7376425  0.7376425 -0.7376425 -0.7376425 
+           x
+1 -0.7376425
+2         NA
+3  0.7376425
+4  0.7376425
+5  0.7376425
+6 -0.7376425
+7 -0.7376425
 > predict(fit, type='lp', se.fit=T)
 $fit
          1          2          3          4          5          6          7 
@@ -237,12 +243,24 @@ $se.fit
 
 > predict(fit, type='terms', se.fit=T)
 $fit
-         1          2          3          4          5          6          7 
--0.7376425         NA  0.7376425  0.7376425  0.7376425 -0.7376425 -0.7376425 
+           x
+1 -0.7376425
+2         NA
+3  0.7376425
+4  0.7376425
+5  0.7376425
+6 -0.7376425
+7 -0.7376425
 
 $se.fit
-        1         2         3         4         5         6         7 
-0.6278672        NA 0.6278672 0.6278672 0.6278672 0.6278672 0.6278672 
+          x
+1 0.6278672
+2        NA
+3 0.6278672
+4 0.6278672
+5 0.6278672
+6 0.6278672
+7 0.6278672
 
 > 
 > summary(survfit(fit))
@@ -733,7 +751,7 @@ Likelihood ratio test=3.38  on 1 df, p=0.0658  n= 23
 > x2 <- coxph(Surv(rep(0,23),time, status) ~x, aml, method='efron')
 > x1$coef - x2$coef
 xNonmaintained 
-  1.110223e-16 
+ -1.110223e-16 
 > 
 > rm(x1, x2, atime, denom, deaths, chaz,cvar, tfit, sfit, temp, temp2, fit)
 > #
@@ -1939,7 +1957,7 @@ Call: survfit.coxph(object = sfit.1, newdata = data, individual = T)
 + 			rep(age,2)*strata(ss) + I(rep(age,2)^2*ss) )
 > fit$coef[1] - fit3$coef
   rep(age, 2) 
--1.040834e-17 
+-3.469447e-18 
 > s4 <- survfit(fit, c(fit3$means, 0,0))
 > all.equal(s4$surv[1:(s4$strata[1])],  s3$surv)
 [1] TRUE
