@@ -21,14 +21,14 @@ frailty.t(x, sparse = (nclass > 5), theta, df, eps = 1e-05, tdf = 5,method = c("
 \arguments{
  \item{x}{ group indicator}
  \item{distribution}{ frailty distribution }
- \item{\dots}{Arguments for specific distribution, including }
+ \item{\dots}{Arguments for specific distribution, including (but not
+   limited to) }
  \item{sparse}{Use sparse Newton-Raphson algorithm}
  \item{df}{Approximate degrees of freedom}
  \item{theta}{Penalty}
  \item{eps}{Accuracy of \code{df}}
  \item{method}{maximisation algorithm}
  \item{tdf}{df of t-distribution}
- \item{caic}{Use corrected AIC rather than AIC}
 }
 
 \description{ 
@@ -51,7 +51,9 @@ Gaussian are random effects on the scale of the linear predictor.
 }
 
 \seealso{\code{\link{coxph}},\code{\link{survreg}},\code{\link{ridge}},\code{\link{pspline}}  }
-
+\references{Therneau TM, Grambsch PM, Pankratz VS (2003) "Penalized
+  survival models and frailty" Journal of Computational and Graphical
+  Statistics 12, 1: 156-175}
 \examples{
 data(kidney)
 kfit <- coxph(Surv(time, status)~ age + sex + disease + frailty(id), kidney)

@@ -10,7 +10,7 @@ Test the proportional hazards assumption for a Cox regression model fit
 (\code{coxph}).
 }
 \usage{
-cox.zph(fit, transform="km", global=T)
+cox.zph(fit, transform="km", global=TRUE)
 }
 \arguments{
 \item{fit}{
@@ -26,10 +26,7 @@ function of one argument.
 should a global chi-square test be done, in addition to the
 per-variable tests.
 }
-\item{x}{
-if true, then the result will be a list containing the test table (a matrix),
-\code{x} and \code{y}.  If false then only the test table is returned.
-}
+}}
 \value{
 an object of class \code{"cox.zph"}, with components:
 }
@@ -55,7 +52,7 @@ the calling sequence for the routine.
 
 
 The computations require the original \code{x} matrix of the Cox model fit.
-Thus it saves time if the \code{x=T} option is used in \code{coxph}.
+Thus it saves time if the \code{x=TRUE} option is used in \code{coxph}.
 This function would usually be followed by both a plot and a print of the
 result.
 The plot gives an estimate of the time-dependent coefficient \code{beta(t)}.

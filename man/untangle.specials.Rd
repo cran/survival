@@ -21,7 +21,7 @@ the name of a special function, presumably used in the terms object.
 \item{order}{
 the order of the desired terms.  If set to 2, interactions with the special
 function will be included.
-}
+}}
 \value{
 a list with two components:
 }

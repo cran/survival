@@ -30,7 +30,9 @@ This is ignored if the \code{times} argument is present.
 \item{scale}{
 rescale the survival time, e.g., if the input data to \code{survfit} were in
 days, \code{scale=365.25} would scale the output to years.
-}\item{extend}{Estimate survival beyond the last observed time?}\item{...}{other unused arguments}}
+} 
+\item{...}{other unused arguments}
+}
 \value{
 a list with the following components
 }

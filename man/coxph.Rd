@@ -44,10 +44,6 @@ subset argument has been used.  Default is \code{options()$na.action}.
 \item{weights}{
 case weights.
 }
-\item{eps}{
-convergence threshold.  Iteration will continue until the relative change
-in the log-likelihood is less than eps.  Default is .0001.
-}
 \item{init}{
 vector of initial values of the iteration.  Default initial
 value is zero for all variables.
@@ -60,8 +56,7 @@ and other control options. Default is \code{coxph.control(...)}.
 a character string specifying the method for tie handling.  If there 
 are no tied death times all the methods are equivalent.
 Nearly all Cox regression programs use the Breslow method by default,
-but
-not this one.
+but not this one.
 The Efron approximation is used as the default here, as it is much more
 accurate when dealing with tied death times, and is as efficient
 computationally.
@@ -87,7 +82,7 @@ frame, the model matrix, and/or the response is returned as components
 of the fitted model, with the same names as the flag arguments. 
 }\item{x}{Return the design matrix in the model object?}\item{y}{return
   the response in the model object?}
-\item{...}{Who knows?}}
+\item{...}{Other arguments will be passed to \code{\link{coxph.control}}}}
 \value{
 an object of class \code{"coxph"}. See \code{coxph.object} for details.
 }

@@ -106,11 +106,12 @@ as.character.date <- function(x) {
         get(fun)(x)
 }
 as.data.frame.date <- as.data.frame.vector
-as.vector.date <- function(x, type = "any") {
-    if (type == "any" || type == "character" || type == "logical" || 
-        type == "list") 
-        as.vector(as.character(x), type)
-    else as.vector(unclass(x), type)
+
+as.vector.date <- function(x, mode = "any") {
+    if (mode == "any" || mode == "character" || mode == "logical" || 
+        mode == "list") 
+        as.vector(as.character(x), mode)
+    else as.vector(unclass(x), mode)
 }
     
 is.na.date <- function(x) {
@@ -151,6 +152,13 @@ plot.date <- function(x, y, ..., axes, xaxt, xlab, ylab,
         axis(1, temp, as.character.date(temp), ...)
     }
 }
+
+print.date <- function(x, quote, prefix, ...) {
+    if (missing(quote))
+        quote <- FALSE
+    invisible(print(as.character(x), quote = quote))
+}
+
 print.date <- function(x, quote, prefix, ...) {
     fun <- options()$print.date
     if (is.null(fun))
@@ -161,6 +169,7 @@ print.date <- function(x, quote, prefix, ...) {
         quote <- FALSE
     invisible(print.atomic(x, quote))
 }
+
 summary.date <- function(object, ...) {
     y <- as.character(range(object))
     names(y) <- c("First ", "Last  ")
