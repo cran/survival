@@ -217,9 +217,9 @@ void survfit2(int   *sn,      double *y,       double *wt,
 /* 		double *std_err,    double *upper,      double *lower, */
 /* 		double *new_start,  int   *num_extend, int   *times_strata, */
 /* 		double *temp_times); */
-void survindex2(long   *n,     double *stime,   long   *strata, 
-		long   *ntime, double *time,    long   *nstrat, 
-		long   *indx,  long   *indx2);
+void survindex2(int   *n,     double *stime,   int   *strata, 
+		int   *ntime, double *time,    int   *nstrat, 
+		int   *indx,  int   *indx2);
  
 void survreg2(int   *maxiter,   int   *nx,    int   *nvarx, 
 	     double *y,          int   *ny,    double *covar2, double *wtx,

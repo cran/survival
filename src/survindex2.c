@@ -28,9 +28,9 @@
 #include "survS.h"
 #include "survproto.h"
 
-void survindex2(long   *n,     double *stime,   long   *strata, 
-		long   *ntime, double *time,    long   *nstrat, 
-		long   *indx,  long   *indx2)
+void survindex2(int   *n,     double *stime,   int   *strata, 
+		int   *ntime, double *time,    int   *nstrat, 
+		int   *indx,  int   *indx2)
     {
     register int i,j;
     int nn;

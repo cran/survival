@@ -20,7 +20,8 @@ the result of fitting a Cox regression model, using the \code{coxph} function.
 a character string specifying how the survival times should be transformed
 before the test is performed.
 Possible values are \code{"km"}, \code{"rank"}, \code{"identity"} or  a
-function of one argument.
+function of one argument. The default is \code{"km"} for right-censored
+data and \code{"identity"} for counting-processing data.
 }
 \item{global}{
 should a global chi-square test be done, in addition to the

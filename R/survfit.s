@@ -59,62 +59,62 @@ survfit <- function (formula, data, weights, subset, na.action, ...) {
 # The subscript function is bundled in here, although used most
 #  often in plotting
 
-"[.survfit" <- function(fit, ..., drop=FALSE) {
+"[.survfit" <- function(x, ..., drop=FALSE) {
     if (missing(..1)) i<- NULL  else i <- ..1
     if (missing(..2)) j<- NULL  else j <- ..2
-    if (is.null(fit$strata)) {
-	if (is.matrix(fit$surv)) {
-	    fit$surv <- fit$surv[,i,drop=drop]
-	    if (!is.null(fit$std.err)) fit$std.err <- fit$std.err[,i,drop=drop]
-	    if (!is.null(fit$upper)) fit$upper <- fit$upper[,i,drop=drop]
-	    if (!is.null(fit$lower)) fit$lower <- fit$lower[,i,drop=drop]
+    if (is.null(x$strata)) {
+	if (is.matrix(x$surv)) {
+	    x$surv <- x$surv[,i,drop=drop]
+	    if (!is.null(x$std.err)) x$std.err <- x$std.err[,i,drop=drop]
+	    if (!is.null(x$upper)) x$upper <- x$upper[,i,drop=drop]
+	    if (!is.null(x$lower)) x$lower <- x$lower[,i,drop=drop]
 	    }
 	else warning("Survfit object has only a single survival curve")
 	}
     else {
-	if (is.null(i)) keep <- seq(along=fit$time)
+	if (is.null(i)) keep <- seq(along=x$time)
 	else {
-	    if (is.null(fit$ntimes.strata)) strata.var <- fit$strata
-	    else strata.var <- fit$ntimes.strata
-	    if (is.character(i)) strat <- rep(names(fit$strata), strata.var)
-	    else                 strat <- rep(1:length(fit$strata), strata.var)
+	    if (is.null(x$ntimes.strata)) strata.var <- x$strata
+	    else strata.var <- x$ntimes.strata
+	    if (is.character(i)) strat <- rep(names(x$strata), strata.var)
+	    else                 strat <- rep(1:length(x$strata), strata.var)
 	    keep <- seq(along=strat)[match(strat, i, nomatch=0)>0]
-	    if (length(i) <=1) fit$strata <- NULL
-	    else               fit$strata  <- fit$strata[i]
-	    if (!is.null(fit$ntimes.strata)) {
-		fit$strata.all <- fit$strata.all[i]
-		fit$ntimes.strata <- fit$ntimes.strata[i]
+	    if (length(i) <=1) x$strata <- NULL
+	    else               x$strata  <- x$strata[i]
+	    if (!is.null(x$ntimes.strata)) {
+		x$strata.all <- x$strata.all[i]
+		x$ntimes.strata <- x$ntimes.strata[i]
 	        }
-	    fit$time    <- fit$time[keep]
-	    fit$n.risk  <- fit$n.risk[keep]
-	    fit$n.event <- fit$n.event[keep]
+	    x$time    <- x$time[keep]
+	    x$n.risk  <- x$n.risk[keep]
+	    x$n.event <- x$n.event[keep]
 	    }
-	if (is.matrix(fit$surv)) {
+	if (is.matrix(x$surv)) {
 	    if (is.null(j)) {
-		fit$surv <- fit$surv[keep,,drop=drop]
-		if (!is.null(fit$std.err)) 
-			fit$std.err <- fit$std.err[keep,,drop=drop]
-		if (!is.null(fit$upper)) fit$upper <-fit$upper[keep,,drop=drop]
-		if (!is.null(fit$lower)) fit$lower <-fit$lower[keep,,drop=drop]
+		x$surv <- x$surv[keep,,drop=drop]
+		if (!is.null(x$std.err)) 
+			x$std.err <- x$std.err[keep,,drop=drop]
+		if (!is.null(x$upper)) x$upper <-x$upper[keep,,drop=drop]
+		if (!is.null(x$lower)) x$lower <-x$lower[keep,,drop=drop]
 		}
 	    else {
-		fit$surv <- fit$surv[keep,j]
-		if (!is.null(fit$std.err)) fit$std.err <- fit$std.err[keep,j]
-		if (!is.null(fit$upper)) fit$upper <- fit$upper[keep,j]
-		if (!is.null(fit$lower)) fit$lower <- fit$lower[keep,j]
+		x$surv <- x$surv[keep,j]
+		if (!is.null(x$std.err)) x$std.err <- x$std.err[keep,j]
+		if (!is.null(x$upper)) x$upper <- x$upper[keep,j]
+		if (!is.null(x$lower)) x$lower <- x$lower[keep,j]
 		}
 	    }
 	else {
-	    fit$surv <- fit$surv[keep]
-	    if (!is.null(fit$enter)) fit$enter <- fit$enter[keep]
-	    if (!is.null(fit$exit.censored))
-		    fit$exit.censored <- fit$exit.censored[keep]
-	    if (!is.null(fit$std.err)) fit$std.err <- fit$std.err[keep]
-	    if (!is.null(fit$upper)) fit$upper <- fit$upper[keep]
-	    if (!is.null(fit$lower)) fit$lower <- fit$lower[keep]
+	    x$surv <- x$surv[keep]
+	    if (!is.null(x$enter)) x$enter <- x$enter[keep]
+	    if (!is.null(x$exit.censored))
+		    x$exit.censored <- x$exit.censored[keep]
+	    if (!is.null(x$std.err)) x$std.err <- x$std.err[keep]
+	    if (!is.null(x$upper)) x$upper <- x$upper[keep]
+	    if (!is.null(x$lower)) x$lower <- x$lower[keep]
 	    }
 	}
-    fit
+    x
     }
 
 basehaz<-function(fit,centered=TRUE){

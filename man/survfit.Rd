@@ -22,6 +22,7 @@ survfit(formula, data, weights, subset, na.action,
         error=c("greenwood","tsiatis"),
         conf.type=c("log","log-log","plain","none"),
         conf.lower=c("usual", "peto", "modified"))
+\method{[}{survfit}(x,...,drop=FALSE)
 basehaz(fit,centered=TRUE)
 }
 \arguments{
@@ -115,6 +116,7 @@ The Peto lower limit is based on the same 'effective n' argument as the
 modified limit, but also replaces the usual Greenwood variance term with
 a simple approximation.  It is known to be conservative.
 }
+\item{x}{a \code{survfit} object}
 \item{fit}{a \code{coxph} object}
 \item{centered}{Compute the baseline hazard at the covariate mean rather than at zero?}
 }
@@ -123,7 +125,11 @@ a \code{survfit} object; see the help on \code{survfit.object} for
 details. Methods defined for \code{survfit} objects are provided for
 \code{print}, \code{plot}, \code{lines}, and \code{points}.
 
-For \code{basehaz}, a dataframe with the baseline hazard, times, and strata.
+For \code{basehaz}, a dataframe with the baseline hazard, times, and
+strata.
+
+The \code{"["} method returns a \code{survfit} object giving survival
+for the selected groups.
 }
 \details{
 Actually, the estimates used are the Kalbfleisch-Prentice
@@ -183,7 +189,8 @@ for the integrated hazard function in Cox's regression
 model for survival data. \emph{Annals of Statistics} 9, 93-108.
 }
 \seealso{
-\code{\link{print.survfit}}, \code{\link{plot.survfit}}, \code{\link{lines.survfit}}, \code{\link{summary.survfit}},
+\code{\link{print.survfit}}, \code{\link{plot.survfit}},
+\code{\link{lines.survfit}}, \code{\link{summary.survfit}}, \code{\link{survfit.object}}
 \code{\link{coxph}}, \code{\link{Surv}}, \code{\link{strata}}.}
 \examples{
 #fit a Kaplan-Meier and plot it

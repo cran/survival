@@ -1,3 +1,13 @@
+2.15  export vcov methods (BDR)
+
+	fix lurking longs in survindex2 (BDR)
+
+	document [.survfit (Youyi Fong) and change the name of the first
+	argument
+	
+2.14	separate out print.summary.coxph from summary.coxph
+	
+	
 2.13-2  Update the Depends: clause to the new meanings.
 
 	Edit .Rd files for lazy data.
