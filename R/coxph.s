@@ -18,7 +18,9 @@ coxph <- function(formula=formula(data), data=parent.frame(),
     m$formula <- Terms
     m[[1]] <- as.name("model.frame")
     m <- eval(m, parent.frame())
-
+    if (NROW(m)==0)
+        stop("No (non-missing) observations")
+    
     if (missing(control)) control <- coxph.control(...)
     Y <- model.extract(m, "response")
     if (!inherits(Y, "Surv")) stop("Response must be a survival object")
