@@ -31,7 +31,7 @@ match.ratetable(R, ratetable)
 as.matrix.ratetable(x)
 is.na.ratetable2(x)
 is.na.coxph.penalty(x)
-model.newframe(object, newdata, safe = F, response = F, ...)
+model.newframe(object, newdata, safe = FALSE, response = FALSE, ...)
 as.data.frame.difftime(x, row.names = NULL, optional = FALSE)
 coxpenal.df(hmat, hinv, fdiag, assign.list, ptype, nvar, pen1,
     pen2, sparse)

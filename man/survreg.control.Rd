@@ -7,10 +7,10 @@
 These functions check and package the fitting options for \code{\link{survreg}} and \code{\link{coxph}}
 }
 \usage{
-survreg.control(maxiter=30, rel.tolerance=1e-05, failure=1,
+survreg.control(maxiter=30, rel.tolerance=1e-09, failure=1,
 toler.chol=1e-10, iter.max, debug=0, outer.max=10)
-coxph.control (eps = 1e-08, toler.chol = .Machine$double.eps^0.75, 
-    iter.max = 15, toler.inf = sqrt(eps), outer.max = 10) 
+coxph.control (eps = 1e-09, toler.chol = .Machine$double.eps^0.75, 
+    iter.max = 20, toler.inf = sqrt(eps), outer.max = 10) 
 
 }
 %- maybe also `usage' for other objects documented here.

@@ -9,7 +9,7 @@ Returns a list containing the survival curve, confidence limits for the
 curve, and other information.
 }
 \usage{
-summary.survfit(object, times, censored=F, scale=1, ...)
+summary.survfit(object, times, censored=FALSE, scale=1, ...)
 }
 \arguments{
 \item{object}{

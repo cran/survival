@@ -7,7 +7,9 @@ This is a method for the function \code{\link{residuals}} for objects
 inheriting from class \code{survreg}.  
 }
 \usage{
-residuals.survreg(object, type, rsigma=T, collapse=F, weighted=F,...)
+residuals.survreg(object, type=c("response", "deviance","dfbeta","dfbetas",
+"working","ldcase","ldresp","ldshape", "matrix"), rsigma=TRUE,
+collapse=FALSE, weighted=FALSE, ...)
 }
 \arguments{
 \item{object}{

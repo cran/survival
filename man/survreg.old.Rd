@@ -4,7 +4,9 @@
 Old (survival4) Regression for a parametric survival model
 }
 \usage{
-survreg.old(formula, data=sys.frame(sys.parent()), \dots, link=c("log", "identity"),dist=c("extreme", "logistic", "gaussian", "exponential"),fixed)
+survreg.old(formula, data=sys.frame(sys.parent()), \dots, link=c("log",
+"identity"),dist=c("extreme", "logistic", "gaussian",
+"exponential","rayleigh","weibull"), fixed=list())
 }
 \description{
   This routine is a backwards-compatible interface to the improved \link{survreg} function, which is better.

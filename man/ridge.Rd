@@ -2,7 +2,7 @@
 \alias{ridge}
 \title{ Ridge regression}
 \usage{
-ridge(..., theta, df=nvar/2, eps=0.1, scale=T)
+ridge(..., theta, df=nvar/2, eps=0.1, scale=TRUE)
 }
 %- maybe also `usage' for other objects documented here.
 \arguments{

@@ -1,5 +1,6 @@
 \name{coxph}
 \alias{coxph}
+\alias{vcov.coxph}
 \alias{print.coxph.null}
 \alias{print.coxph.penal}
 \alias{model.frame.coxph}

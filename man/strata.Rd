@@ -9,7 +9,7 @@ It identifies stratification variables when they appear on the right hand
 side of a formula.
 }
 \usage{
-strata(\dots, na.group=F, shortlabel=F)
+strata(\dots, na.group=FALSE, shortlabel=FALSE)
 }
 \arguments{
 \item{...}{

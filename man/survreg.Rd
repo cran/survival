@@ -6,6 +6,7 @@
 \alias{print.summary.survreg}
 \alias{survReg}
 \alias{anova.survreg}
+\alias{vcov.survreg}
 \alias{anova.survreglist}
 \alias{censorReg}
 \title{

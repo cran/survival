@@ -1,4 +1,4 @@
-.First.lib <- function(lib, pkg) {
+.onLoad <- function(lib, pkg) {
           library.dynam("survival", pkg, lib)
           ## survfit.print.n=="start" is compatible with previous R
           ##     and with MASS

@@ -9,9 +9,9 @@ Predicted values for a \code{survreg} object
 }
 \usage{
 \method{predict}{survreg}(object, newdata, 
-type=c("response", "link", "linear", "response", "terms", "quantile", 
+type=c("response", "link", "lp", "linear",  "terms", "quantile", 
 	"uquantile"), 
-se.fit=F, terms=labels.lm(object), p=c(0.1, 0.9),...)
+se.fit=FALSE, terms=NULL, p=c(0.1, 0.9),...)
 }
 \arguments{
 \item{object}{

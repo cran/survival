@@ -2,13 +2,14 @@
 # Map the argument list of the old survreg to the new one
 #
 survreg.old <- function(formula, data=sys.frame(sys.parent()), ...,
-        link='log',
+        link=c('log',"identity"),
         dist=c("extreme", "logistic", "gaussian", "exponential",
                "rayleigh", "weibull"),
 	fixed=list()) {
     
     dist <- match.arg(dist)
-
+    link <- match.arg(link)
+    
     if ((dist!='weibull' && dist != 'rayleigh') && link=='log') {
 	if (dist=='extreme') dist <- 'weibull'
 	else dist <- paste('log', dist, sep='')

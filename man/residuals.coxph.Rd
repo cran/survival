@@ -12,10 +12,10 @@ Cox proportional hazards model.
 \usage{
 \method{residuals}{coxph}(object,
        type=c("martingale", "deviance", "score", "schoenfeld",
-	      "dfbeta", "dfbetas", "scaledsch"),
+	      "dfbeta", "dfbetas", "scaledsch","partial"),
        collapse=FALSE, weighted=FALSE, ...)
 \method{residuals}{coxph.null}(object,
-       type=c("martingale", "deviance"),
+       type=c("martingale", "deviance","score","schoenfeld"),
        collapse=FALSE, weighted=FALSE, ...)
 }
 \arguments{
