@@ -37,7 +37,7 @@ summary.survfit <- function(object, times, censored=FALSE, scale=1, ...) {
 	    n.event <- fit$n.event[who]
 	    stemp <- stemp[who]
 	    surv <- surv[who,,drop=FALSE]
-	    if (!is.null(std.err)) std.err <- std.err[who,,drop=F]
+	    if (!is.null(std.err)) std.err <- std.err[who,,drop=FALSE]
 	    if (!is.null(fit$lower)) {
 		lower <- lower[who,,drop=FALSE]
 		upper <- upper[who,,drop=FALSE]

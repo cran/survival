@@ -32,13 +32,13 @@ frailty.gaussian <- function(x, sparse=(nclass >5), theta, df,
     else{
 	x <- as.factor(x)
 	class(x) <- c("coxph.penalty",class(x))
-	attr(x,'contrasts') <- contr.treatment(nclass,contrasts=F)
+	attr(x,'contrasts') <- contr.treatment(nclass,contrasts=FALSE)
         }
     if (!missing(theta) & !missing(df)) 
 	    stop("Cannot give both a df and theta argument")
 
     pfun<- function(coef, theta, ndead){
-	if (theta==0) list(recenter=0, penalty=0, flag=T)
+	if (theta==0) list(recenter=0, penalty=0, flag=TRUE)
 	  else {
 	      recenter <- mean(coef)
 	      coef <- coef - recenter
@@ -47,7 +47,7 @@ frailty.gaussian <- function(x, sparse=(nclass >5), theta, df,
 		   second=  rep(1, length(coef))/theta,
 #		   penalty= -sum(log(dnorm(coef,0, sqrt(theta))),
                    penalty= 0.5* sum(coef^2/theta + log(2*pi*theta)),
-		   flag=F)
+		   flag=FALSE)
 	           }
 	   }
 
@@ -78,7 +78,7 @@ frailty.gaussian <- function(x, sparse=(nclass >5), theta, df,
 		     diag =TRUE,
 		     sparse= sparse,
 		     cfun = function(parms, iter, old){
-		          list(theta=parms$theta, done=T)},
+		          list(theta=parms$theta, done=TRUE)},
 		     cparm= list(theta=theta, ...))
         }
     else if (method=='aic') {

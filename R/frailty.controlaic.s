@@ -13,7 +13,7 @@ frailty.controlaic <- function(parms, iter, old, n, df, loglik) {
     
     # by default, do the corrected AIC
     if (length(parms$caic)) correct <- parms$caic
-    else correct <- F
+    else correct <- FALSE
 
     if (n < df+2) dfc <- (df -n) + (df+1)*df/2 -1  #avoid pathology
     else          dfc <- -1 + (df+1)/(1- ((df+2)/n))
@@ -35,7 +35,7 @@ frailty.controlaic <- function(parms, iter, old, n, df, loglik) {
     
     if (iter==2) {  #Third guess
 	theta <- mean(history[,1])
-	return(list(theta=theta, done=F, history=history))
+	return(list(theta=theta, done=FALSE, history=history))
 	}
     #
     # Ok, now we're ready to actually use prior data

@@ -47,7 +47,7 @@ print.survexp <- function(x, scale=1, digits = max(options()$digits - 4, 3), nap
 		mat <- cbind(x$time/scale, x$n.risk[,i], x$surv[,i])
 		if (!is.null(x$std.err)) mat<- cbind(mat,
 			   x$std.err[,i] * x$surv[,i])
-		if (!naprint) mat <- mat[!is.na(mat[,3]),,drop=F]
+		if (!naprint) mat <- mat[!is.na(mat[,3]),,drop=FALSE]
 		prmatrix(mat, rowlab=rep("",nrow(mat)),
 				collab=c("Time", "n.risk", tname))
 		cat("\n")

@@ -99,7 +99,7 @@ survexp <- function(formula=formula(data), data=parent.frame(),
 	strats <- attr(Terms, "specials")$strata
 	if (length(strats))
 	    stop("survexp cannot handle stratified Cox models")
-	R <- model.matrix(delete.response(Terms), m2)[,-1,drop=F]
+	R <- model.matrix(delete.response(Terms), m2)[,-1,drop=FALSE]
 	if (any(dimnames(R)[[2]] != names(ratetable$coef)))
 	    stop("Unable to match new data to old formula")
 	if (no.Y) {
@@ -128,7 +128,7 @@ survexp <- function(formula=formula(data), data=parent.frame(),
 	    temp <- survexp.fit(cbind(as.numeric(X),R), Y, newtime,
 			       conditional, ratetable)
 	else {
-	    temp <- survexp.cfit(cbind(as.numeric(X),R), Y, conditional, F,
+	    temp <- survexp.cfit(cbind(as.numeric(X),R), Y, conditional, FALSE,
 			       ratetable, se.fit=se.fit)
 	    newtime <- temp$times
 	    }

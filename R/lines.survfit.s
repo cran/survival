@@ -81,7 +81,7 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 	x$n.event <- x$n.event[keepx]
 	if (is.matrix(ssurv)) {
 	    if (length(yzero)) ssurv[yzero,] <- firsty
-	    ssurv <- ssurv[keepy,,drop=F]
+	    ssurv <- ssurv[keepy,,drop=FALSE]
 	    if (!is.null(supper)) {
 		if (length(yzero)) supper[yzero,] <- slower[yzero,] <- firsty
 		supper <- supper[keepy,,drop=FALSE]

@@ -93,7 +93,7 @@ coxph.fit <- function(x, y, strata, offset, init, control,
 	var <- matrix(coxfit$imat,nvar,nvar)
 	coef <- coxfit$coef
 	if (coxfit$flag < nvar) which.sing <- diag(var)==0
-	else which.sing <- rep(F,nvar)
+	else which.sing <- rep(FALSE,nvar)
 
 	infs <- abs(coxfit$u %*% var)
 	if (maxiter >1) {

@@ -13,7 +13,7 @@ is.ratetable <- function(x, verbose=FALSE) {
 	if (length(x) != prod(att$dim))
             return(FALSE)
 	if (!(is.list(att$dimnames) && is.list(att$cutpoints)))
-		 return(F)
+		 return(FALSE)
 	if (length(att$dimnames)!=nd || length(att$factor)!=nd ||
 			 length(att$cutpoints)!=nd)
             return(FALSE)

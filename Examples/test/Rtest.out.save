@@ -1,6 +1,6 @@
 
 R : Copyright 2002, The R Development Core Team
-Version 1.5.0 Under development (unstable) (2002-04-07)
+Version 1.6.0 Under development (unstable) (2002-05-24)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -354,8 +354,8 @@ Likelihood ratio test=0.01  on 1 df, p=0.912  n= 10
 > sfit
 Call: survfit.coxph(object = fit)
 
-       n   events     mean se(mean)   median  0.95LCL  0.95UCL 
-    2.00     7.00     4.77     2.16     3.00     2.00      Inf 
+        n    events     rmean se(rmean)    median   0.95LCL   0.95UCL 
+     2.00      7.00      4.77      2.16      3.00      2.00       Inf 
 > summary(sfit)
 Call: survfit.coxph(object = fit)
 
@@ -378,9 +378,9 @@ Call: survfit.coxph(object = fit)
 > sfit
 Call: survfit.coxph(object = fitx, newdata = c(fitx$means[1], 0))
 
-     n events mean se(mean) median 0.95LCL 0.95UCL
-ss=0 2      7 4.77     2.16      3       2     Inf
-ss=1 2      7 4.77     2.16      3       2     Inf
+     n events rmean se(rmean) median 0.95LCL 0.95UCL
+ss=0 2      7  4.77      2.16      3       2     Inf
+ss=1 2      7  4.77      2.16      3       2     Inf
 > summary(sfit)
 Call: survfit.coxph(object = fitx, newdata = c(fitx$means[1], 0))
 
@@ -615,9 +615,9 @@ Likelihood ratio test=3.3  on 1 df, p=0.0694  n= 23
 > fit
 Call: survfit(formula = Surv(aml$time, aml$status) ~ aml$x)
 
-                     n events mean se(mean) median 0.95LCL 0.95UCL
-aml$x=Maintained    11      7 52.6    19.83     31      18     Inf
-aml$x=Nonmaintained 12     11 22.7     4.18     23       8     Inf
+                     n events rmean se(rmean) median 0.95LCL 0.95UCL
+aml$x=Maintained    11      7  52.6     19.83     31      18     Inf
+aml$x=Nonmaintained 12     11  22.7      4.18     23       8     Inf
 > summary(fit)
 Call: survfit(formula = Surv(aml$time, aml$status) ~ aml$x)
 
@@ -785,6 +785,8 @@ some row.names duplicated: 11,12,13,14,15,16,17,18,19,20  --> row.names NOT used
 > #
 > test3 _ data.frame(futime=1:12, fustat=c(1,0,1,0,1,0,0,0,0,0,0,0),
 + 		   x1=rep(0:1,6), x2=c(rep(0,6), rep(1,6)))
+Warning message: 
+The use of _ is deprecated: you will be warned only once per session 
 > coxph(Surv(futime, fustat) ~ x1 + x2, test3)
 Call:
 coxph(formula = Surv(futime, fustat) ~ x1 + x2, data = test3)
@@ -1449,11 +1451,11 @@ Call: survfit.coxph(object = fit)
 Call: survfit.coxph(object = fit, newdata = list(age = c(30, 70), ecog.ps = c(2, 
     3)))
 
-      n events mean se(mean) median 0.95LCL 0.95UCL
-rx=1 13      7  634     98.9    Inf     Inf     Inf
-rx=1 13      7  259     24.7    268     115     Inf
-rx=2 13      5  562     29.0    Inf     Inf     Inf
-rx=2 13      5  422      7.9    365     353     Inf
+      n events rmean se(rmean) median 0.95LCL 0.95UCL
+rx=1 13      7   634      98.9    Inf     Inf     Inf
+rx=1 13      7   259      24.7    268     115     Inf
+rx=2 13      5   562      29.0    Inf     Inf     Inf
+rx=2 13      5   422       7.9    365     353     Inf
 > summary(sfit)
 Call: survfit.coxph(object = fit, newdata = list(age = c(30, 70), ecog.ps = c(2, 
     3)))
@@ -1965,9 +1967,9 @@ Call: survfit(formula = Surv(time, status) ~ ph.ecog, data = cancer)
 Call: survfit(formula = Surv(time, status) ~ ph.ecog, data = cancer)
 
    1 observations deleted due to missing 
-            n events mean se(mean) median 0.95LCL 0.95UCL
-ph.ecog=1 113     82  385     27.3    306     268     429
-ph.ecog=2  50     44  259     31.2    199     156     288
+            n events rmean se(rmean) median 0.95LCL 0.95UCL
+ph.ecog=1 113     82   385      27.3    306     268     429
+ph.ecog=2  50     44   259      31.2    199     156     288
 > 
 > temp <- survfit(Surv(time, status), cancer, type='fleming',
 + 		   conf.int=.9, conf.type='log-log', error='tsiatis')

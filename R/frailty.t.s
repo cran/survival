@@ -12,7 +12,7 @@ frailty.t <- function(x, sparse=(nclass>5), theta, df, eps= 1e-5,  tdf=5,
     else{
 	x <- as.factor(x)
 	class(x) <- c("coxph.penalty",class(x))
-	attr(x,'contrasts') <- contr.treatment(nclass,contrasts=F)
+	attr(x,'contrasts') <- contr.treatment(nclass,contrasts=FALSE)
         }
 
     if (tdf <=2) stop("Cannot have df <3 for the t-frailty")
@@ -56,7 +56,7 @@ frailty.t <- function(x, sparse=(nclass>5), theta, df, eps= 1e-5,  tdf=5,
 		 second=  const*(1/temp - (2/(tdf*sig))*coef^2/temp^2),
 		 penalty= sum(.5*log(pi*tdf*sig) + ((tdf+1)/2)*log(temp) +
 		                lgamma(tdf/2) - lgamma((tdf+1)/2)),
-		 flag=F)
+		 flag=FALSE)
 	    }
 	}
 
@@ -78,7 +78,7 @@ frailty.t <- function(x, sparse=(nclass>5), theta, df, eps= 1e-5,  tdf=5,
 		     diag =TRUE,
 		     sparse= sparse,
 		     cfun = function(parms, iter, old){
-		          list(theta=parms$theta, done=T)},
+		          list(theta=parms$theta, done=TRUE)},
 		     cparm= list(theta=theta, ...))
         }
     

@@ -199,7 +199,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 	    # (1, .2), (1.4, .2), (1.8, .2), (2.3, .2), (2.9, .2), (3, .1)
             # with (1, .2), (3, .1).  They are slow, and can smear the looks
 	    # of the line type.
-	    dupy <- c(T, diff(y[-n]) !=0, T)
+	    dupy <- c(TRUE, diff(y[-n]) !=0, TRUE)
 	    n2 <- sum(dupy)
 
 	    #create a step function
@@ -240,7 +240,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 		    points(mark.time[indx<nn], yy[indx[indx<nn]],
 			   pch=mark[i],col=col[i],cex=cex)
 		    }
-		else if (mark.time==T && any(deaths==zero.one)) {
+		else if (mark.time==TRUE && any(deaths==zero.one)) {
 		    points(xx[deaths==zero.one], 
 			   yy[deaths==zero.one],
 			   pch=mark[i],col=col[i],cex=cex)

@@ -76,7 +76,7 @@ one or more curves are added to the current plot.
 \examples{
 data(pbc)
 fit <- survfit(Surv(time, status) ~ sex, pbc,subset=1:312)
-plot(fit, mark.time=F, xscale=365.24,
+plot(fit, mark.time=FALSE, xscale=365.24,
 	xlab='Years', ylab='Survival')
 lines(fit[1], lwd=2, xscale=365.24)    #darken the first curve and add marks
 

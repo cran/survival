@@ -16,7 +16,7 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
     intercept <- attr(Terms, "intercept")
     response  <- attr(Terms, "response")
     weights <- object$weights
-    if (is.null(weights)) weighted <- F
+    if (is.null(weights)) weighted <- FALSE
 
     #
     # What do I need to do the computations?
@@ -42,7 +42,7 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
 	temp <- untangle.specials(Terms, 'strata', 1)
 	Terms2 <- Terms[-temp$terms]
 	if (length(temp$vars)==1) strata.keep <- m[[temp$vars]]
-	else strata.keep <- strata(m[,temp$vars], shortlabel=T)
+	else strata.keep <- strata(m[,temp$vars], shortlabel=TRUE)
 	strata <- as.numeric(strata.keep)
 	nstrata <- max(strata)
 	sigma <- object$scale[strata]

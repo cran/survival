@@ -1,6 +1,6 @@
 
 R : Copyright 2002, The R Development Core Team
-Version 1.6.0 Under development (unstable) (2002-04-30)
+Version 1.6.0 Under development (unstable) (2002-05-24)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -1208,6 +1208,8 @@ Likelihood ratio test=33.4  on 13.8 df, p=0.00234  n= 76
 + 	    }
 +         }
 +     }
+Warning message: 
+The use of _ is deprecated: you will be warned only once per session 
 > rat2$start <- temp1
 > rat2$stop  <- temp2
 > 

@@ -9,7 +9,7 @@ coxph <- function(formula=formula(data), data=parent.frame(),
 
     method <- match.arg(method)
     call <- match.call()
-    m <- match.call(expand=F)
+    m <- match.call(expand=FALSE)
     temp <- c("", "formula", "data", "weights", "subset", "na.action")
     m <- m[ match(temp, names(m), nomatch=0)]
     special <- c("strata", "cluster")
@@ -45,14 +45,14 @@ coxph <- function(formula=formula(data), data=parent.frame(),
 	tempc <- untangle.specials(Terms, 'cluster', 1:10)
 	ord <- attr(Terms, 'order')[tempc$terms]
 	if (any(ord>1)) stop ("Cluster can not be used in an interaction")
-	cluster <- strata(m[,tempc$vars], shortlabel=T)  #allow multiples
+	cluster <- strata(m[,tempc$vars], shortlabel=TRUE)  #allow multiples
 	dropx <- tempc$terms
 	}
     if (length(strats)) {
 	temp <- untangle.specials(Terms, 'strata', 1)
 	dropx <- c(dropx, temp$terms)
 	if (length(temp$vars)==1) strata.keep <- m[[temp$vars]]
-	else strata.keep <- strata(m[,temp$vars], shortlabel=T)
+	else strata.keep <- strata(m[,temp$vars], shortlabel=TRUE)
 	strats <- as.numeric(strata.keep)
 	}
 
@@ -139,18 +139,18 @@ coxph <- function(formula=formula(data), data=parent.frame(),
 	    if (length(strats)) fit2$strata <- strata.keep
 	    if (length(cluster)) {
 		temp <- residuals.coxph(fit2, type='dfbeta', collapse=cluster,
-					  weighted=T)
+					  weighted=TRUE)
 		# get score for null model
 		if (is.null(init))
 			fit2$linear.predictors <- 0*fit$linear.predictors
 		else fit2$linear.predictors <- c(X %*% init)
 		temp0 <- residuals.coxph(fit2, type='score', collapse=cluster,
-					 weighted=T)
+					 weighted=TRUE)
 		}
 	    else {
-		temp <- residuals.coxph(fit2, type='dfbeta', weighted=T)
+		temp <- residuals.coxph(fit2, type='dfbeta', weighted=TRUE)
 		fit2$linear.predictors <- 0*fit$linear.predictors
-		temp0 <- residuals.coxph(fit2, type='score', weighted=T)
+		temp0 <- residuals.coxph(fit2, type='score', weighted=TRUE)
 	        }
 	    fit$var <- t(temp) %*% temp
 	    u <- apply(as.matrix(temp0), 2, sum)

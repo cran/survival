@@ -42,9 +42,9 @@ print.survfit <- function(x, scale=1,
 	    n <- nrow(surv)
 	    mean <- dif.time * rbind(1, surv)
 	    if (n==1)
-                temp <- mean[2,,drop=F]
+                temp <- mean[2,,drop=FALSE]
 	    else
-                temp <- (apply(mean[(n+1):2,,drop=F], 2, cumsum))[n:1,,drop=F]
+                temp <- (apply(mean[(n+1):2,,drop=FALSE], 2, cumsum))[n:1,,drop=FALSE]
 	    varmean <- c(hh %*% temp^2)
 	    med <- apply(surv, 2, minmin, stime)
 	    #nused <- as.list(nused)

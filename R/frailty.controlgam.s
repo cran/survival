@@ -53,7 +53,7 @@ frailty.controlgam <- function(opt, iter, old, group, status, loglik){
 		    print(history)
 		    cat("    new theta=", theta, "\n\n")
 		    }
-		list(theta=theta, done=F, history=history,
+		list(theta=theta, done=FALSE, history=history,
 		     c.loglik= loglik+correct)
 		}
 	    else {

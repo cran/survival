@@ -114,7 +114,7 @@ survfit.coxph <-
 	    }
 
 	else  {
-	    x2 <- model.matrix(delete.response(Terms), m2)[,-1,drop=F]
+	    x2 <- model.matrix(delete.response(Terms), m2)[,-1,drop=FALSE]
 	    n2 <- nrow(x2)
 	    offset2 <- model.extract(m2, 'offset')
 	    if (is.null(offset2)) offset2 <- 0

@@ -100,7 +100,7 @@ rm(lung)
   ## Expected survival for heart transplant patients based on
   ## US mortality tables
   expect <- survexp(futime ~ ratetable(age=(accept.dt - birth.dt),
-sex=1,year=accept.dt,race="white"), jasa, cohort=F,
+sex=1,year=accept.dt,race="white"), jasa, cohort=FALSE,
 ratetable=survexp.usr)
   ## actual survival is much worse (no surprise)
   print(survdiff(Surv(jasa$futime, jasa$fustat) ~ offset(expect)))

@@ -1,3 +1,5 @@
+2.9-3 Really change T/F to TRUE/FALSE everywhere
+
 2.9-2 Change 14 uses of _ to <-.  Fixed clogit() to allow missing data
 
 2.9-1 Document the mean->rmean change better

@@ -30,7 +30,7 @@ coxpenal.fit <- function(x, y, strata, offset, init, control,
 	    newstrat  <- cumsum(table(strata))
 	    }
 	status <- y[,3]
-	andersen <- T
+	andersen <- TRUE
 	routines <- paste('agfit5', c('a', 'b', 'c'), sep='_')
         }
     else {
@@ -44,7 +44,7 @@ coxpenal.fit <- function(x, y, strata, offset, init, control,
 	    newstrat <-  cumsum(table(strata))
 	    }
 	status <- y[,2]
-	andersen <- F
+	andersen <- FALSE
 	routines <- paste('coxfit5', c('a', 'b', 'c'), sep='_')
         }
 
@@ -106,7 +106,7 @@ coxpenal.fit <- function(x, y, strata, offset, init, control,
 	if (length(fcol) > 1) stop("Sparse term must be single column")
 
 	# Remove the sparse term from the X matrix
-	xx <- x[, -fcol, drop=F]
+	xx <- x[, -fcol, drop=FALSE]
 	for (i in 1:length(assign)){
 	    j <- assign[[i]]
 	    if (j[1] > fcol) assign[[i]] <- j-1
@@ -144,7 +144,7 @@ coxpenal.fit <- function(x, y, strata, offset, init, control,
         if (!is.null(getOption("survdebug"))) debug(f.expr1)
         
 	coxlist1 <- list(coef=double(nfrail), first=double(nfrail), 
-			 second=double(nfrail), penalty=0.0, flag=F)
+			 second=double(nfrail), penalty=0.0, flag=FALSE)
         ## we pass f.expr1 in as an argument in R
 	##.C("init_coxcall1", as.integer(sys.nframe()), expr1)
     }
@@ -193,12 +193,12 @@ coxpenal.fit <- function(x, y, strata, offset, init, control,
             debug(f.expr2)
 	if (full.imat) {
 	    coxlist2 <- list(coef=double(nvar), first=double(nvar), 
-		    second= double(nvar*nvar), penalty=0.0, flag=rep(F,nvar))
+		    second= double(nvar*nvar), penalty=0.0, flag=rep(FALSE,nvar))
 	    length2 <- c(nvar, nvar, nvar*nvar, 1, nvar)
 	    }  
 	else {
 	    coxlist2 <- list(coef=double(nvar), first=double(nvar),
-		    second=double(nvar), penalty= 0.0, flag=rep(F,nvar))
+		    second=double(nvar), penalty= 0.0, flag=rep(FALSE,nvar))
 	    length2 <- c(nvar, nvar, nvar, 1, nvar)
 	    }
         ## in R, f.expr2 is passed as an argument later
@@ -352,7 +352,7 @@ coxpenal.fit <- function(x, y, strata, offset, init, control,
 	# If any penalties were infinite, the C code has made fdiag=1 out
 	#  of self-preservation (0 divides).  But such coefs are guarranteed
 	#  zero so the variance should be too.)
-	temp <- rep(F, nvar+nfrail)
+	temp <- rep(FALSE, nvar+nfrail)
 	if (nfrail>0) temp[1:nfrail] <- coxlist1$flag
 	if (ptype >1) temp[nfrail+ 1:nvar] <- coxlist2$flag
 	fdiag <- ifelse(temp, 0, coxfit$fdiag)
@@ -460,7 +460,7 @@ coxpenal.fit <- function(x, y, strata, offset, init, control,
     if (nfrail >0) {
 	lp <- offset + coxfit$fcoef[x[,fcol]]
 	if (nvar >0) {   #sparse frailties and covariates
-	    lp <- lp + x[,-fcol,drop=F] %*%coef - sum(means*coef)
+	    lp <- lp + x[,-fcol,drop=FALSE] %*%coef - sum(means*coef)
 	    list(coefficients  = coef,
 		 var    = var,
 		 var2   = var2,

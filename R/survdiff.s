@@ -43,7 +43,7 @@ survdiff <- function(formula, data, subset, na.action, rho=0) {
 	    temp <- untangle.specials(Terms, 'strata', 1)
 	    dropx <- temp$terms
 	    if (length(temp$vars)==1) strata.keep <- m[[temp$vars]]
-	    else strata.keep <- strata(m[,temp$vars], shortlabel=T)
+	    else strata.keep <- strata(m[,temp$vars], shortlabel=TRUE)
 	    }
 	else strata.keep <- rep(1,nrow(m))
 

@@ -47,7 +47,7 @@ a plot is produced on the current graphics device.
 \examples{
 data(veteran)
 vfit <- coxph(Surv(time,status) ~ trt + factor(celltype) +
-              karno + age, data=veteran, x=T)
+              karno + age, data=veteran, x=TRUE)
 temp <- cox.zph(vfit)
 plot(temp, var=5)      # Look at Karnofsy score, old way of doing plot
 plot(temp[5])     # New way with subscripting

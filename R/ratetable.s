@@ -37,7 +37,7 @@ is.na.ratetable2 <- function(x) {
     attributes(x) <- list(dim=dim(x))
     as.vector((1 * is.na(x)) %*% rep(1, ncol(x)) >0)
     }
-"[.ratetable2" <- function(x, rows, cols, drop=F) {
+"[.ratetable2" <- function(x, rows, cols, drop=FALSE) {
     if (!missing(cols)) {
        stop("This should never be called!")
        }

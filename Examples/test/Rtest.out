@@ -1,6 +1,6 @@
 
 R : Copyright 2002, The R Development Core Team
-Version 1.6.0 Under development (unstable) (2002-04-30)
+Version 1.6.0 Under development (unstable) (2002-05-24)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -785,6 +785,8 @@ some row.names duplicated: 11,12,13,14,15,16,17,18,19,20  --> row.names NOT used
 > #
 > test3 _ data.frame(futime=1:12, fustat=c(1,0,1,0,1,0,0,0,0,0,0,0),
 + 		   x1=rep(0:1,6), x2=c(rep(0,6), rep(1,6)))
+Warning message: 
+The use of _ is deprecated: you will be warned only once per session 
 > coxph(Surv(futime, fustat) ~ x1 + x2, test3)
 Call:
 coxph(formula = Surv(futime, fustat) ~ x1 + x2, data = test3)

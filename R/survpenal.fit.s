@@ -153,7 +153,7 @@ survpenal.fit<- function(x, y, weights, offset, init, controlvals, dist,
 
 	# Remove the sparse term from the X matrix
 	frailx <- x[, fcol]
-	x <- x[, -fcol, drop=F]
+	x <- x[, -fcol, drop=FALSE]
 	for (i in 1:length(assign)){
 	    j <- assign[[i]]
 	    if (j[1] > fcol) assign[[i]] <- j-1
@@ -187,7 +187,7 @@ survpenal.fit<- function(x, y, weights, offset, init, controlvals, dist,
 	    coxlist1
           }
 	coxlist1 <- list(coef=double(nfrail), first=double(nfrail), 
-			 second=double(nfrail), penalty=0.0, flag=F)
+			 second=double(nfrail), penalty=0.0, flag=FALSE)
 	###.C("init_coxcall1", as.integer(sys.nframe()), expr1)
 	}
     else {
@@ -234,12 +234,12 @@ survpenal.fit<- function(x, y, weights, offset, init, controlvals, dist,
         ##if (debug) debug(f.expr2)
 	if (full.imat) {
 	    coxlist2 <- list(coef=double(nvar2), first=double(nvar2), 
-		    second= double(nvar2*nvar2), penalty=0.0, flag=rep(F,nvar2))
+		    second= double(nvar2*nvar2), penalty=0.0, flag=rep(FALSE,nvar2))
 	    length2 <- c(nvar2, nvar2, nvar2*nvar2, 1, nvar2)
 	    }  
 	else {
 	    coxlist2 <- list(coef=double(nvar2), first=double(nvar2),
-		    second=double(nvar2), penalty= 0.0, flag=rep(F,nvar2))
+		    second=double(nvar2), penalty= 0.0, flag=rep(FALSE,nvar2))
 	    length2 <- c(nvar2, nvar2, nvar2, 1, nvar2)
 	    }
 	###.C("init_coxcall2", as.integer(sys.nframe()), expr2)
@@ -420,7 +420,7 @@ survpenal.fit<- function(x, y, weights, offset, init, controlvals, dist,
 	# If any penalties were infinite, the C code has made fdiag=1 out
 	#  of self-preservation (0 divides).  But such coefs are guarranteed
 	#  zero so the variance should be too.)
-	temp <- rep(F, nvar2+nfrail)
+	temp <- rep(FALSE, nvar2+nfrail)
 	if (nfrail>0) temp[1:nfrail] <- coxlist1$flag
 	if (ptype >1) temp[nfrail+ 1:nvar2] <- coxlist2$flag
 	fdiag <- ifelse(temp, 0, fit$fdiag)

@@ -49,7 +49,7 @@ predict.survreg <-
 	temp <- untangle.specials(Terms, 'strata', 1)
 	dropx <- temp$terms
 	if (length(temp$vars)==1) strata.keep <- m[[temp$vars]]
-	else strata.keep <- strata(m[,temp$vars], shortlabel=T)
+	else strata.keep <- strata(m[,temp$vars], shortlabel=TRUE)
 	strata <- as.numeric(strata.keep)
 	nstrata <- max(strata)
 	    
@@ -61,7 +61,7 @@ predict.survreg <-
 	else if (!missing(newdata)) {
 	    newframe <- model.frame(Terms, newdata, na.action=function(x)x)
 	    if (length(temp$vars)==1) newstrat <- newframe[[temp$vars]]
-	    else newstrat <- strata(newframe[,temp$vars], shortlabel=T)
+	    else newstrat <- strata(newframe[,temp$vars], shortlabel=TRUE)
 	    strata <- match(newstrat, levels(strata.keep))
 	    x <- model.matrix(Terms[-dropx], newframe)
 	    offset <- model.extract(newframe, 'offset')

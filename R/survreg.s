@@ -29,18 +29,18 @@ survreg <- function(formula=formula(data), data=parent.frame(),
     cluster<- attr(Terms, "specials")$cluster
     dropx <- NULL
     if (length(cluster)) {
-        if (missing(robust)) robust <- T
+        if (missing(robust)) robust <- TRUE
         tempc <- untangle.specials(Terms, 'cluster', 1:10)
         ord <- attr(Terms, 'order')[tempc$terms]
         if (any(ord>1)) stop ("Cluster can not be used in an interaction")
-        cluster <- strata(m[,tempc$vars], shortlabel=T)  #allow multiples
+        cluster <- strata(m[,tempc$vars], shortlabel=TRUE)  #allow multiples
         dropx <- tempc$terms
         }
     if (length(strats)) {
         temp <- untangle.specials(Terms, 'strata', 1)
         dropx <- c(dropx, temp$terms)
         if (length(temp$vars)==1) strata.keep <- m[[temp$vars]]
-        else strata.keep <- strata(m[,temp$vars], shortlabel=T)
+        else strata.keep <- strata(m[,temp$vars], shortlabel=TRUE)
         strata <- as.numeric(strata.keep)
 	nstrata <- max(strata)
         }

@@ -34,12 +34,12 @@ coxph.getdata <- function(fit, y=TRUE, x=TRUE, stratax=TRUE, offset=FALSE) {
 	    dropx <- untangle.specials(Terms, 'cluster')$terms
 	    if (stratax) {
 		temp <- untangle.specials(Terms, 'strata', 1)
-		tx <- model.matrix(Terms[-c(dropx,temp$terms)], m)[,-1,drop=F]
-		strat <- strata(m[temp$vars], shortlabel=T)
+		tx <- model.matrix(Terms[-c(dropx,temp$terms)], m)[,-1,drop=FALSE]
+		strat <- strata(m[temp$vars], shortlabel=TRUE)
 		}
 	    else {
-		if (length(dropx)) tx <- model.matrix(Terms[-dropx], m)[,-1,drop=F]
-		else               tx <- model.matrix(Terms, m)[,-1,drop=F]
+		if (length(dropx)) tx <- model.matrix(Terms[-dropx], m)[,-1,drop=FALSE]
+		else               tx <- model.matrix(Terms, m)[,-1,drop=FALSE]
 		}
 	    }
 	}

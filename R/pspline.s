@@ -42,14 +42,14 @@ pspline <- function(x, df=4, theta, nterm=2.5*df, degree=3, eps=0.1,
     xnames <-paste('ps(', xname, ')', 2:nvar, sep='')
 
     pfun <- function(coef, theta, n, dmat) {
-	if (theta >=1) list(penalty= 100*(1-theta), flag=T)
+	if (theta >=1) list(penalty= 100*(1-theta), flag=TRUE)
 	else {
 	    if (theta <= 0) lambda <- 0 
 	    else lambda <- theta / (1-theta)
 	    list(penalty= c(coef %*% dmat %*% coef) * lambda/2,
 		 first  = c(dmat %*% coef) * lambda ,
 		 second = c(dmat * lambda),
-		 flag=F
+		 flag=FALSE
 		 )
 	    }
         }	
@@ -90,7 +90,7 @@ pspline <- function(x, df=4, theta, nterm=2.5*df, degree=3, eps=0.1,
 		     cparm=list(theta=theta),
 		     varname=xnames,
 		     cfun = function(parms, iter, old)
-			         list(theta=parms$theta, done=T))
+			         list(theta=parms$theta, done=TRUE))
 	}
     else if (method=='df') {
 	temp <- list(pfun=pfun,

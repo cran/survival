@@ -55,7 +55,7 @@ survobrien <- function(formula, data= sys.frame(sys.parent())) {
       }
 
     ord <- order(y[,1])
-    x <- as.matrix(m[ord, cont, drop=F])
+    x <- as.matrix(m[ord, cont, drop=FALSE])
     time <- y[ord,1]
     status <- y[ord,2]
     nvar <- length(cont)

@@ -44,7 +44,7 @@ function(object, newdata, type=c("lp", "risk", "expected", "terms"),
 	if (type=='terms' || (se.fit && (type=='lp' || type=='risk'))) {
 	    x <- object$x
 	    if (is.null(x)) {
-		x <- model.matrix(Terms2, model.frame(object))[,-1,drop=F]
+		x <- model.matrix(Terms2, model.frame(object))[,-1,drop=FALSE]
 		}
 	    x <- sweep(x, 2, object$means)
 	    }
@@ -58,12 +58,12 @@ function(object, newdata, type=c("lp", "risk", "expected", "terms"),
 	}
     else {
 	if (type=='expected'){
-	     m <- model.newframe(Terms, newdata, response=T)
-             x <- model.matrix(Terms2, m)[,-1,drop=F]
+	     m <- model.newframe(Terms, newdata, response=TRUE)
+             x <- model.matrix(Terms2, m)[,-1,drop=FALSE]
          }
 	else {
             m <- model.newframe(Terms2, newdata)
-            x <- model.matrix(delete.response(Terms2), m)[,-1,drop=F]
+            x <- model.matrix(delete.response(Terms2), m)[,-1,drop=FALSE]
         }
 
 	x <- sweep(x, 2, object$means)

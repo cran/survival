@@ -9,7 +9,7 @@ frailty.gamma <- function(x, sparse=(nclass >5), theta, df, eps= 1e-5,
     else{
 	x <- as.factor(x)
 	##attr(x,'contrasts') <- function(n,...) contr.treatment(n,F)
-        attr(x,"contrasts")<-contr.treatment(nclass,contrasts=F)
+        attr(x,"contrasts")<-contr.treatment(nclass,contrasts=FALSE)
         }
     class(x) <- c("coxph.penalty",class(x))
 
@@ -32,7 +32,7 @@ frailty.gamma <- function(x, sparse=(nclass >5), theta, df, eps= 1e-5,
 	    stop("Method is not 'fixed', but have a theta argument")
 
     pfun<- function(coef, theta, ndeath){
-	if (theta==0) list(recenter=0, penalty=0, flag=T)
+	if (theta==0) list(recenter=0, penalty=0, flag=TRUE)
 	else {
 	      recenter <- log(mean(exp(coef)))
 	      coef <- coef - recenter
@@ -41,7 +41,7 @@ frailty.gamma <- function(x, sparse=(nclass >5), theta, df, eps= 1e-5,
 		   first=   (exp(coef) -1) * nu,
 		   second=  exp(coef) * nu,
 		   penalty= -sum(coef)*nu,   # The exp part sums to a constant
-		   flag=F)
+		   flag=FALSE)
 	           }
 	   }
 
