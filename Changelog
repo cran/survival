@@ -1,0 +1,120 @@
+
+
+
+Changes made since posting survival5
+
+15Feb99: The predict.coxph function would fail for type='terms' if the model
+contained a cluster() statement -- it was trying to create a column for this
+and of course the X matrix doesn't have one; cluster() only effects variance
+estimation.  Predict now ignores "cluster" terms.
+
+19Feb99: Added a missing line in survexp, without it the routine fails if
+the ratetable() call is omitted.  Obviously, the 3/27/97 change was not
+thoroughly tested!  (Actually it was, but the changes didn't get transcribed
+properly into the master source code).
+
+19Feb99: Above changes to pyears.  If there is a ratetable argument and
+no ratetable() term in the formula, add it automatically in the same way
+as in survexp.
+
+24Feb99: Wrong "cargs" in pspline for the AIC method.  Led to a slew of
+warning messages which were actually inconsequential, but annoying.
+
+25Feb99: Added the "df.residual" component to the survreg output.  This
+is needed by anova.survreg.  (The anova routine was written by Statsci,
+not me, and so isn't in my test suite.  Thanks to Brian Ripley for pointing
+this out).
+
+--- The above actually got included with survival5 due to administrative
+delays in getting our web site up.
+
+---
+
+5May99: The survreg() call statement was missing "weight".  
+In prior releases, the "..." arg absorbed this and weights worked
+fine.  Other changes in survival5 ended the efficacy of this lucky
+accident.  (Tipped off by provisional StatSci documentation that
+declared "survReg doesn't support weights").
+
+7May99: Add 'fitted.values' to the survreg output.  (Provisional)
+After further discussion, commented it out (but left the code should
+we change our mind again).
+
+18June99: Add "coxph.control" to collect all of the control terms, and
+add a 'test.inf' term for the sake of Frank H.  Forced a minor argument
+change in agreg.fit, coxph.fit, agexact.fit and coxpenal.fit.  The
+coxph() function calls coxph.control(...), so the old style form of
+"iter.max=20," in the coxph call still works as before and users won't
+notice the change.  This is more of a documentation help by gathering
+terms.
+   Add a change to coxpenal.s to work around a bug introduced into
+Splus in the 5.1 release that leads to a matrix dimension error:
+"thetasave" is a matrix and "temp" is a named vector, but "thetasave - temp"
+is no longer a matrix.  An additional "as.vector(temp)" removes the
+names.  (I'm told the bug will be fixed in 5.x, x>1).
+
+24Jun99: Rewrite of the C code for (start,stop] Cox models, called by 
+agreg.fit.s.  The new routines are agfit3.c and agres2.c.  Assume n
+subjects, d events(deaths), and p covariates.  The old code had run time
+of O(p^3) + O(dnp^2) + O(n^2), corresponding to matrix manipulation, 
+accumlation of the matrices, and bookkeeping.  The third piece had no
+"statistical" content, yet for large data sets could often completely
+dominate the run time, a fact that has bugged me for years.  The new
+algorithm is O(p^3) + O((2n+d)p^2) + O(2n).  On one test data set of n=5000,
+the compute time is reduced 70 fold, 10 fold for n=1000.  Thanks to
+Mohammed Jallaludin for a discussion leading to the key insight.
+
+22Sep99: Change the defaul tol.chol in coxph.control from 1e-8 to 1e-12
+in response to a very ill-conditioned data set of J Sicks.  (Actually,
+change it to .Machine$double.eps ^ .75).  The problem was not correlation
+but scaling, some coefs of size 1 and some of size 1e-5.  Perhaps I
+should add a scaling step to coxph itself...
+  Note that this only affects tests for singularity, not the number of
+iterations in the final model, so 99.99% of test cases stay the same.
+
+8Feb00: Fix small "= vs ==" bug in agsurv3.c, pointed out by Thomas Lumley.
+I don't think it had any side effects, however.
+
+10Feb00: Fix bug in survfit.coxph -- if there was a cluster() term in the
+coxph call this function got confused about the true number of columns in 
+the X matrix.
+
+26Feb00: In residuals.coxph 1) ignore the "weighted" argument for dfbeta
+residuals, and always return the correct result.  2) the weighted argument
+was being improperly ignored for Schoenfeld residuals.
+
+30May00: The frailty.gaussian routine would misleadingly label coefficients
+with the word 'gamma'; changed to 'gauss'.
+
+10June00: Make the same algorithmic change to penalized models, as was
+made (a year ago already!) for non-penalized (start, stop] models.
+The new C functions are coxfit5.c and agfit5.c.  Add one more speedup
+tweak to agres2.c. 
+
+10June00: Change printout of one part of the gamma frailty: "EM likelihood"
+to "I-likelihood".  The term 'integrated likelihood' is used in the book,
+because we can compute an integrated likelihood for the gaussian model
+too, but not an EM.  Adding this to the Gaussian should happen real-soon-now...
+
+10June00: Same as.vector() Splus5.1 workaround for survpenal.fit, 
+as was described above for coxpenal.fit (June99).
+
+12June00: Run validation suite (expand testfrail/simple.s in the process).
+Post new code to Statsci and R.
+
+-----------------------------------------------------
+4Jan01: Fix serious bug in coxfit5.c. Penalized model + strata could lead
+to an infinite loop or possibly wrong answers.  The problem does not apply
+to 
+(start,stop] models.
+       1. Smallest time point in one stratum is censored.
+       2. Smallest time point in a later stratum isn't censored.
+       3. In the next strata after this, consider the set of points
+    with time > (min time in stratum of bullet 2). If this contains both
+    censored and uncensored points, with at least one censored time >
+    at least one uncensored time ---> infinite loop. The user-supplied
+data
+    set that demonstrated the issue had over 10,000 observations; just to
+    make tracking the bug down more challenging....
+       If the set in question is all uncensored, this leads to a wrong
+    answer (I think) due to miscounting of tied times.

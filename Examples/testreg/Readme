@@ -1,0 +1,35 @@
+  Notes on creating a new survreg.
+
+ The fitting logic has been updated
+	1. Estimate the mean model first.  This gives a more solid estimate
+of sigma.  
+	2. From this point, use the glim trick to go to the full model.
+	3. Levenberg-Marquardt has been replaced with a Fisher scoring
+step.  The step isn't always as good, but it is always SPD.  With better
+starting estimates we rarely use the Fisher anyway.
+
+
+There are 3 data sets here for which the survival4 version of survreg fails.
+   Capacitor: There was an error in my initial values
+   Peterson: Very hard -- a factor variable for which some groups have n=2.
+   Donnell: The likelihood surface looks like a kidney, so even close to the
+solution a slight misstep lands in a region for which the information
+matrix is not positive definite.
+
+  The capacitor data now works like a charm.
+
+  The Peterson data takes 8 iterations, but makes it.  There is some
+step halving in the sequence because of near singularity.
+
+  The Donnell data fits in 9 iterations.  A good initial estimate along
+with a decent first step (scoring based) are the keys.
+
+  In all of these, censorReg gets to the solution quicker, e.g. 5 iterations
+for the Donnell data.  I expect that there are ill-conditioned data sets
+for which survreg won't converge by censorReg will.  (If you find one,
+send it to me however.  I'd like to add it to the challenge list).  Survreg
+has more flexibility, though, particularly with respect to penalized
+models.
+
+
+

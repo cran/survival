@@ -1,0 +1,386 @@
+ #
+# Set up for the test
+#
+#dyn.load("../loadmod.o")
+#attach("../.Data")
+#options(na.action="na.omit", contrasts='contr.treatment')
+library(survival)
+#library(date)
+#
+# Test the logic of the new program, by fitting some no-frailty models
+#  (theta=0).  It should give exactly the same answers as 'ordinary' coxph.
+# By default frailty models run with eps=1e-7, ordinary with 1e-4.  I match
+#   these to get the same number of iterations.
+#
+test1 <- data.frame(time=  c(4, 3,1,1,2,2,3),
+                    status=c(1,NA,1,0,1,1,0),
+                    x=     c(0, 2,1,1,1,0,0))
+
+test2 <- data.frame(start=c(1, 2, 5, 2, 1, 7, 3, 4, 8, 8),
+                    stop =c(2, 3, 6, 7, 8, 9, 9, 9,14,17),
+                    event=c(1, 1, 1, 1, 1, 1, 1, 0, 0, 0),
+                    x    =c(1, 0, 0, 1, 0, 1, 1, 1, 0, 0) )
+
+zz <- rep(0, nrow(test1))
+tfit1 <- coxph(Surv(time,status) ~x, test1, eps=1e-7)
+tfit2 <- coxph(Surv(time,status) ~x + frailty(zz, theta=0, sparse=T), test1)
+tfit3 <- coxph(Surv(zz,time,status) ~x + frailty(zz, theta=0,sparse=T), test1)
+
+temp <- c('coefficients', 'var', 'loglik', 'linear.predictors',
+	  'means', 'n')
+
+all.equal(tfit1[temp], tfit2[temp])
+all.equal(tfit1[temp], tfit3[temp])
+
+zz <- rep(0, nrow(test2))
+tfit1 <- coxph(Surv(start, stop, event) ~x, test2, eps=1e-7)
+tfit2 <- coxph(Surv(start, stop, event) ~ x + frailty(zz, theta=0, sparse=T), 
+	       test2)
+all.equal(tfit1[temp], tfit2[temp])
+
+
+
+# Tests using the rats data
+#
+#  (Female rats, from Mantel et al, Cancer Research 37,
+#    3863-3868, November 77)
+
+rats <- read.table('data.rats', col.names=c('litter', 'rx', 'time',
+				  'status'))
+
+rfit <- coxph(Surv(time,status) ~ rx + frailty(litter), rats,
+	     method='breslow')
+names(rfit)
+rfit
+
+rfit$iter
+rfit$df
+rfit$history[[1]]
+
+rfit1 <- coxph(Surv(time,status) ~ rx + frailty(litter, theta=1), rats,
+	     method='breslow')
+rfit1
+
+rfit2 <- coxph(Surv(time,status) ~ frailty(litter), rats)
+rfit2
+#
+# Here is a test case with multiple smoothing terms
+#
+data(lung)
+fit0 <- coxph(Surv(time, status) ~ ph.ecog + age, lung)
+fit1 <- coxph(Surv(time, status) ~ ph.ecog + pspline(age,3), lung)
+fit2 <- coxph(Surv(time, status) ~ ph.ecog + pspline(age,4), lung)
+fit3 <- coxph(Surv(time, status) ~ ph.ecog + pspline(age,8), lung)
+
+
+
+fit4 <- coxph(Surv(time, status) ~ ph.ecog + pspline(wt.loss,3), lung)
+
+fit5 <-coxph(Surv(time, status) ~ ph.ecog + pspline(age,3) + 
+	     pspline(wt.loss,3), lung)
+
+fit1
+fit2
+fit3
+fit4
+fit5
+
+rm(fit1, fit2, fit3, fit4, fit5)
+#
+# Test on the ovarian data
+data(ovarian)
+fit1 <- coxph(Surv(futime, fustat) ~ rx + age, ovarian)
+fit2 <- coxph(Surv(futime, fustat) ~ rx + pspline(age, df=2), 
+		data=ovarian)
+fit2$iter
+
+fit2$df
+
+fit2$history
+
+fit4 <- coxph(Surv(futime, fustat) ~ rx + pspline(age, df=4), 
+		data=ovarian)
+fit4
+
+
+# Simulation for the ovarian data set
+#
+fit1 <- coxph(Surv(futime, fustat) ~ rx + ridge(age, ecog.ps, theta=1),
+	      ovarian)
+
+dfs <- eigen(solve(fit1$var, fit1$var2))$values
+
+if (gc()[2,1]>60000){
+set.seed(42)
+temp <- matrix(rnorm(30000), ncol=3)
+temp2 <- apply((temp^2) %*% dfs, 1, sum)
+
+round(rbind(quantile(temp2, c(.8, .9, .95, .99)), 
+	     qchisq( c(.8, .9, .95, .99), sum(fit1$df))), 3)
+}
+# From:	McGilchrist and Aisbett, Biometrics 47, 461-66, 1991
+# Data on the recurrence times to infection, at the point of insertion of
+#  the catheter, for kidney patients using portable dialysis equipment.
+#  Catheters may be removed for reasons other than infection, in which case
+#  the observation is censored.  Each patient has exactly 2 observations.
+
+# Variables: patient, time, status, age, 
+#	   sex (1=male, 2=female),
+#	   disease type (0=GN, 1=AN, 2=PKD, 3=Other)
+#	   author's estimate of the frailty
+
+# I don't match their answers, and I think that I'm right
+
+kidney <- read.table('data.kidney', col.names=c("id", "time", "status",
+				      "age", "sex", "disease", "frail"))
+kidney$disease <- factor(kidney$disease, levels=c(3, 0:2),
+			 labels=c('Other', 'GN', 'AN', "PKD"))
+
+kfit <- coxph(Surv(time, status)~ age + sex + disease + frailty(id), kidney)
+kfit1<- coxph(Surv(time, status) ~age + sex + disease +
+	      frailty(id, theta=1), kidney, iter=20)
+kfit0 <- coxph(Surv(time, status)~ age + sex + disease, kidney)
+temp <-  coxph(Surv(time, status) ~age + sex + disease +
+	      frailty(id, theta=1, sparse=F), kidney)
+
+
+# Check out the EM based score equations
+#  temp1 and kfit1 should have essentially the same coefficients
+#  temp2 should equal kfit1$frail
+# equality won't be exact because of the different iteration paths
+temp1 <- coxph(Surv(time, status) ~ age + sex + disease +
+	       offset(kfit1$frail[id]), kidney)
+rr <- tapply(resid(temp1), kidney$id, sum)
+temp2 <- log(rr/1 +1)
+all.equal(temp1$coef, kfit1$coef) ##FAILS in S-PLUS
+all.equal(temp2, kfit1$frail) ##FAILS in S-PLUS
+
+kfit
+kfit1
+kfit0
+temp 
+
+#
+# Now fit the data using REML
+#
+kfitm1 <- coxph(Surv(time,status) ~ age + sex + disease + 
+		frailty(id, dist='gauss'), kidney)
+kfitm2 <- coxph(Surv(time,status) ~ age + sex + disease + 
+		      frailty(id, dist='gauss', sparse=F), kidney)
+kfitm1
+summary(kfitm2)
+#
+# Fit the kidney data using AIC
+#
+
+# gamma, corrected aic
+coxph(Surv(time, status) ~ age + sex + frailty(id, method='aic', caic=T), 
+      kidney)
+
+coxph(Surv(time, status) ~ age + sex + frailty(id, dist='t'), kidney)
+coxph(Surv(time, status) ~ age + sex + frailty(id, dist='gauss', method='aic',
+					       caic=T), kidney)
+
+
+# uncorrected aic
+coxph(Surv(time, status) ~ age + sex + frailty(id, method='aic', caic=F), 
+      kidney)
+
+coxph(Surv(time, status) ~ age + sex + frailty(id, dist='t', caic=F), kidney)
+#temp <- sas.get("../../../../data/moertel/sasdata", "anal")
+#colon <- temp[temp$study==1,]
+#rm(temp)
+#colon$rx <- factor(colon$rx, levels=1:3, labels=c("Obs", "Lev", "Lev+5FU"))
+data(colon)
+#data.restore('data.colon')
+#
+# Fit models to the Colon cancer data used in Lin
+#
+fitc1 <- coxph(Surv(time, status) ~ rx + extent + node4 + cluster(id)
+	        + strata(etype), colon)
+fitc1
+
+fitc2 <- coxph(Surv(time, status) ~ rx + extent + node4 + 
+	       frailty(id, dist='gauss', trace=T)
+	        + strata(etype), colon)
+fitc2
+
+fitc3 <- coxph(Surv(time, status) ~ rx + extent + node4 + frailty(id, trace=T)
+	        + strata(etype), colon)
+fitc3
+
+fitc4 <- coxph(Surv(time, status) ~ rx + extent + node4 + frailty(id, df=30)
+	        + strata(etype), colon)
+fitc4
+
+# Do a fit, removing the no-event people
+temp <- tapply(colon$status, colon$id, sum)
+keep <- !(is.na(match(colon$id, names(temp[temp>0])))) 
+fitc5 <- coxph(Surv(time, status) ~ rx + extent + node4 +cluster(id)
+	       + strata(etype), colon, subset=keep)
+
+#
+# Do the factor fit, but first remove the no-event people
+#
+#  Ha!  This routine has a factor with 506 levels.  It uses all available
+#    memory, and can't finish in my patience window.  Commented out.
+
+#fitc4 <- coxph(Surv(time, status) ~ rx + extent + node4 + factor(id), colon,
+#	       subset=keep)
+
+
+
+
+
+
+#
+# The residual methods treat a sparse frailty as a fixed offset with
+#   no variance
+#
+
+kfit1 <- coxph(Surv(time, status) ~ age + sex + 
+	           frailty(id, dist='gauss'), kidney)
+tempf <- predict(kfit1, type='terms')[,3]  
+temp  <- kfit1$frail[match(kidney$id, sort(unique(kidney$id)))]
+ all.equal(unclass(tempf), unclass(temp))
+ all.equal(as.vector(tempf), as.vector(temp))
+
+# Now fit a model with explicit offset
+ kfitx <- coxph(Surv(time, status) ~ age + sex + offset(tempf),kidney,
+	       eps=1e-7)
+
+# These are not precisely the same, due to different iteration paths
+ all.equal(kfitx$coef, kfit1$coef)
+
+# This will make them identical
+kfitx <- coxph(Surv(time, status) ~ age + sex  + offset(temp),kidney,
+	       iter=0, init=kfit1$coef)
+all.equal(resid(kfit1), resid(kfitx))
+all.equal(resid(kfit1, type='score'), resid(kfitx, type='score'))
+all.equal(resid(kfit1, type='schoe'), resid(kfitx, type='schoe'))
+
+# These are not the same, due to a different variance matrix
+#  The frailty model's variance is about 2x the naive "assume an offset" var
+# The score residuals are equal, however.
+all.equal(resid(kfit1, type='dfbeta'), resid(kfitx, type='dfbeta'))
+zed <- kfitx
+zed$var <- kfit1$var
+all.equal(resid(kfit1, type='dfbeta'), resid(zed, type='dfbeta'))
+
+
+temp1 <- resid(kfit1, type='score')
+temp2 <- resid(kfitx, type='score')
+all.equal(temp1, temp2)
+
+#
+# Now for some tests of predicted values
+#
+all.equal(predict(kfit1, type='expected'), predict(kfitx, type='expected'))
+all.equal(predict(kfit1, type='lp'), predict(kfitx, type='lp'))
+
+temp1 <- predict(kfit1, type='terms', se.fit=T)
+temp2 <- predict(kfitx, type='terms', se.fit=T)
+all.equal(temp1$fit[,1:2], temp2$fit)
+all.equal(temp1$se.fit[,1:2], temp2$se.fit)  #should be false
+mean(temp1$se.fit[,1:2]/ temp2$se.fit)
+all.equal(as.vector(temp1$se.fit[,3])^2, 
+	  as.vector(kfit1$fvar[match(kidney$id, sort(unique(kidney$id)))]))
+
+print(temp1)
+kfit1
+kfitx
+
+rm(temp1, temp2, kfitx, zed, tempf)
+#
+# The special case of a single sparse frailty
+#
+
+kfit1 <- coxph(Surv(time, status) ~ frailty(id, dist='gauss'), kidney)
+tempf <- predict(kfit1, type='terms')
+temp  <- kfit1$frail[match(kidney$id, sort(unique(kidney$id)))]
+all.equal(as.vector(tempf), as.vector(temp))
+
+# Now fit a model with explicit offset
+kfitx <- coxph(Surv(time, status) ~ offset(tempf),kidney, eps=1e-7)
+
+all.equal(resid(kfit1), resid(kfitx))
+all.equal(resid(kfit1, type='deviance'), resid(kfitx, type='deviance'))
+
+#
+# Some tests of predicted values
+#
+aeq <- function(x,y) all.equal(as.vector(x), as.vector(y))
+aeq(predict(kfit1, type='expected'), predict(kfitx, type='expected'))
+aeq(predict(kfit1, type='lp'), predict(kfitx, type='lp'))
+
+temp1 <- predict(kfit1, type='terms', se.fit=T)
+all.equal(temp1$fit, kfitx$linear)
+all.equal(temp1$se.fit^2, 
+	  kfit1$fvar[match(kidney$id, sort(unique(kidney$id)))])
+
+temp1
+kfit1
+
+
+# From Gail, Sautner and Brown, Biometrics 36, 255-66, 1980
+
+# 48 rats were injected with a carcinogen, and then randomized to either
+# drug or placebo.  The number of tumors ranges from 0 to 13; all rats were
+# censored at 6 months after randomization.
+
+# Variables: rat, treatment (1=drug, 0=control), o
+# 	   observation # within rat,
+#	   (start, stop] status
+# The raw data has some intervals of zero length, i.e., start==stop.
+#  We add .1 to these times as an approximate solution
+#
+rat2 <- read.table('data.rat2', col.names=c('id', 'rx', 'enum', 'start',
+				  'stop', 'status'))
+temp1 <- rat2$start
+temp2 <- rat2$stop
+for (i in 1:nrow(rat2)) {
+    if (temp1[i] == temp2[i]) {
+	temp2[i] <- temp2[i] + .1
+	if (i < nrow(rat2) && rat2$id[i] == rat2$id[i+1]) {
+	    temp1[i+1] <- temp1[i+1] + .1
+	    if (temp2[i+1] <= temp1[i+1]) temp2[i+1] _ temp1[i+1]
+	    }
+        }
+    }
+rat2$start <- temp1
+rat2$stop  <- temp2
+
+r2fit0 <- coxph(Surv(start, stop, status) ~ rx + cluster(id), rat2)
+
+r2fitg <-  coxph(Surv(start, stop, status) ~ rx + frailty(id), rat2)
+r2fitm <-  coxph(Surv(start, stop, status) ~ rx + frailty.gaussian(id), rat2)
+
+r2fit0
+r2fitg
+r2fitm
+
+#This example is unusual: the frailties variances end up about the same,
+#  but the effect on rx differs.  Double check it
+# Because of different iteration paths, the coef won't be exactly the
+#     same, but darn close.
+
+temp <- coxph(Surv(start, stop, status) ~ rx + offset(r2fitm$frail[id]), rat2)
+all.equal(temp$coef, r2fitm$coef[1]) ##not quite
+
+temp <- coxph(Surv(start, stop, status) ~ rx + offset(r2fitg$frail[id]), rat2)
+all.equal(temp$coef, r2fitg$coef[1]) ##not quite
+
+#
+# What do I get with AIC
+#
+r2fita1 <- coxph(Surv(start, stop, status) ~ rx + frailty(id, method='aic'),
+		 rat2)
+r2fita2 <- coxph(Surv(start, stop, status) ~ rx + frailty(id, method='aic',
+							  dist='gauss'), rat2)
+r2fita3 <- coxph(Surv(start, stop, status) ~ rx + frailty(id, dist='t'),
+		 rat2)
+
+r2fita1
+r2fita2
+r2fita3
+q()

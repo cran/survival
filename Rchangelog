@@ -1,0 +1,28 @@
+2.6 documentation/code incompatibilities, three more
+sys.frame(sys.parent() fixes.
+
+2.5 GPL, fixed segfault in frailty
+	model with all coefficients NA, predict.coxph standard errors for
+	type="terms", new name "survival", predict.coxph
+	with newdata but no response <mgri@hal.stat.unipd.it>, bug in
+	basehaz, fold in date package
+
+2.4 fixed bug in coxpenal.fit (<m.carvalho@lancaster.ac.uk>) when a
+    sparse frailty term is specified before a non-sparse one,
+    added clogit(), added Mac makefile (Stefano Iacus), added "Maintainer"
+    field, bug in plot.survfit <markc@nswcc.org.au>, better
+    environment(formula) handling in coxph, a basehaz() function.
+
+2.3 upstream bug fix for stratifed, penalised coxph
+
+2.2 Fixed anova.survreg,anova.survreglist. Some doc fixes. legends for
+    plot.survfit
+
+2.1  options for `n' in print.survfit, [.Surv fixed for R1.1.1.
+
+2.0   New code from Terry Therneau: faster cox regression, bug fixes.
+
+1.1-6 plot.survfit(,fun="cloglog") broke with mark.times=TRUE when the first event was a censoring.
+1.1-5 more documentation fixes, added data(stanford2), modified frailty()
+   to avoid bug in new save()/load() code.	
+1.1-4  documentation and data fixes, particularly survreg.distributions

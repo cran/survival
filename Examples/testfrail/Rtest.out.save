@@ -1,0 +1,1315 @@
+
+R : Copyright 2001, The R Development Core Team
+Version 1.3.0 Under development (unstable) (2001-05-30)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type `license()' or `licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type `contributors()' for more information.
+
+Type `demo()' for some demos, `help()' for on-line help, or
+`help.start()' for a HTML browser interface to help.
+Type `q()' to quit R.
+
+>  #
+> # Set up for the test
+> #
+> #dyn.load("../loadmod.o")
+> #attach("../.Data")
+> #options(na.action="na.omit", contrasts='contr.treatment')
+> library(survival)
+> #library(date)
+> #
+> # Test the logic of the new program, by fitting some no-frailty models
+> #  (theta=0).  It should give exactly the same answers as 'ordinary' coxph.
+> # By default frailty models run with eps=1e-7, ordinary with 1e-4.  I match
+> #   these to get the same number of iterations.
+> #
+> test1 <- data.frame(time=  c(4, 3,1,1,2,2,3),
++                     status=c(1,NA,1,0,1,1,0),
++                     x=     c(0, 2,1,1,1,0,0))
+> 
+> test2 <- data.frame(start=c(1, 2, 5, 2, 1, 7, 3, 4, 8, 8),
++                     stop =c(2, 3, 6, 7, 8, 9, 9, 9,14,17),
++                     event=c(1, 1, 1, 1, 1, 1, 1, 0, 0, 0),
++                     x    =c(1, 0, 0, 1, 0, 1, 1, 1, 0, 0) )
+> 
+> zz <- rep(0, nrow(test1))
+> tfit1 <- coxph(Surv(time,status) ~x, test1, eps=1e-7)
+> tfit2 <- coxph(Surv(time,status) ~x + frailty(zz, theta=0, sparse=T), test1)
+> tfit3 <- coxph(Surv(zz,time,status) ~x + frailty(zz, theta=0,sparse=T), test1)
+> 
+> temp <- c('coefficients', 'var', 'loglik', 'linear.predictors',
++ 	  'means', 'n')
+> 
+> all.equal(tfit1[temp], tfit2[temp])
+[1] TRUE
+> all.equal(tfit1[temp], tfit3[temp])
+[1] TRUE
+> 
+> zz <- rep(0, nrow(test2))
+> tfit1 <- coxph(Surv(start, stop, event) ~x, test2, eps=1e-7)
+> tfit2 <- coxph(Surv(start, stop, event) ~ x + frailty(zz, theta=0, sparse=T), 
++ 	       test2)
+> all.equal(tfit1[temp], tfit2[temp])
+[1] TRUE
+> 
+> 
+> 
+> # Tests using the rats data
+> #
+> #  (Female rats, from Mantel et al, Cancer Research 37,
+> #    3863-3868, November 77)
+> 
+> rats <- read.table('data.rats', col.names=c('litter', 'rx', 'time',
++ 				  'status'))
+> 
+> rfit <- coxph(Surv(time,status) ~ rx + frailty(litter), rats,
++ 	     method='breslow')
+> names(rfit)
+ [1] "coefficients"      "var"               "var2"             
+ [4] "loglik"            "iter"              "linear.predictors"
+ [7] "residuals"         "means"             "method"           
+[10] "frail"             "fvar"              "df"               
+[13] "df2"               "penalty"           "pterms"           
+[16] "assign2"           "history"           "coxlist1"         
+[19] "printfun"          "n"                 "terms"            
+[22] "assign"            "wald.test"         "y"                
+[25] "formula"           "call"             
+> rfit
+Call:
+coxph(formula = Surv(time, status) ~ rx + frailty(litter), data = rats, 
+    method = "breslow")
+
+                coef  se(coef) se2   Chisq DF   p    
+rx              0.906 0.323    0.319  7.88  1.0 0.005
+frailty(litter)                      16.89 13.8 0.250
+
+Iterations: 6 outer, 20 Newton-Raphson
+     Variance of random effect= 0.474   I-likelihood = -181.1 
+Degrees of freedom for terms=  1.0 13.9 
+Likelihood ratio test=36.3  on 14.8 df, p=0.00145  n= 150 
+> 
+> rfit$iter
+[1]  6 20
+> rfit$df
+[1]  0.9759431 13.8548423
+> rfit$history[[1]]
+$theta
+[1] 0.4742848
+
+$done
+[1] TRUE
+
+$history
+         theta    loglik  c.loglik
+[1,] 0.0000000 -181.8451 -181.8451
+[2,] 1.0000000 -168.3683 -181.5458
+[3,] 0.5000000 -173.3117 -181.0788
+[4,] 0.3090061 -175.9446 -181.1490
+[5,] 0.4645720 -173.7590 -181.0775
+[6,] 0.4736209 -173.6431 -181.0773
+
+$c.loglik
+[1] -181.0773
+
+> 
+> rfit1 <- coxph(Surv(time,status) ~ rx + frailty(litter, theta=1), rats,
++ 	     method='breslow')
+> rfit1
+Call:
+coxph(formula = Surv(time, status) ~ rx + frailty(litter, theta = 1), 
+    data = rats, method = "breslow")
+
+                          coef  se(coef) se2   Chisq DF   p     
+rx                        0.918 0.327    0.321  7.85  1.0 0.0051
+frailty(litter, theta = 1                      27.25 22.7 0.2300
+
+Iterations: 1 outer, 5 Newton-Raphson
+     Variance of random effect= 1   I-likelihood = -181.5 
+Degrees of freedom for terms=  1.0 22.7 
+Likelihood ratio test=50.7  on 23.7 df, p=0.00100  n= 150 
+> 
+> rfit2 <- coxph(Surv(time,status) ~ frailty(litter), rats)
+> rfit2
+Call:
+coxph(formula = Surv(time, status) ~ frailty(litter), data = rats)
+
+                coef se(coef) se2 Chisq DF   p   
+frailty(litter)                   18.0  14.6 0.24
+
+Iterations: 6 outer, 17 Newton-Raphson
+     Variance of random effect= 0.504   I-likelihood = -184.8 
+Degrees of freedom for terms= 14.6 
+Likelihood ratio test=30  on 14.6 df, p=0.0101  n= 150 
+> #
+> # Here is a test case with multiple smoothing terms
+> #
+> data(lung)
+> fit0 <- coxph(Surv(time, status) ~ ph.ecog + age, lung)
+> fit1 <- coxph(Surv(time, status) ~ ph.ecog + pspline(age,3), lung)
+Loading required package: splines 
+> fit2 <- coxph(Surv(time, status) ~ ph.ecog + pspline(age,4), lung)
+> fit3 <- coxph(Surv(time, status) ~ ph.ecog + pspline(age,8), lung)
+> 
+> 
+> 
+> fit4 <- coxph(Surv(time, status) ~ ph.ecog + pspline(wt.loss,3), lung)
+> 
+> fit5 <-coxph(Surv(time, status) ~ ph.ecog + pspline(age,3) + 
++ 	     pspline(wt.loss,3), lung)
+> 
+> fit1
+Call:
+coxph(formula = Surv(time, status) ~ ph.ecog + pspline(age, 3), 
+    data = lung)
+
+                        coef   se(coef) se2     Chisq DF   p      
+ph.ecog                 0.4480 0.11707  0.11678 14.64 1.00 0.00013
+pspline(age, 3), linear 0.0113 0.00928  0.00928  1.47 1.00 0.22000
+pspline(age, 3), nonlin                          2.08 2.08 0.37000
+
+Iterations: 4 outer, 10 Newton-Raphson
+     Theta= 0.861 
+Degrees of freedom for terms= 1.0 3.1 
+Likelihood ratio test=21.9  on 4.08 df, p=0.000227
+  n=227 (1 observations deleted due to missing)
+> fit2
+Call:
+coxph(formula = Surv(time, status) ~ ph.ecog + pspline(age, 4), 
+    data = lung)
+
+                        coef   se(coef) se2     Chisq DF   p      
+ph.ecog                 0.4505 0.11766  0.11723 14.66 1.00 0.00013
+pspline(age, 4), linear 0.0112 0.00927  0.00927  1.45 1.00 0.23000
+pspline(age, 4), nonlin                          2.96 3.08 0.41000
+
+Iterations: 4 outer, 10 Newton-Raphson
+     Theta= 0.797 
+Degrees of freedom for terms= 1.0 4.1 
+Likelihood ratio test=22.7  on 5.07 df, p=0.000412
+  n=227 (1 observations deleted due to missing)
+> fit3
+Call:
+coxph(formula = Surv(time, status) ~ ph.ecog + pspline(age, 8), 
+    data = lung)
+
+                        coef   se(coef) se2     Chisq DF   p      
+ph.ecog                 0.4764 0.12024  0.11925 15.70 1.00 7.4e-05
+pspline(age, 8), linear 0.0117 0.00923  0.00923  1.61 1.00 2.0e-01
+pspline(age, 8), nonlin                          6.93 6.99 4.3e-01
+
+Iterations: 5 outer, 13 Newton-Raphson
+     Theta= 0.69 
+Degrees of freedom for terms= 1 8 
+Likelihood ratio test=27.6  on 8.97 df, p=0.00108
+  n=227 (1 observations deleted due to missing)
+> fit4
+Call:
+coxph(formula = Surv(time, status) ~ ph.ecog + pspline(wt.loss, 
+    3), data = lung)
+
+                          coef     se(coef) se2     Chisq DF   p      
+ph.ecog                    0.51545 0.12960  0.12737 15.82 1.00 0.00007
+pspline(wt.loss, 3), line -0.00702 0.00655  0.00655  1.15 1.00 0.28000
+pspline(wt.loss, 3), nonl                            2.45 2.09 0.31000
+
+Iterations: 3 outer, 8 Newton-Raphson
+     Theta= 0.776 
+Degrees of freedom for terms= 1.0 3.1 
+Likelihood ratio test=21.1  on 4.06 df, p=0.000326
+  n=213 (15 observations deleted due to missing)
+> fit5
+Call:
+coxph(formula = Surv(time, status) ~ ph.ecog + pspline(age, 3) + 
+    pspline(wt.loss, 3), data = lung)
+
+                          coef     se(coef) se2     Chisq DF   p      
+ph.ecog                    0.47422 0.13495  0.13206 12.35 1.00 0.00044
+pspline(age, 3), linear    0.01368 0.00976  0.00974  1.96 1.00 0.16000
+pspline(age, 3), nonlin                              1.90 2.07 0.40000
+pspline(wt.loss, 3), line -0.00717 0.00661  0.00660  1.18 1.00 0.28000
+pspline(wt.loss, 3), nonl                            2.08 2.03 0.36000
+
+Iterations: 4 outer, 10 Newton-Raphson
+     Theta= 0.85 
+     Theta= 0.78 
+Degrees of freedom for terms= 1.0 3.1 3.0 
+Likelihood ratio test=25.2  on 7.06 df, p=0.000726
+  n=213 (15 observations deleted due to missing)
+> 
+> rm(fit1, fit2, fit3, fit4, fit5)
+> #
+> # Test on the ovarian data
+> data(ovarian)
+> fit1 <- coxph(Surv(futime, fustat) ~ rx + age, ovarian)
+> fit2 <- coxph(Surv(futime, fustat) ~ rx + pspline(age, df=2), 
++ 		data=ovarian)
+> fit2$iter
+[1] 2 7
+> 
+> fit2$df
+[1] 0.9426611 1.9293052
+> 
+> fit2$history
+$"pspline(age, df = 2)"
+$"pspline(age, df = 2)"$theta
+[1] 0.4468868
+
+$"pspline(age, df = 2)"$done
+[1] TRUE
+
+$"pspline(age, df = 2)"$history
+        thetas      dfs
+[1,] 1.0000000 1.000000
+[2,] 0.0000000 5.000000
+[3,] 0.6000000 1.734267
+[4,] 0.4845205 1.929305
+
+$"pspline(age, df = 2)"$half
+[1] 0
+
+
+> 
+> fit4 <- coxph(Surv(futime, fustat) ~ rx + pspline(age, df=4), 
++ 		data=ovarian)
+> fit4
+Call:
+coxph(formula = Surv(futime, fustat) ~ rx + pspline(age, df = 4), 
+    data = ovarian)
+
+                          coef   se(coef) se2    Chisq DF   p     
+rx                        -0.373 0.761    0.7485 0.24  1.00 0.6200
+pspline(age, df = 4), lin  0.139 0.044    0.0440 9.98  1.00 0.0016
+pspline(age, df = 4), non                        2.59  2.93 0.4500
+
+Iterations: 3 outer, 13 Newton-Raphson
+     Theta= 0.242 
+Degrees of freedom for terms= 1.0 3.9 
+Likelihood ratio test=19.4  on 4.9 df, p=0.00149  n= 26 
+> 
+> 
+> # Simulation for the ovarian data set
+> #
+> fit1 <- coxph(Surv(futime, fustat) ~ rx + ridge(age, ecog.ps, theta=1),
++ 	      ovarian)
+> 
+> dfs <- eigen(solve(fit1$var, fit1$var2))$values
+> 
+> if (gc()[2,1]>60000){
++ set.seed(42)
++ temp <- matrix(rnorm(30000), ncol=3)
++ temp2 <- apply((temp^2) %*% dfs, 1, sum)
++ 
++ round(rbind(quantile(temp2, c(.8, .9, .95, .99)), 
++ 	     qchisq( c(.8, .9, .95, .99), sum(fit1$df))), 3)
++ }
+> # From:	McGilchrist and Aisbett, Biometrics 47, 461-66, 1991
+> # Data on the recurrence times to infection, at the point of insertion of
+> #  the catheter, for kidney patients using portable dialysis equipment.
+> #  Catheters may be removed for reasons other than infection, in which case
+> #  the observation is censored.  Each patient has exactly 2 observations.
+> 
+> # Variables: patient, time, status, age, 
+> #	   sex (1=male, 2=female),
+> #	   disease type (0=GN, 1=AN, 2=PKD, 3=Other)
+> #	   author's estimate of the frailty
+> 
+> # I don't match their answers, and I think that I'm right
+> 
+> kidney <- read.table('data.kidney', col.names=c("id", "time", "status",
++ 				      "age", "sex", "disease", "frail"))
+> kidney$disease <- factor(kidney$disease, levels=c(3, 0:2),
++ 			 labels=c('Other', 'GN', 'AN', "PKD"))
+> 
+> kfit <- coxph(Surv(time, status)~ age + sex + disease + frailty(id), kidney)
+> kfit1<- coxph(Surv(time, status) ~age + sex + disease +
++ 	      frailty(id, theta=1), kidney, iter=20)
+> kfit0 <- coxph(Surv(time, status)~ age + sex + disease, kidney)
+> temp <-  coxph(Surv(time, status) ~age + sex + disease +
++ 	      frailty(id, theta=1, sparse=F), kidney)
+> 
+> 
+> # Check out the EM based score equations
+> #  temp1 and kfit1 should have essentially the same coefficients
+> #  temp2 should equal kfit1$frail
+> # equality won't be exact because of the different iteration paths
+> temp1 <- coxph(Surv(time, status) ~ age + sex + disease +
++ 	       offset(kfit1$frail[id]), kidney)
+> rr <- tapply(resid(temp1), kidney$id, sum)
+> temp2 <- log(rr/1 +1)
+> all.equal(temp1$coef, kfit1$coef) ##FAILS in S-PLUS
+[1] "Mean relative  difference: 9.243907e-06"
+> all.equal(temp2, kfit1$frail) ##FAILS in S-PLUS
+[1] "names for target but not for current"                             
+[2] "Attributes: < Modes: list, NULL >"                                
+[3] "Attributes: < Lengths: 2, 0 >"                                    
+[4] "Attributes: < names for target but not for current >"             
+[5] "Attributes: < Length mismatch: comparison on first 0 components >"
+[6] "target is array, current is numeric"                              
+> 
+> kfit
+Call:
+coxph(formula = Surv(time, status) ~ age + sex + disease + frailty(id), 
+    data = kidney)
+
+            coef     se(coef) se2    Chisq DF p      
+age          0.00318 0.0111   0.0111  0.08 1  7.8e-01
+sex         -1.48314 0.3582   0.3582 17.14 1  3.5e-05
+diseaseGN    0.08796 0.4064   0.4064  0.05 1  8.3e-01
+diseaseAN    0.35079 0.3997   0.3997  0.77 1  3.8e-01
+diseasePKD  -1.43111 0.6311   0.6311  5.14 1  2.3e-02
+frailty(id)                           0.00 0  9.3e-01
+
+Iterations: 6 outer, 28 Newton-Raphson
+     Variance of random effect= 5e-07   I-likelihood = -179.1 
+Degrees of freedom for terms= 1 1 3 0 
+Likelihood ratio test=17.6  on 5 df, p=0.00342  n= 76 
+> kfit1
+Call:
+coxph(formula = Surv(time, status) ~ age + sex + disease + frailty(id, 
+    theta = 1), data = kidney, iter = 20)
+
+                       coef     se(coef) se2     Chisq DF   p      
+age                     0.00389 0.0196   0.00943  0.04  1.0 0.84000
+sex                    -2.00788 0.5910   0.41061 11.54  1.0 0.00068
+diseaseGN               0.35334 0.7165   0.38015  0.24  1.0 0.62000
+diseaseAN               0.52363 0.7229   0.40462  0.52  1.0 0.47000
+diseasePKD             -0.45980 1.0898   0.66091  0.18  1.0 0.67000
+frailty(id, theta = 1)                           28.48 18.8 0.06900
+
+Iterations: 1 outer, 10 Newton-Raphson
+     Variance of random effect= 1   I-likelihood = -182.5 
+Degrees of freedom for terms=  0.2  0.5  1.1 18.8 
+Likelihood ratio test=63.8  on 20.6 df, p=2.55e-06  n= 76 
+> kfit0
+Call:
+coxph(formula = Surv(time, status) ~ age + sex + disease, data = kidney)
+
+
+               coef exp(coef) se(coef)      z       p
+age         0.00318     1.003   0.0111  0.285 7.8e-01
+sex        -1.48319     0.227   0.3582 -4.140 3.5e-05
+diseaseGN   0.08796     1.092   0.4064  0.216 8.3e-01
+diseaseAN   0.35078     1.420   0.3997  0.878 3.8e-01
+diseasePKD -1.43111     0.239   0.6311 -2.268 2.3e-02
+
+Likelihood ratio test=17.6  on 5 df, p=0.00342  n= 76 
+> temp 
+Call:
+coxph(formula = Surv(time, status) ~ age + sex + disease + frailty(id, 
+    theta = 1, sparse = F), data = kidney)
+
+                          coef     se(coef) se2    Chisq DF   p      
+age                        0.00389 0.0186   0.0112  0.04  1.0 0.83000
+sex                       -2.00763 0.5762   0.4080 12.14  1.0 0.00049
+diseaseGN                  0.35335 0.6786   0.4315  0.27  1.0 0.60000
+diseaseAN                  0.52340 0.6891   0.4404  0.58  1.0 0.45000
+diseasePKD                -0.45934 1.0139   0.7130  0.21  1.0 0.65000
+frailty(id, theta = 1, sp                          26.23 18.7 0.12000
+
+Iterations: 1 outer, 5 Newton-Raphson
+     Variance of random effect= 1   I-likelihood = -182.5 
+Degrees of freedom for terms=  0.4  0.5  1.4 18.7 
+Likelihood ratio test=63.8  on 21.0 df, p=3.27e-06  n= 76 
+> 
+> #
+> # Now fit the data using REML
+> #
+> kfitm1 <- coxph(Surv(time,status) ~ age + sex + disease + 
++ 		frailty(id, dist='gauss'), kidney)
+> kfitm2 <- coxph(Surv(time,status) ~ age + sex + disease + 
++ 		      frailty(id, dist='gauss', sparse=F), kidney)
+> kfitm1
+Call:
+coxph(formula = Surv(time, status) ~ age + sex + disease + frailty(id, 
+    dist = "gauss"), data = kidney)
+
+                          coef     se(coef) se2    Chisq DF   p      
+age                        0.00489 0.0150   0.0106  0.11  1.0 0.74000
+sex                       -1.69703 0.4609   0.3617 13.56  1.0 0.00023
+diseaseGN                  0.17980 0.5447   0.3927  0.11  1.0 0.74000
+diseaseAN                  0.39283 0.5447   0.3982  0.52  1.0 0.47000
+diseasePKD                -1.13630 0.8250   0.6173  1.90  1.0 0.17000
+frailty(id, dist = "gauss                          17.89 12.1 0.12000
+
+Iterations: 6 outer, 30 Newton-Raphson
+     Variance of random effect= 0.493 
+Degrees of freedom for terms=  0.5  0.6  1.7 12.1 
+Likelihood ratio test=47.5  on 14.9 df, p=2.82e-05  n= 76 
+> summary(kfitm2)
+Call:
+coxph(formula = Surv(time, status) ~ age + sex + disease + frailty(id, 
+    dist = "gauss", sparse = F), data = kidney)
+
+  n= 76 
+                          coef     se(coef) se2    Chisq DF   p      
+age                        0.00492 0.0149   0.0108  0.11  1.0 0.74000
+sex                       -1.70204 0.4631   0.3613 13.51  1.0 0.00024
+diseaseGN                  0.18173 0.5413   0.4017  0.11  1.0 0.74000
+diseaseAN                  0.39442 0.5428   0.4052  0.53  1.0 0.47000
+diseasePKD                -1.13160 0.8175   0.6298  1.92  1.0 0.17000
+frailty(id, dist = "gauss                          18.13 12.3 0.12000
+
+           exp(coef) exp(-coef) lower .95 upper .95
+age            1.005      0.995    0.9760     1.035
+sex            0.182      5.485    0.0736     0.452
+diseaseGN      1.199      0.834    0.4151     3.465
+diseaseAN      1.484      0.674    0.5120     4.299
+diseasePKD     0.323      3.101    0.0650     1.601
+gauss:1        1.701      0.588    0.5181     5.586
+gauss:2        1.424      0.702    0.3851     5.266
+gauss:3        1.159      0.863    0.3828     3.511
+gauss:4        0.623      1.606    0.2340     1.657
+gauss:5        1.254      0.797    0.3981     3.953
+gauss:6        1.135      0.881    0.3834     3.360
+gauss:7        1.973      0.507    0.5694     6.834
+gauss:8        0.620      1.614    0.2166     1.772
+gauss:9        0.823      1.215    0.2888     2.346
+gauss:10       0.503      1.988    0.1747     1.448
+gauss:11       0.757      1.322    0.2708     2.113
+gauss:12       1.105      0.905    0.3343     3.651
+gauss:13       1.302      0.768    0.4275     3.967
+gauss:14       0.591      1.691    0.1854     1.885
+gauss:15       0.545      1.835    0.1858     1.598
+gauss:16       1.044      0.958    0.3142     3.470
+gauss:17       0.914      1.095    0.3000     2.782
+gauss:18       0.918      1.089    0.3248     2.597
+gauss:19       0.643      1.556    0.1951     2.117
+gauss:20       1.170      0.855    0.3453     3.963
+gauss:21       0.334      2.997    0.1020     1.091
+gauss:22       0.687      1.455    0.2353     2.006
+gauss:23       1.478      0.677    0.4756     4.592
+gauss:24       1.017      0.983    0.3156     3.278
+gauss:25       0.810      1.235    0.2749     2.384
+gauss:26       0.614      1.627    0.2149     1.757
+gauss:27       1.088      0.919    0.3282     3.610
+gauss:28       1.542      0.649    0.4923     4.829
+gauss:29       1.379      0.725    0.4377     4.342
+gauss:30       1.375      0.727    0.4444     4.253
+gauss:31       1.445      0.692    0.4703     4.438
+gauss:32       1.199      0.834    0.3521     4.085
+gauss:33       1.945      0.514    0.5523     6.849
+gauss:34       0.862      1.161    0.2769     2.682
+gauss:35       1.703      0.587    0.5266     5.508
+gauss:36       0.827      1.209    0.2281     3.002
+gauss:37       1.471      0.680    0.3894     5.555
+gauss:38       1.048      0.954    0.3068     3.579
+
+Iterations: 6 outer, 17 Newton-Raphson
+     Variance of random effect= 0.509 
+Degrees of freedom for terms=  0.5  0.6  1.7 12.3 
+Rsquare= 0.788   (max possible= 0.997 )
+Likelihood ratio test= 118  on 15.1 df,   p=0
+Wald test            = 37.4  on 15.1 df,   p=0.00119
+> #
+> # Fit the kidney data using AIC
+> #
+> 
+> # gamma, corrected aic
+> coxph(Surv(time, status) ~ age + sex + frailty(id, method='aic', caic=T), 
++       kidney)
+Call:
+coxph(formula = Surv(time, status) ~ age + sex + frailty(id, 
+    method = "aic", caic = T), data = kidney)
+
+                          coef     se(coef) se2     Chisq DF  p      
+age                        0.00364 0.0105   0.00891  0.12 1.0 0.73000
+sex                       -1.31907 0.3955   0.32493 11.13 1.0 0.00085
+frailty(id, method = "aic                           13.54 7.8 0.08700
+
+Iterations: 9 outer, 47 Newton-Raphson
+     Variance of random effect= 0.202   I-likelihood = -182.1 
+Degrees of freedom for terms= 0.7 0.7 7.8 
+Likelihood ratio test=33.3  on 9.2 df, p=0.000137  n= 76 
+> 
+> coxph(Surv(time, status) ~ age + sex + frailty(id, dist='t'), kidney)
+Call:
+coxph(formula = Surv(time, status) ~ age + sex + frailty(id, 
+    dist = "t"), data = kidney)
+
+                        coef     se(coef) se2     Chisq DF   p     
+age                      0.00558 0.0120   0.00873  0.22  1.0 0.6400
+sex                     -1.65036 0.4810   0.38545 11.77  1.0 0.0006
+frailty(id, dist = "t")                           20.05 13.8 0.1200
+
+Iterations: 9 outer, 44 Newton-Raphson
+     Variance of random effect= 0.807 
+Degrees of freedom for terms=  0.5  0.6 13.8 
+Likelihood ratio test=48.2  on 14.9 df, p=2.24e-05  n= 76 
+> coxph(Surv(time, status) ~ age + sex + frailty(id, dist='gauss', method='aic',
++ 					       caic=T), kidney)
+Call:
+coxph(formula = Surv(time, status) ~ age + sex + frailty(id, 
+    dist = "gauss", method = "aic", caic = T), data = kidney)
+
+                          coef     se(coef) se2     Chisq DF   p     
+age                        0.00303 0.0103   0.00895  0.09 1.00 0.7700
+sex                       -1.15153 0.3637   0.30556 10.03 1.00 0.0015
+frailty(id, dist = "gauss                           12.36 6.76 0.0800
+
+Iterations: 7 outer, 30 Newton-Raphson
+     Variance of random effect= 0.185 
+Degrees of freedom for terms= 0.8 0.7 6.8 
+Likelihood ratio test=28.4  on 8.22 df, p=0.000476  n= 76 
+> 
+> 
+> # uncorrected aic
+> coxph(Surv(time, status) ~ age + sex + frailty(id, method='aic', caic=F), 
++       kidney)
+Call:
+coxph(formula = Surv(time, status) ~ age + sex + frailty(id, 
+    method = "aic", caic = F), data = kidney)
+
+                          coef     se(coef) se2     Chisq DF   p      
+age                        0.00758 0.0146   0.00836  0.27  1.0 0.60000
+sex                       -1.86230 0.5503   0.39401 11.45  1.0 0.00071
+frailty(id, method = "aic                           35.99 19.1 0.01100
+
+Iterations: 10 outer, 74 Newton-Raphson
+     Variance of random effect= 0.824   I-likelihood = -182.6 
+Degrees of freedom for terms=  0.3  0.5 19.1 
+Likelihood ratio test=60  on 19.9 df, p=6.83e-06  n= 76 
+Warning message: 
+Inner loop failed to coverge for iterations 4 in: coxpenal.fit(X, Y, strats, offset, init = init, control, weights = weights,  
+> 
+> coxph(Surv(time, status) ~ age + sex + frailty(id, dist='t', caic=F), kidney)
+Call:
+coxph(formula = Surv(time, status) ~ age + sex + frailty(id, 
+    dist = "t", caic = F), data = kidney)
+
+                          coef     se(coef) se2     Chisq DF   p     
+age                        0.00558 0.0120   0.00873  0.22  1.0 0.6400
+sex                       -1.65036 0.4810   0.38545 11.77  1.0 0.0006
+frailty(id, dist = "t", c                           20.05 13.8 0.1200
+
+Iterations: 9 outer, 44 Newton-Raphson
+     Variance of random effect= 0.807 
+Degrees of freedom for terms=  0.5  0.6 13.8 
+Likelihood ratio test=48.2  on 14.9 df, p=2.24e-05  n= 76 
+> #temp <- sas.get("../../../../data/moertel/sasdata", "anal")
+> #colon <- temp[temp$study==1,]
+> #rm(temp)
+> #colon$rx <- factor(colon$rx, levels=1:3, labels=c("Obs", "Lev", "Lev+5FU"))
+> data(colon)
+> #data.restore('data.colon')
+> #
+> # Fit models to the Colon cancer data used in Lin
+> #
+> fitc1 <- coxph(Surv(time, status) ~ rx + extent + node4 + cluster(id)
++ 	        + strata(etype), colon)
+> fitc1
+Call:
+coxph(formula = Surv(time, status) ~ rx + extent + node4 + cluster(id) + 
+    strata(etype), data = colon)
+
+
+             coef exp(coef) se(coef) robust se      z       p
+rxLev     -0.0362     0.964   0.0768     0.106 -0.343 7.3e-01
+rxLev+5FU -0.4488     0.638   0.0840     0.117 -3.842 1.2e-04
+extent     0.5155     1.674   0.0796     0.110  4.701 2.6e-06
+node4      0.8799     2.411   0.0681     0.096  9.160 0.0e+00
+
+Likelihood ratio test=248  on 4 df, p=0  n= 1858 
+> 
+> fitc2 <- coxph(Surv(time, status) ~ rx + extent + node4 + 
++ 	       frailty(id, dist='gauss', trace=T)
++ 	        + strata(etype), colon)
+     theta     resid      fsum    trace
+[1,]     1 0.5721865  677.2472 498.2323
+[2,]     3 0.8244916 2430.3958 880.5538
+    new theta= 6 
+
+     theta     resid      fsum     trace
+[1,]     1 0.5721865  677.2472  498.2323
+[2,]     3 0.8244916 2430.3958  880.5538
+[3,]     6 0.3152272 4520.0041 1279.6138
+    new theta= 12 
+
+     theta      resid      fsum     trace
+[1,]     1  0.5721865  677.2472  498.2323
+[2,]     3  0.8244916 2430.3958  880.5538
+[3,]     6  0.3152272 4520.0041 1279.6138
+[4,]    12 -2.1486199 7550.5646 1950.6313
+    new theta= 7.554873 
+
+         theta      resid      fsum     trace
+[1,]  1.000000  0.5721865  677.2472  498.2323
+[2,]  3.000000  0.8244916 2430.3958  880.5538
+[3,]  6.000000  0.3152272 4520.0041 1279.6138
+[4,] 12.000000 -2.1486199 7550.5646 1950.6313
+[5,]  7.554873 -0.1827268 5420.8778 1463.2371
+    new theta= 7.004443 
+
+         theta       resid      fsum     trace
+[1,]  1.000000  0.57218652  677.2472  498.2323
+[2,]  3.000000  0.82449159 2430.3958  880.5538
+[3,]  6.000000  0.31522725 4520.0041 1279.6138
+[4,] 12.000000 -2.14861992 7550.5646 1950.6313
+[5,]  7.554873 -0.18272677 5420.8778 1463.2371
+[6,]  7.004443  0.02102504 5123.0634 1399.3956
+    new theta= 7.06674 
+
+         theta       resid      fsum     trace
+[1,]  1.000000  0.57218652  677.2472  498.2323
+[2,]  3.000000  0.82449159 2430.3958  880.5538
+[3,]  6.000000  0.31522725 4520.0041 1279.6138
+[4,] 12.000000 -2.14861992 7550.5646 1950.6313
+[5,]  7.554873 -0.18272677 5420.8778 1463.2371
+[6,]  7.004443  0.02102504 5123.0634 1399.3956
+[7,]  7.066740 -0.01293658 5148.9076 1406.6504
+    new theta= 7.04162 
+
+         theta        resid      fsum     trace
+[1,]  1.000000  0.572186518  677.2472  498.2323
+[2,]  3.000000  0.824491593 2430.3958  880.5538
+[3,]  6.000000  0.315227245 4520.0041 1279.6138
+[4,] 12.000000 -2.148619920 7550.5646 1950.6313
+[5,]  7.554873 -0.182726773 5420.8778 1463.2371
+[6,]  7.004443  0.021025043 5123.0634 1399.3956
+[7,]  7.066740 -0.012936579 5148.9076 1406.6504
+[8,]  7.041620  0.003463959 5140.3971 1403.7958
+    new theta= 7.047698 
+
+          theta        resid      fsum     trace
+ [1,]  1.000000  0.572186518  677.2472  498.2323
+ [2,]  3.000000  0.824491593 2430.3958  880.5538
+ [3,]  6.000000  0.315227245 4520.0041 1279.6138
+ [4,] 12.000000 -2.148619920 7550.5646 1950.6313
+ [5,]  7.554873 -0.182726773 5420.8778 1463.2371
+ [6,]  7.004443  0.021025043 5123.0634 1399.3956
+ [7,]  7.066740 -0.012936579 5148.9076 1406.6504
+ [8,]  7.041620  0.003463959 5140.3971 1403.7958
+ [9,]  7.047698 -0.001163083 5142.0167 1404.4463
+    new theta= 7.046096 
+
+          theta         resid      fsum     trace
+ [1,]  1.000000  5.721865e-01  677.2472  498.2323
+ [2,]  3.000000  8.244916e-01 2430.3958  880.5538
+ [3,]  6.000000  3.152272e-01 4520.0041 1279.6138
+ [4,] 12.000000 -2.148620e+00 7550.5646 1950.6313
+ [5,]  7.554873 -1.827268e-01 5420.8778 1463.2371
+ [6,]  7.004443  2.102504e-02 5123.0634 1399.3956
+ [7,]  7.066740 -1.293658e-02 5148.9076 1406.6504
+ [8,]  7.041620  3.463959e-03 5140.3971 1403.7958
+ [9,]  7.047698 -1.163083e-03 5142.0167 1404.4463
+[10,]  7.046096 -1.820316e-05 5141.5307 1404.2792
+    new theta= 7.046071 
+
+Warning message: 
+Inner loop failed to coverge for iterations 4 in: coxpenal.fit(X, Y, strats, offset, init = init, control, weights = weights,  
+> fitc2
+Call:
+coxph(formula = Surv(time, status) ~ rx + extent + node4 + frailty(id, 
+    dist = "gauss", trace = T) + strata(etype), data = colon)
+
+                          coef    se(coef) se2    Chisq   DF  p      
+rxLev                     -0.0267 0.241    0.0824    0.01   1 9.1e-01
+rxLev+5FU                 -0.7880 0.243    0.1071   10.50   1 1.2e-03
+extent                     1.1305 0.218    0.1068   26.81   1 2.2e-07
+node4                      2.1266 0.210    0.0984  102.56   1 0.0e+00
+frailty(id, dist = "gauss                         5464.64 730 0.0e+00
+
+Iterations: 10 outer, 77 Newton-Raphson
+     Variance of random effect= 7.05 
+Degrees of freedom for terms=   0.3   0.2   0.2 729.7 
+Likelihood ratio test=3544  on 730 df, p=0  n= 1858 
+> 
+> fitc3 <- coxph(Surv(time, status) ~ rx + extent + node4 + frailty(id, trace=T)
++ 	        + strata(etype), colon)
+     theta    loglik  c.loglik
+[1,]     0 -5846.216 -5846.216
+[2,]     1 -5305.049 -5590.102
+    new theta= 2 
+
+     theta    loglik  c.loglik
+[1,]     0 -5846.216 -5846.216
+[2,]     1 -5305.049 -5590.102
+[3,]     2 -5036.927 -5479.479
+    new theta= 4 
+
+     theta    loglik  c.loglik
+[1,]     0 -5846.216 -5846.216
+[2,]     1 -5305.049 -5590.102
+[3,]     2 -5036.927 -5479.479
+[4,]     4 -4740.394 -5385.887
+    new theta= 8 
+
+     theta    loglik  c.loglik
+[1,]     0 -5846.216 -5846.216
+[2,]     1 -5305.049 -5590.102
+[3,]     2 -5036.927 -5479.479
+[4,]     4 -4740.394 -5385.887
+[5,]     8 -4457.094 -5347.375
+    new theta= 16 
+
+     theta    loglik  c.loglik
+[1,]     0 -5846.216 -5846.216
+[2,]     1 -5305.049 -5590.102
+[3,]     2 -5036.927 -5479.479
+[4,]     4 -4740.394 -5385.887
+[5,]     8 -4457.094 -5347.375
+[6,]    16 -4223.785 -5393.362
+    new theta= 8.740343 
+
+         theta    loglik  c.loglik
+[1,]  0.000000 -5846.216 -5846.216
+[2,]  1.000000 -5305.049 -5590.102
+[3,]  2.000000 -5036.927 -5479.479
+[4,]  4.000000 -4740.394 -5385.887
+[5,]  8.000000 -4457.094 -5347.375
+[6,] 16.000000 -4223.785 -5393.362
+[7,]  8.740343 -4423.925 -5348.128
+    new theta= 8.058 
+
+         theta    loglik  c.loglik
+[1,]  0.000000 -5846.216 -5846.216
+[2,]  1.000000 -5305.049 -5590.102
+[3,]  2.000000 -5036.927 -5479.479
+[4,]  4.000000 -4740.394 -5385.887
+[5,]  8.000000 -4457.094 -5347.375
+[6,] 16.000000 -4223.785 -5393.362
+[7,]  8.740343 -4423.925 -5348.128
+[8,]  8.058000 -4454.347 -5347.375
+    new theta= 8.025556 
+
+          theta    loglik  c.loglik
+ [1,]  0.000000 -5846.216 -5846.216
+ [2,]  1.000000 -5305.049 -5590.102
+ [3,]  2.000000 -5036.927 -5479.479
+ [4,]  4.000000 -4740.394 -5385.887
+ [5,]  8.000000 -4457.094 -5347.375
+ [6,] 16.000000 -4223.785 -5393.362
+ [7,]  8.740343 -4423.925 -5348.128
+ [8,]  8.058000 -4454.347 -5347.375
+ [9,]  8.025556 -4455.875 -5347.369
+    new theta= 8.028123 
+
+Warning message: 
+Inner loop failed to coverge for iterations 5 6 in: coxpenal.fit(X, Y, strats, offset, init = init, control, weights = weights,  
+> fitc3
+Call:
+coxph(formula = Surv(time, status) ~ rx + extent + node4 + frailty(id, 
+    trace = T) + strata(etype), data = colon)
+
+                       coef    se(coef) se2   Chisq   DF  p      
+rxLev                   0.0434 0.305    0.140    0.02   1 8.9e-01
+rxLev+5FU              -0.5125 0.310    0.170    2.73   1 9.8e-02
+extent                  1.3373 0.251    0.137   28.45   1 9.6e-08
+node4                   2.3381 0.233    0.156  100.81   1 0.0e+00
+frailty(id, trace = T)                        5939.97 867 0.0e+00
+
+Iterations: 9 outer, 112 Newton-Raphson
+     Variance of random effect= 8.03   I-likelihood = -5347.4 
+Degrees of freedom for terms=   0.5   0.3   0.4 866.7 
+Likelihood ratio test=3787  on 868 df, p=0  n= 1858 
+> 
+> fitc4 <- coxph(Surv(time, status) ~ rx + extent + node4 + frailty(id, df=30)
++ 	        + strata(etype), colon)
+> fitc4
+Call:
+coxph(formula = Surv(time, status) ~ rx + extent + node4 + frailty(id, 
+    df = 30) + strata(etype), data = colon)
+
+                     coef    se(coef) se2    Chisq  DF p      
+rxLev                -0.0374 0.0789   0.0769   0.22  1 6.4e-01
+rxLev+5FU            -0.4565 0.0859   0.0840  28.27  1 1.1e-07
+extent                0.5289 0.0815   0.0798  42.13  1 8.5e-11
+node4                 0.9078 0.0701   0.0681 167.85  1 0.0e+00
+frailty(id, df = 30)                          58.56 30 1.4e-03
+
+Iterations: 3 outer, 9 Newton-Raphson
+     Variance of random effect= 0.0337   I-likelihood = -5832.4 
+Degrees of freedom for terms=  1.9  1.0  0.9 30.0 
+Likelihood ratio test=363  on 33.8 df, p=0  n= 1858 
+> 
+> # Do a fit, removing the no-event people
+> temp <- tapply(colon$status, colon$id, sum)
+> keep <- !(is.na(match(colon$id, names(temp[temp>0])))) 
+> fitc5 <- coxph(Surv(time, status) ~ rx + extent + node4 +cluster(id)
++ 	       + strata(etype), colon, subset=keep)
+> 
+> #
+> # Do the factor fit, but first remove the no-event people
+> #
+> #  Ha!  This routine has a factor with 506 levels.  It uses all available
+> #    memory, and can't finish in my patience window.  Commented out.
+> 
+> #fitc4 <- coxph(Surv(time, status) ~ rx + extent + node4 + factor(id), colon,
+> #	       subset=keep)
+> 
+> 
+> 
+> 
+> 
+> 
+> #
+> # The residual methods treat a sparse frailty as a fixed offset with
+> #   no variance
+> #
+> 
+> kfit1 <- coxph(Surv(time, status) ~ age + sex + 
++ 	           frailty(id, dist='gauss'), kidney)
+> tempf <- predict(kfit1, type='terms')[,3]  
+> temp  <- kfit1$frail[match(kidney$id, sort(unique(kidney$id)))]
+>  all.equal(unclass(tempf), unclass(temp))
+[1] "names for target but not for current"
+[2] "TRUE"                                
+>  all.equal(as.vector(tempf), as.vector(temp))
+[1] TRUE
+> 
+> # Now fit a model with explicit offset
+>  kfitx <- coxph(Surv(time, status) ~ age + sex + offset(tempf),kidney,
++ 	       eps=1e-7)
+> 
+> # These are not precisely the same, due to different iteration paths
+>  all.equal(kfitx$coef, kfit1$coef)
+[1] TRUE
+> 
+> # This will make them identical
+> kfitx <- coxph(Surv(time, status) ~ age + sex  + offset(temp),kidney,
++ 	       iter=0, init=kfit1$coef)
+> all.equal(resid(kfit1), resid(kfitx))
+[1] TRUE
+> all.equal(resid(kfit1, type='score'), resid(kfitx, type='score'))
+[1] TRUE
+> all.equal(resid(kfit1, type='schoe'), resid(kfitx, type='schoe'))
+[1] TRUE
+> 
+> # These are not the same, due to a different variance matrix
+> #  The frailty model's variance is about 2x the naive "assume an offset" var
+> # The score residuals are equal, however.
+> all.equal(resid(kfit1, type='dfbeta'), resid(kfitx, type='dfbeta'))
+[1] "Mean relative  difference: 0.5214642"
+> zed <- kfitx
+> zed$var <- kfit1$var
+> all.equal(resid(kfit1, type='dfbeta'), resid(zed, type='dfbeta'))
+[1] TRUE
+> 
+> 
+> temp1 <- resid(kfit1, type='score')
+> temp2 <- resid(kfitx, type='score')
+> all.equal(temp1, temp2)
+[1] TRUE
+> 
+> #
+> # Now for some tests of predicted values
+> #
+> all.equal(predict(kfit1, type='expected'), predict(kfitx, type='expected'))
+[1] TRUE
+> all.equal(predict(kfit1, type='lp'), predict(kfitx, type='lp'))
+[1] TRUE
+> 
+> temp1 <- predict(kfit1, type='terms', se.fit=T)
+> temp2 <- predict(kfitx, type='terms', se.fit=T)
+> all.equal(temp1$fit[,1:2], temp2$fit)
+[1] TRUE
+> all.equal(temp1$se.fit[,1:2], temp2$se.fit)  #should be false
+[1] "Mean relative  difference: 0.3023202"
+> mean(temp1$se.fit[,1:2]/ temp2$se.fit)
+[1] 1.432742
+> all.equal(as.vector(temp1$se.fit[,3])^2, 
++ 	  as.vector(kfit1$fvar[match(kidney$id, sort(unique(kidney$id)))]))
+[1] TRUE
+> 
+> print(temp1)
+$fit
+            age        sex frailty(id, dist = "gauss")
+1  -0.073958502  1.0394106                  0.59786111
+2  -0.073958502  1.0394106                  0.59786111
+3   0.020271945 -0.3712181                  0.38485832
+4   0.020271945 -0.3712181                  0.38485832
+5  -0.055112412  1.0394106                  0.20207583
+6  -0.055112412  1.0394106                  0.20207583
+7  -0.059823935 -0.3712181                 -0.55911485
+8  -0.055112412 -0.3712181                 -0.55911485
+9  -0.158765904  1.0394106                  0.28549873
+10 -0.158765904  1.0394106                  0.28549873
+11 -0.130496770 -0.3712181                  0.06626061
+12 -0.125785247 -0.3712181                  0.06626061
+13  0.034406512  1.0394106                  0.80459000
+14  0.034406512  1.0394106                  0.80459000
+15  0.053252601 -0.3712181                 -0.43812823
+16  0.057964123 -0.3712181                 -0.43812823
+17  0.119213914 -0.3712181                 -0.05626582
+18  0.119213914 -0.3712181                 -0.05626582
+19  0.034406512  1.0394106                 -0.49952683
+20  0.039118034  1.0394106                 -0.49952683
+21  0.001425855 -0.3712181                 -0.13020461
+22  0.001425855 -0.3712181                 -0.13020461
+23 -0.045689368 -0.3712181                  0.06374081
+24 -0.045689368 -0.3712181                  0.06374081
+25 -0.040977845 -0.3712181                  0.38796289
+26 -0.040977845 -0.3712181                  0.38796289
+27 -0.007997189 -0.3712181                 -0.47624190
+28 -0.007997189 -0.3712181                 -0.47624190
+29 -0.125785247 -0.3712181                 -0.66954879
+30 -0.125785247 -0.3712181                 -0.66954879
+31  0.076810213  1.0394106                  0.19352414
+32  0.076810213  1.0394106                  0.19352414
+33  0.076810213 -0.3712181                 -0.16474469
+34  0.076810213 -0.3712181                 -0.16474469
+35 -0.003285667 -0.3712181                 -0.15787841
+36  0.001425855 -0.3712181                 -0.15787841
+37  0.043829556 -0.3712181                 -0.46209283
+38  0.043829556 -0.3712181                 -0.46209283
+39  0.001425855 -0.3712181                  0.12596115
+40  0.001425855 -0.3712181                  0.12596115
+41  0.010848900  1.0394106                 -1.74241816
+42  0.015560422  1.0394106                 -1.74241816
+43 -0.064535457 -0.3712181                 -0.45191179
+44 -0.064535457 -0.3712181                 -0.45191179
+45  0.086233257 -0.3712181                  0.51548896
+46  0.090944780 -0.3712181                  0.51548896
+47 -0.007997189 -0.3712181                  0.09469348
+48 -0.003285667 -0.3712181                  0.09469348
+49 -0.003285667  1.0394106                  0.05795548
+50 -0.003285667  1.0394106                  0.05795548
+51  0.062675646 -0.3712181                 -0.37915463
+52  0.067387168 -0.3712181                 -0.37915463
+53 -0.158765904 -0.3712181                  0.11243130
+54 -0.158765904 -0.3712181                  0.11243130
+55  0.039118034 -0.3712181                  0.54762574
+56  0.039118034 -0.3712181                  0.54762574
+57  0.043829556  1.0394106                  0.45856914
+58  0.043829556  1.0394106                  0.45856914
+59  0.048541079 -0.3712181                  0.35623967
+60  0.048541079 -0.3712181                  0.35623967
+61  0.057964123 -0.3712181                  0.48779202
+62  0.057964123 -0.3712181                  0.48779202
+63  0.029694989 -0.3712181                  0.25581783
+64  0.034406512 -0.3712181                  0.25581783
+65  0.062675646 -0.3712181                  0.23046401
+66  0.062675646 -0.3712181                  0.23046401
+67  0.001425855 -0.3712181                 -0.13672108
+68  0.006137378 -0.3712181                 -0.13672108
+69 -0.102227636 -0.3712181                  0.51950930
+70 -0.102227636 -0.3712181                  0.51950930
+71 -0.007997189 -0.3712181                 -0.23862674
+72 -0.007997189 -0.3712181                 -0.23862674
+73  0.039118034 -0.3712181                  0.17164824
+74  0.039118034 -0.3712181                  0.17164824
+75  0.076810213  1.0394106                 -0.35798941
+76  0.076810213  1.0394106                 -0.35798941
+
+$se.fit
+           age       sex frailty(id, dist = "gauss")
+1  0.195822035 0.3279661                   0.6244919
+2  0.195822035 0.3279661                   0.6244919
+3  0.053674606 0.1171308                   0.6952595
+4  0.053674606 0.1171308                   0.6952595
+5  0.145922707 0.3279661                   0.5704061
+6  0.145922707 0.3279661                   0.5704061
+7  0.158397539 0.1171308                   0.4893554
+8  0.145922707 0.1171308                   0.4893554
+9  0.420369012 0.3279661                   0.6069822
+10 0.420369012 0.3279661                   0.6069822
+11 0.345520020 0.1171308                   0.5632659
+12 0.333045188 0.1171308                   0.5632659
+13 0.091099103 0.3279661                   0.6639923
+14 0.091099103 0.3279661                   0.6639923
+15 0.140998431 0.1171308                   0.5100815
+16 0.153473263 0.1171308                   0.5100815
+17 0.315646080 0.1171308                   0.5490307
+18 0.315646080 0.1171308                   0.5490307
+19 0.091099103 0.3279661                   0.5262813
+20 0.103573935 0.3279661                   0.5262813
+21 0.003775278 0.1171308                   0.5179992
+22 0.003775278 0.1171308                   0.5179992
+23 0.120973042 0.1171308                   0.6207106
+24 0.120973042 0.1171308                   0.6207106
+25 0.108498210 0.1171308                   0.5810134
+26 0.108498210 0.1171308                   0.5810134
+27 0.021174386 0.1171308                   0.6245776
+28 0.021174386 0.1171308                   0.6245776
+29 0.333045188 0.1171308                   0.5614453
+30 0.333045188 0.1171308                   0.5614453
+31 0.203372591 0.3279661                   0.6530508
+32 0.203372591 0.3279661                   0.6530508
+33 0.203372591 0.1171308                   0.5246117
+34 0.203372591 0.1171308                   0.5246117
+35 0.008699554 0.1171308                   0.5105633
+36 0.003775278 0.1171308                   0.5105633
+37 0.116048767 0.1171308                   0.6282338
+38 0.116048767 0.1171308                   0.6282338
+39 0.003775278 0.1171308                   0.6318230
+40 0.003775278 0.1171308                   0.6318230
+41 0.028724942 0.3279661                   0.5233805
+42 0.041199774 0.3279661                   0.5233805
+43 0.170872371 0.1171308                   0.5490773
+44 0.170872371 0.1171308                   0.5490773
+45 0.228322255 0.1171308                   0.6057277
+46 0.240797087 0.1171308                   0.6057277
+47 0.021174386 0.1171308                   0.6266224
+48 0.008699554 0.1171308                   0.6266224
+49 0.008699554 0.3279661                   0.5525454
+50 0.008699554 0.3279661                   0.5525454
+51 0.165948095 0.1171308                   0.5555328
+52 0.178422927 0.1171308                   0.5555328
+53 0.420369012 0.1171308                   0.5848260
+54 0.420369012 0.1171308                   0.5848260
+55 0.103573935 0.1171308                   0.6080357
+56 0.103573935 0.1171308                   0.6080357
+57 0.116048767 0.3279661                   0.6008923
+58 0.116048767 0.3279661                   0.6008923
+59 0.128523599 0.1171308                   0.5760879
+60 0.128523599 0.1171308                   0.5760879
+61 0.153473263 0.1171308                   0.5981138
+62 0.153473263 0.1171308                   0.5981138
+63 0.078624270 0.1171308                   0.6612065
+64 0.091099103 0.1171308                   0.6612065
+65 0.165948095 0.1171308                   0.5608325
+66 0.165948095 0.1171308                   0.5608325
+67 0.003775278 0.1171308                   0.5843468
+68 0.016250110 0.1171308                   0.5843468
+69 0.270671027 0.1171308                   0.6088168
+70 0.270671027 0.1171308                   0.6088168
+71 0.021174386 0.1171308                   0.6793365
+72 0.021174386 0.1171308                   0.6793365
+73 0.103573935 0.1171308                   0.6419952
+74 0.103573935 0.1171308                   0.6419952
+75 0.203372591 0.3279661                   0.5778115
+76 0.203372591 0.3279661                   0.5778115
+
+> kfit1
+Call:
+coxph(formula = Surv(time, status) ~ age + sex + frailty(id, 
+    dist = "gauss"), data = kidney)
+
+                          coef     se(coef) se2     Chisq DF   p     
+age                        0.00471 0.0125   0.00856  0.14  1.0 0.7100
+sex                       -1.41063 0.4451   0.31503 10.04  1.0 0.0015
+frailty(id, dist = "gauss                           26.54 14.7 0.0290
+
+Iterations: 6 outer, 28 Newton-Raphson
+     Variance of random effect= 0.569 
+Degrees of freedom for terms=  0.5  0.5 14.7 
+Likelihood ratio test=47.5  on 15.7 df, p=4.65e-05  n= 76 
+> kfitx
+Call:
+coxph(formula = Surv(time, status) ~ age + sex + offset(temp), 
+    data = kidney, init = kfit1$coef, iter = 0)
+
+
+        coef exp(coef) se(coef)      z       p
+age  0.00471     1.005  0.00875  0.538 5.9e-01
+sex -1.41063     0.244  0.30916 -4.563 5.0e-06
+
+Likelihood ratio test=0  on 2 df, p=1  n= 76 
+> 
+> rm(temp1, temp2, kfitx, zed, tempf)
+> #
+> # The special case of a single sparse frailty
+> #
+> 
+> kfit1 <- coxph(Surv(time, status) ~ frailty(id, dist='gauss'), kidney)
+> tempf <- predict(kfit1, type='terms')
+> temp  <- kfit1$frail[match(kidney$id, sort(unique(kidney$id)))]
+> all.equal(as.vector(tempf), as.vector(temp))
+[1] TRUE
+> 
+> # Now fit a model with explicit offset
+> kfitx <- coxph(Surv(time, status) ~ offset(tempf),kidney, eps=1e-7)
+> 
+> all.equal(resid(kfit1), resid(kfitx))
+[1] TRUE
+> all.equal(resid(kfit1, type='deviance'), resid(kfitx, type='deviance'))
+[1] TRUE
+> 
+> #
+> # Some tests of predicted values
+> #
+> aeq <- function(x,y) all.equal(as.vector(x), as.vector(y))
+> aeq(predict(kfit1, type='expected'), predict(kfitx, type='expected'))
+[1] TRUE
+> aeq(predict(kfit1, type='lp'), predict(kfitx, type='lp'))
+[1] TRUE
+> 
+> temp1 <- predict(kfit1, type='terms', se.fit=T)
+> all.equal(temp1$fit, kfitx$linear)
+[1] TRUE
+> all.equal(temp1$se.fit^2, 
++ 	  kfit1$fvar[match(kidney$id, sort(unique(kidney$id)))])
+[1] TRUE
+> 
+> temp1
+$fit
+ [1]  0.695322941  0.695322941  0.244363776  0.244363776  0.493777896
+ [6]  0.493777896 -0.658879753 -0.658879753  0.520994314  0.520994314
+[11] -0.114379760 -0.114379760  0.799261991  0.799261991 -0.487795409
+[16] -0.487795409 -0.120271844 -0.120271844  0.131081160  0.131081160
+[21] -0.214822375 -0.214822375 -0.054773695 -0.054773695  0.184575874
+[26]  0.184575874 -0.509525783 -0.509525783 -0.790241403 -0.790241403
+[31]  0.324356959  0.324356959 -0.239177390 -0.239177390 -0.264230973
+[36] -0.264230973 -0.472242362 -0.472242362  0.006350496  0.006350496
+[41] -0.872904122 -0.872904122 -0.530513459 -0.530513459  0.351179181
+[46]  0.351179181 -0.037129299 -0.037129299  0.441718240  0.441718240
+[51] -0.418876639 -0.418876639 -0.107887816 -0.107887816  0.346099359
+[56]  0.346099359  0.658680102  0.658680102  0.197185714  0.197185714
+[61]  0.304679320  0.304679320  0.139630271  0.139630271  0.093562534
+[66]  0.093562534 -0.209483283 -0.209483283  0.301887374  0.301887374
+[71] -0.278636264 -0.278636264  0.068590872  0.068590872  0.078473259
+[76]  0.078473259
+
+$se.fit
+ [1] 0.6147113 0.6147113 0.6157024 0.6157024 0.5713312 0.5713312 0.4392271
+ [8] 0.4392271 0.5759022 0.5759022 0.4832712 0.4832712 0.6417752 0.6417752
+[15] 0.4573402 0.4573402 0.4812024 0.4812024 0.5118065 0.5118065 0.4762681
+[22] 0.4762681 0.5530110 0.5530110 0.5193604 0.5193604 0.5531610 0.5531610
+[29] 0.4773814 0.4773814 0.6361045 0.6361045 0.4707460 0.4707460 0.4669424
+[36] 0.4669424 0.5597930 0.5597930 0.5639378 0.5639378 0.4648879 0.4648879
+[43] 0.4902904 0.4902904 0.5446419 0.5446419 0.5567662 0.5567662 0.5606017
+[50] 0.5606017 0.4994076 0.4994076 0.4830103 0.4830103 0.5450207 0.5450207
+[57] 0.6054682 0.6054682 0.5207580 0.5207580 0.5374623 0.5374623 0.5908553
+[64] 0.5908553 0.5063650 0.5063650 0.5288166 0.5288166 0.5366511 0.5366511
+[71] 0.5992889 0.5992889 0.5760201 0.5760201 0.5780104 0.5780104
+
+> kfit1
+Call:
+coxph(formula = Surv(time, status) ~ frailty(id, dist = "gauss"), 
+    data = kidney)
+
+                          coef se(coef) se2 Chisq DF   p    
+frailty(id, dist = "gauss                   23.0  13.8 0.057
+
+Iterations: 6 outer, 28 Newton-Raphson
+     Variance of random effect= 0.457 
+Degrees of freedom for terms= 13.8 
+Likelihood ratio test=33.4  on 13.8 df, p=0.00234  n= 76 
+> 
+> 
+> # From Gail, Sautner and Brown, Biometrics 36, 255-66, 1980
+> 
+> # 48 rats were injected with a carcinogen, and then randomized to either
+> # drug or placebo.  The number of tumors ranges from 0 to 13; all rats were
+> # censored at 6 months after randomization.
+> 
+> # Variables: rat, treatment (1=drug, 0=control), o
+> # 	   observation # within rat,
+> #	   (start, stop] status
+> # The raw data has some intervals of zero length, i.e., start==stop.
+> #  We add .1 to these times as an approximate solution
+> #
+> rat2 <- read.table('data.rat2', col.names=c('id', 'rx', 'enum', 'start',
++ 				  'stop', 'status'))
+> temp1 <- rat2$start
+> temp2 <- rat2$stop
+> for (i in 1:nrow(rat2)) {
++     if (temp1[i] == temp2[i]) {
++ 	temp2[i] <- temp2[i] + .1
++ 	if (i < nrow(rat2) && rat2$id[i] == rat2$id[i+1]) {
++ 	    temp1[i+1] <- temp1[i+1] + .1
++ 	    if (temp2[i+1] <= temp1[i+1]) temp2[i+1] _ temp1[i+1]
++ 	    }
++         }
++     }
+> rat2$start <- temp1
+> rat2$stop  <- temp2
+> 
+> r2fit0 <- coxph(Surv(start, stop, status) ~ rx + cluster(id), rat2)
+> 
+> r2fitg <-  coxph(Surv(start, stop, status) ~ rx + frailty(id), rat2)
+> r2fitm <-  coxph(Surv(start, stop, status) ~ rx + frailty.gaussian(id), rat2)
+> 
+> r2fit0
+Call:
+coxph(formula = Surv(start, stop, status) ~ rx + cluster(id), 
+    data = rat2)
+
+
+     coef exp(coef) se(coef) robust se     z       p
+rx -0.826     0.438    0.151     0.204 -4.04 5.3e-05
+
+Likelihood ratio test=32.9  on 1 df, p=9.9e-09  n= 253 
+> r2fitg
+Call:
+coxph(formula = Surv(start, stop, status) ~ rx + frailty(id), 
+    data = rat2)
+
+            coef   se(coef) se2   Chisq DF   p      
+rx          -0.838 0.219    0.152 14.6   1.0 0.00013
+frailty(id)                       57.3  26.4 0.00045
+
+Iterations: 7 outer, 21 Newton-Raphson
+     Variance of random effect= 0.317   I-likelihood = -779.1 
+Degrees of freedom for terms=  0.5 26.3 
+Likelihood ratio test=120  on 26.8 df, p=8.43e-14  n= 253 
+> r2fitm
+Call:
+coxph(formula = Surv(start, stop, status) ~ rx + frailty.gaussian(id), 
+    data = rat2)
+
+                     coef  se(coef) se2   Chisq DF   p      
+rx                   -0.79 0.220    0.154 12.9   1.0 3.3e-04
+frailty.gaussian(id)                      61.0  24.9 7.3e-05
+
+Iterations: 5 outer, 17 Newton-Raphson
+     Variance of random effect= 0.303 
+Degrees of freedom for terms=  0.5 24.9 
+Likelihood ratio test=118  on 25.4 df, p=7e-14  n= 253 
+> 
+> #This example is unusual: the frailties variances end up about the same,
+> #  but the effect on rx differs.  Double check it
+> # Because of different iteration paths, the coef won't be exactly the
+> #     same, but darn close.
+> 
+> temp <- coxph(Surv(start, stop, status) ~ rx + offset(r2fitm$frail[id]), rat2)
+> all.equal(temp$coef, r2fitm$coef[1]) ##not quite
+[1] "Mean relative  difference: 0.0005510633"
+> 
+> temp <- coxph(Surv(start, stop, status) ~ rx + offset(r2fitg$frail[id]), rat2)
+> all.equal(temp$coef, r2fitg$coef[1]) ##not quite
+[1] "Mean relative  difference: 0.0005360911"
+> 
+> #
+> # What do I get with AIC
+> #
+> r2fita1 <- coxph(Surv(start, stop, status) ~ rx + frailty(id, method='aic'),
++ 		 rat2)
+> r2fita2 <- coxph(Surv(start, stop, status) ~ rx + frailty(id, method='aic',
++ 							  dist='gauss'), rat2)
+> r2fita3 <- coxph(Surv(start, stop, status) ~ rx + frailty(id, dist='t'),
++ 		 rat2)
+> 
+> r2fita1
+Call:
+coxph(formula = Surv(start, stop, status) ~ rx + frailty(id, 
+    method = "aic"), data = rat2)
+
+                          coef   se(coef) se2   Chisq DF   p      
+rx                        -0.838 0.230    0.151 13.3   1.0 0.00026
+frailty(id, method = "aic                       60.4  28.2 0.00039
+
+Iterations: 10 outer, 25 Newton-Raphson
+     Variance of random effect= 0.375   I-likelihood = -779.2 
+Degrees of freedom for terms=  0.4 28.2 
+Likelihood ratio test=124  on 28.6 df, p=7.92e-14  n= 253 
+> r2fita2
+Call:
+coxph(formula = Surv(start, stop, status) ~ rx + frailty(id, 
+    method = "aic", dist = "gauss"), data = rat2)
+
+                          coef   se(coef) se2   Chisq DF   p      
+rx                        -0.784 0.255    0.154  9.48  1.0 2.1e-03
+frailty(id, method = "aic                       73.40 29.7 1.4e-05
+
+Iterations: 6 outer, 18 Newton-Raphson
+     Variance of random effect= 0.493 
+Degrees of freedom for terms=  0.4 29.7 
+Likelihood ratio test=127  on 30 df, p=6.02e-14  n= 253 
+> r2fita3
+Call:
+coxph(formula = Surv(start, stop, status) ~ rx + frailty(id, 
+    dist = "t"), data = rat2)
+
+                        coef  se(coef) se2   Chisq DF p      
+rx                      -0.79 0.254    0.157  9.67  1 0.00190
+frailty(id, dist = "t")                      64.70 30 0.00024
+
+Iterations: 7 outer, 23 Newton-Raphson
+     Variance of random effect= 0.779 
+Degrees of freedom for terms=  0.4 30.0 
+Likelihood ratio test=126  on 30.4 df, p=1.39e-13  n= 253 
+> q()

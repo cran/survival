@@ -1,0 +1,893 @@
+
+R : Copyright 2001, The R Development Core Team
+Version 1.3.0 Under development (unstable) (2001-05-30)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type `license()' or `licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type `contributors()' for more information.
+
+Type `demo()' for some demos, `help()' for on-line help, or
+`help.start()' for a HTML browser interface to help.
+Type `q()' to quit R.
+
+> #attach("../.Data")
+> #dyn.load('../loadmod.o')
+> postscript(file='Rtest.ps')
+> library(survival)
+> if (R.version$minor>2) options(na.action="na.exclude")
+> #options(na.action='na.omit', contrasts='contr.treatment')
+> #
+> # This data set caused problems for Splus 3.4 due to a mistake in
+> #  my initial value code.  Data courtesy Bob Treder at Statsci
+> #
+> capacitor <- read.table('data.capacitor', row.names=1,
++ 			col.names=c('', 'days', 'event', 'voltage'))
+> 
+> fitig <- survreg(Surv(days, event)~voltage, 
++ 	dist = "gaussian", data = capacitor)
+> summary(fitig)
+
+Call:
+survreg(formula = Surv(days, event) ~ voltage, data = capacitor, 
+    dist = "gaussian")
+             Value Std. Error     z        p
+(Intercept) 1764.9    163.387 10.80 3.36e-27
+voltage      -53.9      5.545 -9.72 2.56e-22
+Log(scale)     4.8      0.105 45.56 0.00e+00
+
+Scale= 121 
+
+Gaussian distribution
+Loglik(model)= -361.9   Loglik(intercept only)= -420.1
+	Chisq= 116.33 on 1 degrees of freedom, p= 0 
+Number of Newton-Raphson Iterations: 5 
+n= 125 
+
+> 
+> fitix <- survreg(Surv(days, event)~voltage, 
++ 	dist = "extreme", data = capacitor)
+> summary(fitix)
+
+Call:
+survreg(formula = Surv(days, event) ~ voltage, data = capacitor, 
+    dist = "extreme")
+              Value Std. Error     z        p
+(Intercept) 2055.59    180.348  11.4 4.28e-30
+voltage      -62.21      5.967 -10.4 1.88e-25
+Log(scale)     4.53      0.108  41.9 0.00e+00
+
+Scale= 92.9 
+
+Extreme value distribution
+Loglik(model)= -360   Loglik(intercept only)= -427.1
+	Chisq= 134.25 on 1 degrees of freedom, p= 0 
+Number of Newton-Raphson Iterations: 6 
+n= 125 
+
+> 
+> fitil <- survreg(Surv(days, event)~voltage, 
++ 	dist = "logistic", data = capacitor)
+> summary(fitil)
+
+Call:
+survreg(formula = Surv(days, event) ~ voltage, data = capacitor, 
+    dist = "logistic")
+              Value Std. Error     z         p
+(Intercept) 1811.56    148.853  12.2  4.48e-34
+voltage      -55.48      4.986 -11.1  9.39e-29
+Log(scale)     4.19      0.117  35.8 2.03e-280
+
+Scale= 66.3 
+
+Logistic distribution
+Loglik(model)= -360.4   Loglik(intercept only)= -423.7
+	Chisq= 126.5 on 1 degrees of freedom, p= 0 
+Number of Newton-Raphson Iterations: 5 
+n= 125 
+
+> 
+> rm(fitil, fitig, fitix)
+> #
+> # Good initial values are key to this data set
+> #   It killed v4 of survreg; 
+> #   data courtesy of Deborah Donnell, Fred Hutchinson Cancer Center
+> #
+> 
+> donnell <- scan("data.donnell", what=list(time1=0, time2=0, status=0))
+Read 210 records
+> donnell <- data.frame(donnell)
+> 
+> dfit <- survreg(Surv(time1, time2, status, type='interval') ~1, donnell)
+> summary(dfit)
+
+Call:
+survreg(formula = Surv(time1, time2, status, type = "interval") ~ 
+    1, data = donnell)
+             Value Std. Error      z       p
+(Intercept)  2.390      0.804  2.973 0.00295
+Log(scale)  -0.237      0.346 -0.687 0.49222
+
+Scale= 0.789 
+
+Weibull distribution
+Loglik(model)= -51   Loglik(intercept only)= -51
+Number of Newton-Raphson Iterations: 9 
+n= 210 
+
+> 
+> #
+> # Do a contour plot of the donnell data
+> #
+> npt <- 25
+> beta0  <- seq(.4, 2.4, length=npt)
+> logsig <- seq(-1.4, 0.41, length=npt)
+> donlog <- matrix(0,npt, npt)
+> 
+> for (i in 1:npt) {
++     for (j in 1:npt) {
++ 	fit <- survreg(Surv(time1, time2, status, type='interval') ~1,
++ 			donnell, init=c(beta0[i],logsig[j]),
++ 		        control=list(maxiter=0))
++ 	donlog[i,j] <- fit$log[1]
++ 	}
++     }
+> 
+> clev <- -c(51, 51.5, 52:60, 65, 75, 85, 100, 150)
+> contour(beta0, logsig, pmax(donlog, -200), levels=clev, xlab="Intercept",
++ 	ylab="Log(sigma)")
+> points(2.39, log(.7885), pch=1, col=2)
+> title("Donnell data")
+> 
+> #
+> # Compute the path of the iteration
+> #   Step 2 isn't so good, and is followed by 3 iters of step-halving
+> #
+> niter <- 14
+> donpath <- matrix(0,niter+1,2)
+> for (i in 0:niter){
++     fit <- survreg(Surv(time1, time2, status, type='interval') ~1,
++ 		    donnell, maxiter=i)
++     donpath[i+1,] <- c(fit$coef, log(fit$scale))
++     }
+Warning messages: 
+1: Ran out of iterations and did not converge in: survreg.fit(X, Y, weights, offset, init = init, controlvals = control,  
+2: Ran out of iterations and did not converge in: survreg.fit(X, Y, weights, offset, init = init, controlvals = control,  
+3: Ran out of iterations and did not converge in: survreg.fit(X, Y, weights, offset, init = init, controlvals = control,  
+4: Ran out of iterations and did not converge in: survreg.fit(X, Y, weights, offset, init = init, controlvals = control,  
+5: Ran out of iterations and did not converge in: survreg.fit(X, Y, weights, offset, init = init, controlvals = control,  
+6: Ran out of iterations and did not converge in: survreg.fit(X, Y, weights, offset, init = init, controlvals = control,  
+7: Ran out of iterations and did not converge in: survreg.fit(X, Y, weights, offset, init = init, controlvals = control,  
+> points(donpath[,1], donpath[,2])
+> lines(donpath[,1], donpath[,2], col=4)
+> 
+> rm(beta0, logsig, niter, fit, npt, donlog, clev)
+> #lfit1 <- censorReg(censor(time, status) ~ age + ph.ecog + strata(sex),lung)
+> data(lung)
+> lfit2 <- survreg(Surv(time, status) ~ age + ph.ecog + strata(sex), lung)
+> lfit3 <- survreg(Surv(time, status) ~ sex + (age+ph.ecog)*strata(sex), lung)
+> 
+> lfit4 <-  survreg(Surv(time, status) ~ age + ph.ecog , lung,
++ 		  subset=(sex==1))
+> lfit5 <- survreg(Surv(time, status) ~ age + ph.ecog , lung,
++ 		  subset=(sex==2))
+> 
+> aeq <- function(x,y) all.equal(as.vector(x), as.vector(y))
+> #aeq(lfit4$coef, lfit1[[1]]$coef)
+> #aeq(lfit4$scale, lfit1[[1]]$scale)
+> aeq(c(lfit4$scale, lfit5$scale), lfit3$scale )
+[1] "Mean relative  difference: 1.364018e-07"
+> #aeq(c(lfit4$scale, lfit5$scale), sapply(lfit1, function(x) x$scale))
+> 
+> #
+> # Test out ridge regression and splines
+> #
+> lfit0 <- survreg(Surv(time, status) ~1, lung)
+> lfit1 <- survreg(Surv(time, status) ~ age + ridge(ph.ecog, theta=5), lung)
+> lfit2 <- survreg(Surv(time, status) ~ sex + ridge(age, ph.ecog, theta=1), lung)
+> lfit3 <- survreg(Surv(time, status) ~ sex + age + ph.ecog, lung)
+> 
+> lfit0
+Call:
+survreg(formula = Surv(time, status) ~ 1, data = lung)
+
+Coefficients:
+(Intercept) 
+   6.034903 
+
+Scale= 0.7593932 
+
+Loglik(model)= -1153.9   Loglik(intercept only)= -1153.9
+n= 228 
+> lfit1
+Call:
+survreg(formula = Surv(time, status) ~ age + ridge(ph.ecog, theta = 5), 
+    data = lung)
+
+               coef     se(coef) se2     Chisq DF p      
+(Intercept)     6.83082 0.42860  0.42860 254.0 1  0.00000
+age            -0.00783 0.00687  0.00687   1.3 1  0.25000
+ridge(ph.ecog) -0.32032 0.08484  0.08405  14.2 1  0.00016
+
+Scale= 0.738 
+
+Iterations: 1 outer, 4 Newton-Raphson
+Degrees of freedom for terms= 1 1 1 1 
+Likelihood ratio test=18.6  on 2 df, p=8.73e-05
+  n=227 (1 observations deleted due to missing)
+> lfit2
+Call:
+survreg(formula = Surv(time, status) ~ sex + ridge(age, ph.ecog, 
+    theta = 1), data = lung)
+
+               coef     se(coef) se2     Chisq  DF p      
+(Intercept)     6.27163 0.45280  0.45210 191.84 1  0.0e+00
+sex             0.40096 0.12371  0.12371  10.50 1  1.2e-03
+ridge(age)     -0.00746 0.00675  0.00674   1.22 1  2.7e-01
+ridge(ph.ecog) -0.33848 0.08329  0.08314  16.51 1  4.8e-05
+
+Scale= 0.731 
+
+Iterations: 1 outer, 5 Newton-Raphson
+Degrees of freedom for terms= 1 1 2 1 
+Likelihood ratio test=30  on 3 df, p=1.37e-06
+  n=227 (1 observations deleted due to missing)
+> lfit3
+Call:
+survreg(formula = Surv(time, status) ~ sex + age + ph.ecog, data = lung)
+
+Coefficients:
+ (Intercept)          sex          age      ph.ecog 
+ 6.273435204  0.401087741 -0.007475331 -0.339636456 
+
+Scale= 0.7311049 
+
+Loglik(model)= -1132.4   Loglik(intercept only)= -1147.4
+	Chisq= 29.98 on 3 degrees of freedom, p= 1.4e-06 
+n=227 (1 observations deleted due to missing)
+> 
+> 
+> xx <- pspline(lung$age, nterm=3, theta=.3)
+Loading required package: splines 
+> xx <- matrix(unclass(xx), ncol=ncol(xx))   # the raw matrix
+> lfit4 <- survreg(Surv(time, status) ~xx, lung)
+> lfit5 <- survreg(Surv(time, status) ~age, lung)
+> 
+> lfit6 <- survreg(Surv(time, status)~pspline(age, df=2), lung)
+> plot(lung$age, predict(lfit6), xlab='Age', ylab="Spline prediction")
+> title("Lung Data")
+>      
+> lfit7 <- survreg(Surv(time, status) ~ offset(lfit6$lin), lung)
+> 
+> lfit4
+Call:
+survreg(formula = Surv(time, status) ~ xx, data = lung)
+
+Coefficients:
+(Intercept)         xx1         xx2         xx3         xx4         xx5 
+  13.550702   -7.615118   -7.423983   -7.532781   -7.570687  -14.526849 
+
+Scale= 0.7557376 
+
+Loglik(model)= -1150.1   Loglik(intercept only)= -1153.9
+	Chisq= 7.52 on 5 degrees of freedom, p= 0.19 
+n= 228 
+> lfit5
+Call:
+survreg(formula = Surv(time, status) ~ age, data = lung)
+
+Coefficients:
+(Intercept)         age 
+ 6.88711712 -0.01360819 
+
+Scale= 0.7587492 
+
+Loglik(model)= -1151.9   Loglik(intercept only)= -1153.9
+	Chisq= 3.91 on 1 degrees of freedom, p= 0.048 
+n= 228 
+> lfit6
+Call:
+survreg(formula = Surv(time, status) ~ pspline(age, df = 2), 
+    data = lung)
+
+                          coef    se(coef) se2     Chisq  DF   p    
+(Intercept)                6.5918 0.63681  0.41853 107.15 1.00 0.000
+pspline(age, df = 2), lin -0.0136 0.00687  0.00687   3.94 1.00 0.047
+pspline(age, df = 2), non                            0.78 1.06 0.400
+
+Scale= 0.756 
+
+Iterations: 4 outer, 9 Newton-Raphson
+     Theta= 0.926 
+Degrees of freedom for terms= 0.4 2.1 1.0 
+Likelihood ratio test=5.2  on 1.5 df, p=0.0441  n= 228 
+> lfit7$coef
+  (Intercept) 
+-6.008005e-07 
+> 
+> rm(lfit1, lfit2, lfit3, lfit4, lfit5, lfit6, lfit7)
+> rm(xx, lfit0)
+> #
+> # Data courtesy of Bercedis Peterson, Duke University.
+> #  v4 of survreg fails due to 2 groups that have only 1 subject; the coef
+> #  for them easily gets out of hand.  In fact, this data set is my toughest
+> #  test of the minimizer.
+> #
+> # A shrinkage model for this coefficient is therefore interesting
+> 
+> 
+> peterson <- data.frame(
++ 		  scan('data.peterson', what=list(grp=0, time=0, status=0)))
+Read 19 records
+> 
+> fitp <- survreg(Surv(time, status) ~ factor(grp), peterson)
+> summary(fitp)
+
+Call:
+survreg(formula = Surv(time, status) ~ factor(grp), data = peterson)
+              Value Std. Error     z        p
+(Intercept)   2.291      0.115 19.92 2.93e-88
+factor(grp)2  0.786      0.177  4.44 8.79e-06
+factor(grp)3  0.728      0.183  3.97 7.09e-05
+factor(grp)4 -1.598      0.218 -7.32 2.48e-13
+factor(grp)5 -0.500      0.218 -2.29 2.21e-02
+factor(grp)6  0.475      0.170  2.79 5.23e-03
+Log(scale)   -1.684      0.257 -6.54 6.09e-11
+
+Scale= 0.186 
+
+Weibull distribution
+Loglik(model)= -26.7   Loglik(intercept only)= -40.7
+	Chisq= 28.18 on 5 degrees of freedom, p= 3.4e-05 
+Number of Newton-Raphson Iterations: 8 
+n= 19 
+
+> 
+> # Now a shrinkage model.  Give the group coefficients
+> #  about 1/2 the scale parameter of the original model, i.e., .18.
+> #
+> ffit <- survreg(Surv(time, status) ~ frailty(grp, theta=.1), peterson)
+> ffit
+Call:
+survreg(formula = Surv(time, status) ~ frailty(grp, theta = 0.1), 
+    data = peterson)
+
+                          coef se(coef) se2    Chisq DF   p     
+(Intercept)               2.62 0.172    0.0874 232.0 1.00 0.0000
+frailty(grp, theta = 0.1)                       10.4 2.15 0.0067
+
+Scale= 0.301 
+
+Iterations: 1 outer, 6 Newton-Raphson
+     Variance of random effect= 0.1   I-likelihood = -11.8 
+Degrees of freedom for terms= 0.3 2.2 0.7 
+Likelihood ratio test=13.8  on 1.1 df, p=0.00027  n= 19 
+> 
+> #
+> # Try 3 degrees of freedom Gaussian fit, since there are 6 groups.
+> #   Compare them to the unconstrained ones.  The frailty coefs are
+> #   on a "sum to 0" constraint rather than "first coef=0", so
+> #   some conversion is neccessary
+> #
+> ffit3 <- survreg(Surv(time, status) ~ frailty(grp, df=3, dist='gauss'), 
++ 		 peterson)
+> print(ffit3)
+Call:
+survreg(formula = Surv(time, status) ~ frailty(grp, df = 3, dist = "gauss"), 
+    data = peterson)
+
+                          coef se(coef) se2   Chisq DF p      
+(Intercept)               2.44 0.223    0.066 119.8 1  0.00000
+frailty(grp, df = 3, dist                      16.4 3  0.00096
+
+Scale= 0.251 
+
+Iterations: 7 outer, 24 Newton-Raphson
+     Variance of random effect= 0.197 
+Degrees of freedom for terms= 0.1 3.0 0.6 
+Likelihood ratio test=20.1  on 1.7 df, p=2.79e-05  n= 19 
+> 
+> temp <- mean(c(0, fitp$coef[-1])) 
+> temp2 <- c(fitp$coef[1] + temp, c(0,fitp$coef[-1]) - temp)
+> xx <- rbind(c(nrow(peterson), table(peterson$grp)),
++ 	    temp2,
++ 	    c(ffit3$coef, ffit3$frail))
+> dimnames(xx) <- list(c("N", "factor fit", "frailty fit"),
++ 		     c("Intercept", paste("grp", 1:6)))
+> signif(xx,2)
+            Intercept  grp 1 grp 2 grp 3 grp 4 grp 5 grp 6
+N                19.0  3.000  6.00  6.00  1.00  1.00  2.00
+factor fit        2.3  0.018  0.80  0.75 -1.60 -0.48  0.49
+frailty fit       2.4 -0.180  0.58  0.55 -0.77 -0.44  0.26
+> #
+> # All but the first coef are shrunk towards zero.
+> #
+> rm(ffit, ffit3, temp, temp2, xx, fitp)
+> 
+> #
+> # Look at predicted values
+> #
+> data(ovarian)
+> ofit1 <- survreg(Surv(futime, fustat) ~ age + ridge(ecog.ps, rx), ovarian)
+> 
+> predict(ofit1)
+ [1]  207.7546  172.7985  358.7725 1426.6414 1353.7225  843.8571 1102.1610
+ [8]  859.5061  416.3272 1280.4037  820.7276 1882.7133  876.1244 1041.8917
+[15] 3477.0123 2622.9581 3761.4852 2207.8635 1362.1943 3113.9504  879.1986
+[22]  180.8418 2501.0478  645.2425  555.8297  936.0066
+> predict(ofit1, type='response')
+ [1]  207.7546  172.7985  358.7725 1426.6414 1353.7225  843.8571 1102.1610
+ [8]  859.5061  416.3272 1280.4037  820.7276 1882.7133  876.1244 1041.8917
+[15] 3477.0123 2622.9581 3761.4852 2207.8635 1362.1943 3113.9504  879.1986
+[22]  180.8418 2501.0478  645.2425  555.8297  936.0066
+> predict(ofit1, type='terms', se=T)
+$fit
+           age ridge(ecog.ps, rx)
+1  -1.37775562         -0.1765498
+2  -1.56198696         -0.1765498
+3  -0.87785012         -0.1301245
+4   0.23871941          0.1336957
+5   0.49650010         -0.1765498
+6  -0.02255551         -0.1301245
+7  -0.06575616          0.1801210
+8  -0.31442628          0.1801210
+9  -0.68264179         -0.1765498
+10  0.08414645          0.1801210
+11 -0.05034745         -0.1301245
+12  0.51611042          0.1336957
+13 -0.29527617          0.1801210
+14 -0.07556559          0.1336957
+15  1.43981531         -0.1765498
+16  1.11151929         -0.1301245
+17  1.47203044         -0.1301245
+18  0.98566722         -0.1765498
+19  0.19249326          0.1336957
+20  1.01928857          0.1336957
+21 -0.29177342          0.1801210
+22 -1.56291591         -0.1301245
+23  1.11035170         -0.1765498
+24 -0.60115796          0.1801210
+25 -0.70389695          0.1336957
+26 -0.18273628          0.1336957
+attr(,"constant")
+(Intercept) 
+   11.14415 
+
+$se.fit
+            age ridge(ecog.ps, rx)
+1  0.0303415645         0.04119554
+2  0.0343987911         0.04119554
+3  0.0193324169         0.04176032
+4  0.0052571881         0.04159735
+5  0.0109341522         0.04119554
+6  0.0004967277         0.04176032
+7  0.0014481123         0.04129301
+8  0.0069244392         0.04129301
+9  0.0150334496         0.04119554
+10 0.0018531117         0.04129301
+11 0.0011087745         0.04176032
+12 0.0113660197         0.04159735
+13 0.0065027069         0.04129301
+14 0.0016641399         0.04159735
+15 0.0317082713         0.04119554
+16 0.0244783861         0.04176032
+17 0.0324177275         0.04176032
+18 0.0217068144         0.04119554
+19 0.0042391746         0.04159735
+20 0.0224472390         0.04159735
+21 0.0064255676         0.04129301
+22 0.0344192490         0.04176032
+23 0.0244526730         0.04119554
+24 0.0132389756         0.04129301
+25 0.0155015406         0.04159735
+26 0.0040243020         0.04159735
+
+> 
+> temp1 <- predict(ofit1,type="link", se=T)
+> temp2 <- predict(ofit1, type= 'response', se=T)
+> all.equal(temp2$se.fit, temp1$se.fit* exp(temp1$fit))
+[1] TRUE
+> #
+> # The Stanford data from 1980 is used in Escobar and Meeker
+> #	t5 = T5 mismatch score
+> #  Their case numbers correspond to a data set sorted by age
+> #
+> stanford2 <- read.table('data.stanford', 
++ 			col.names=c('id', 'time', 'status', 'age', 't5'))
+>  
+> stanford2$t5 <- ifelse(stanford2$t5 <0, NA, stanford2$t5)
+> stanford2 <- stanford2[order(stanford2$age, stanford2$time),]
+> stanford2$time <- ifelse(stanford2$time==0, .5, stanford2$time)
+> 
+> cage <- stanford2$age - mean(stanford2$age)
+> ###fit1 <- survreg(Surv(time, status) ~ cage + cage^2, stanford2,
+> ###		dist='lognormal')
+> fit1 <- survreg(Surv(time, status) ~ cage + I(cage^2), stanford2,
++ 		dist='lognormal')
+> fit1
+Call:
+survreg(formula = Surv(time, status) ~ cage + I(cage^2), data = stanford2, 
+    dist = "lognormal")
+
+Coefficients:
+ (Intercept)         cage    I(cage^2) 
+ 6.717595934 -0.061909030 -0.003504326 
+
+Scale= 2.362866 
+
+Loglik(model)= -863.6   Loglik(intercept only)= -868.8
+	Chisq= 10.5 on 2 degrees of freedom, p= 0.0053 
+n= 184 
+> ldcase <- resid(fit1, type='ldcase')
+> ldresp <- resid(fit1, type='ldresp')
+> print(ldresp)
+         139          159          181          119           74          120 
+1.379203e-01 1.452450e-01 2.628074e-02 7.320179e-02 7.624326e-02 3.994790e-02 
+          99          108          179           43          134          160 
+6.328466e-02 6.128980e-02 9.685606e-03 4.767553e-02 2.980549e-02 1.036051e-01 
+         177          153          136          133          176           66 
+8.990546e-03 2.114946e-02 2.557690e-02 1.591464e-01 8.618358e-03 3.389346e-02 
+         157          114           46           65          184           88 
+1.141316e-02 1.990885e-02 2.044978e-02 2.480539e-02 1.085676e-05 5.474390e-02 
+         182          180          163           84           90           68 
+1.786473e-03 2.574794e-03 7.654047e-03 2.024456e-02 8.561197e-02 3.894985e-02 
+          48          174          151          125           73          105 
+7.007566e-02 3.767400e-03 8.314653e-03 1.248552e-02 1.954895e-02 1.831982e-02 
+         117           96           39           38          106           14 
+1.739301e-02 1.789441e-02 2.406183e-02 2.364314e-02 4.717185e-02 2.051897e-02 
+         123          135          111           83          143           69 
+4.763901e-02 1.663805e-02 1.367015e-02 3.204509e-02 1.857902e-02 2.058868e-02 
+          27          113          167          156          141           30 
+3.896725e-02 3.775025e-02 5.091493e-03 1.528402e-02 8.682116e-03 1.746136e-02 
+         144          158           79          102           77           36 
+2.593291e-02 6.620361e-03 1.375918e-02 1.547852e-02 1.786267e-02 2.330670e-02 
+         183          122          162          121           87            2 
+3.720795e-05 1.696469e-02 5.954799e-03 1.233286e-02 1.655939e-02 1.089489e-01 
+          64          150           85           71           19           21 
+6.015393e-02 7.469416e-03 1.666500e-02 1.893414e-02 2.645489e-02 1.843300e-01 
+         175          169          148          138           98          104 
+1.789942e-02 4.379942e-03 7.619682e-03 9.332594e-03 1.428800e-02 1.445961e-02 
+         103           12           89            3          100           55 
+1.449499e-02 3.404299e-02 3.358406e-02 3.113308e-02 1.412657e-02 1.179741e-02 
+         142           63          168           72          137           10 
+8.641580e-03 1.426955e-02 4.554030e-03 1.094162e-02 9.645953e-03 1.226565e-02 
+         124           17           94           82          170          149 
+1.222511e-02 1.088511e-02 1.493685e-02 1.844220e-02 3.988065e-02 3.038322e-02 
+          42          128           67          109           75           26 
+2.127744e-02 1.439502e-02 1.285836e-02 8.944980e-03 1.997790e-02 2.757124e-02 
+          97           58          178          140           32          126 
+2.549339e-02 2.356049e-02 2.057497e-03 1.269584e-02 1.103393e-02 1.253030e-02 
+          51          101           29           33          164           60 
+1.430230e-02 1.637414e-02 2.201027e-02 1.118993e-02 6.417554e-03 8.492277e-03 
+         152          145          112           76           47          118 
+8.651511e-03 9.608663e-03 1.609214e-02 2.168279e-02 2.622512e-02 2.274276e-02 
+           5          129           31           35           40          130 
+1.184996e-02 9.391146e-03 8.772106e-03 8.526052e-03 9.451662e-03 1.295997e-02 
+          28           56           91           44           23           37 
+1.285987e-02 1.536642e-02 2.031498e-02 2.807957e-02 1.965943e-02 1.733256e-02 
+          70          132            9           81           59          127 
+9.129009e-03 9.121716e-03 9.083024e-03 1.025238e-02 1.032187e-02 1.183694e-02 
+         131           80           20           25          165           24 
+1.403298e-02 2.363944e-02 2.181251e-02 2.723395e-02 2.043511e-02 2.019542e-02 
+         172          146           86          107           95          116 
+1.152649e-02 1.265906e-02 1.538527e-02 2.107502e-02 2.298470e-02 2.128395e-02 
+          41           61          155          166          154            4 
+1.791007e-02 1.763098e-02 1.345059e-02 1.285115e-02 1.218090e-02 1.470506e-02 
+          92           93           62           34           15          173 
+2.599207e-02 3.098464e-02 3.037746e-02 2.166522e-02 1.478523e-02 7.517959e-03 
+         171           52          110           50           45           53 
+8.681577e-03 1.679632e-02 2.540017e-02 3.470671e-02 3.229507e-02 3.017737e-02 
+          54          147          115           16            1            6 
+2.416304e-02 1.870027e-02 2.172489e-02 1.164272e-01 4.257799e-02 2.459122e-02 
+           7           57           78          161           11            8 
+3.585529e-02 3.587691e-02 2.865161e-02 2.603297e-02 5.640971e-02 4.338251e-02 
+          49           13           22           18 
+3.425475e-02 6.262793e-02 1.029315e-01 1.442429e-01 
+> # The ldcase and ldresp should be compared to table 1 in Escobar and 
+> #  Meeker, Biometrics 1992, p519; the colum they label as (1/2) A_{ii}
+> 
+> plot1 <- function() {
++     # make their figure 1, 2, and 6
++     plot(stanford2$age, stanford2$time, log='y', xlab="Age", ylab="Days",
++ 	 ylim=c(.01, 10^6))
++     temp <- predict(fit1, type='response', se.fit=T) 
++     matlines(stanford2$age, cbind(temp$fit, temp$fit-1.96*temp$se.fit,
++ 				            temp$fit+1.96*temp$se.fit),
++ 	     lty=c(1,2,2))
++     # these are the wrong CI lines, he plotted std dev, I plotted std err
++     # here are the right ones
++     #  Using uncentered age gives different coefs, but makes prediction over an
++     #    extended range somewhat simpler 
++     refit <- survreg(Surv(time,status)~ age + age^2, stanford2,
++ 		     dist='lognormal')
++     plot(stanford2$age, stanford2$time, log='y', xlab="Age", ylab="Days",
++ 	 ylim=c(.01, 10^6), xlim=c(0,75))
++     temp2 <- predict(refit, list(age=1:75), type='quantile', p=c(.05, .5, .95))
++     matlines(1:75, temp2, lty=c(1,2,2), col=2)
++ 
++     plot(ldcase, xlab="Case Number", ylab="(1/2) A")
++     title (main="Case weight pertubations")
++     plot(ldresp, xlab="Case Number", ylab="(1/2) A")
++     title(main="Response pertubations")
++     }
+> 
+> plot1()
+> #
+> # Stanford predictions in other ways
+> #
+> fit2 <- survreg(Surv(time, status) ~ poly(age,2), stanford2,
++ 		dist='lognormal')
+> 
+> p1 <- predict(fit1, type='response')
+> p2 <- predict(fit2, type='response')
+> aeq(p1, p2)
+[1] TRUE
+> 
+> p3 <- predict(fit2, type='terms', se=T)
+> p4 <- predict(fit2, type='lp', se=T)
+> p5 <- predict(fit1, type='lp', se=T)
+> aeq(p3$fit + attr(p3$fit, 'constant'), p4$fit)
+[1] TRUE
+> 
+> aeq(p4$fit, p5$fit)
+[1] TRUE
+> #!aeq(p3$se.fit, p4$se.fit)  #this one should be false
+> aeq(p4$se.fit, p5$se.fit)  #this one true
+[1] TRUE
+> 
+> #
+> # Verify that scale can be fixed at a value
+> #    coefs will differ slightly due to different iteration paths
+> tol <- survreg.control()$rel.tolerance
+> 
+> # Intercept only models
+> fit1 <- survreg(Surv(time,status) ~ 1, lung)
+> fit2 <- survreg(Surv(time,status) ~ 1, lung, scale=fit1$scale)
+> #all.equal(fit1$coef, fit2$coef, tolerance= tol)
+> #all.equal(fit1$loglik, fit2$loglik, tolerance= tol)
+> all.equal(fit1$coef, fit2$coef)
+[1] "Mean relative  difference: 1.193005e-07"
+> all.equal(fit1$loglik, fit2$loglik)
+[1] TRUE
+> 
+> # multiple covariates
+> fit1 <- survreg(Surv(time,status) ~ age + ph.karno, lung)
+> fit2 <- survreg(Surv(time,status) ~ age + ph.karno, lung,
++ 		scale=fit1$scale)
+> ##all.equal(fit1$coef, fit2$coef, tolerance=tol)
+> ##all.equal(fit1$loglik[2], fit2$loglik[2], tolerance=tol)
+> all.equal(fit1$coef, fit2$coef)
+[1] "Mean relative  difference: 3.335309e-07"
+> all.equal(fit1$loglik[2], fit2$loglik[2])
+[1] TRUE
+> 
+> # penalized models
+> fit1 <- survreg(Surv(time, status) ~ pspline(age), lung)
+> fit2 <- survreg(Surv(time, status) ~ pspline(age), lung, scale=fit1$scale)
+> #all.equal(fit1$coef, fit2$coef, tolerance=tol)
+> #all.equal(fit1$loglik[2], fit2$loglik[2], tolerance=tol)
+> all.equal(fit1$coef, fit2$coef)
+[1] "Mean relative  difference: 0.0002487206"
+> all.equal(fit1$loglik[2], fit2$loglik[2])
+[1] "Mean relative  difference: 5.013002e-07"
+> 
+> rm(fit1, fit2, tol)
+> 
+> #
+> # Test out the strata capabilities
+> #
+> tol <- survreg.control()$rel.tolerance
+> aeq <- function(x,y,...) all.equal(as.vector(x), as.vector(y))
+> 
+> # intercept only models
+> fit1 <- survreg(Surv(time, status) ~ strata(sex), lung)
+> fit2 <- survreg(Surv(time, status) ~ strata(sex) + sex, lung)
+> fit3a<- survreg(Surv(time,status) ~1, lung, subset=(sex==1))
+> fit3b<- survreg(Surv(time,status) ~1, lung, subset=(sex==2))
+> 
+> fit1
+Call:
+survreg(formula = Surv(time, status) ~ strata(sex), data = lung)
+
+Coefficients:
+(Intercept) 
+    6.06217 
+
+Scale:
+    sex=1     sex=2 
+0.8167547 0.6533025 
+
+Loglik(model)= -1152.5   Loglik(intercept only)= -1152.5
+n= 228 
+> fit2
+Call:
+survreg(formula = Surv(time, status) ~ strata(sex) + sex, data = lung)
+
+Coefficients:
+(Intercept)         sex 
+  5.4944097   0.3801714 
+
+Scale:
+    sex=1     sex=2 
+0.8084286 0.6355802 
+
+Loglik(model)= -1147.1   Loglik(intercept only)= -1152.5
+	Chisq= 10.9 on 1 degrees of freedom, p= 0.00096 
+n= 228 
+> aeq(fit2$scale, c(fit3a$scale, fit3b$scale), tolerance=tol)
+[1] "Mean relative  difference: 9.429718e-07"
+> aeq(fit2$loglik[2], (fit3a$loglik + fit3b$loglik)[2], tolerance=tol)
+[1] TRUE
+> aeq(fit2$coef[1] + 1:2*fit2$coef[2], c(fit3a$coef, fit3b$coef), tolerance=tol)
+[1] "Mean relative  difference: 3.342709e-07"
+> 
+> #penalized models
+> fit1 <- survreg(Surv(time, status) ~ pspline(age, theta=.92)+strata(sex), lung)
+> fit2 <- survreg(Surv(time, status) ~  pspline(age, theta=.92)+ 
++ 		strata(sex) + sex, lung)
+> fit1
+Call:
+survreg(formula = Surv(time, status) ~ pspline(age, theta = 0.92) + 
+    strata(sex), data = lung)
+
+                          coef    se(coef) se2    Chisq DF   p      
+(Intercept)                6.9036 0.8469   0.5688 66.45 1.00 3.3e-16
+pspline(age, theta = 0.92 -0.0124 0.0067   0.0067  3.45 1.00 6.3e-02
+pspline(age, theta = 0.92                          2.53 2.65 4.0e-01
+
+Scale:
+sex=1 sex=2 
+0.807 0.654 
+
+Iterations: 1 outer, 3 Newton-Raphson
+     Theta= 0.92 
+Degrees of freedom for terms= 0.5 3.6 2.0 
+Likelihood ratio test=6.54  on 3.1 df, p=0.0937  n= 228 
+> fit2
+Call:
+survreg(formula = Surv(time, status) ~ pspline(age, theta = 0.92) + 
+    strata(sex) + sex, data = lung)
+
+                          coef    se(coef) se2     Chisq DF   p      
+(Intercept)                6.3729 0.84471  0.59118 56.92 1.00 4.5e-14
+pspline(age, theta = 0.92 -0.0111 0.00666  0.00666  2.77 1.00 9.6e-02
+pspline(age, theta = 0.92                           2.46 2.68 4.2e-01
+sex                        0.3686 0.11711  0.11685  9.91 1.00 1.6e-03
+
+Scale:
+sex=1 sex=2 
+0.800 0.636 
+
+Iterations: 1 outer, 4 Newton-Raphson
+     Theta= 0.92 
+Degrees of freedom for terms= 0.5 3.7 1.0 2.0 
+Likelihood ratio test=16.8  on 4.2 df, p=0.00245  n= 228 
+> 
+> age1 <- ifelse(lung$sex==1, lung$age, mean(lung$age))
+> age2 <- ifelse(lung$sex==2, lung$age, mean(lung$age))
+> fit3 <- survreg(Surv(time,status) ~ pspline(age1, theta=.92) +
++ 		pspline(age2, theta=.95) + sex + strata(sex), lung,
++ 		rel.tol=1e-6)
+> fit3a<- survreg(Surv(time,status) ~pspline(age, theta=.92), lung, 
++ 		    subset=(sex==1))
+> fit3b<- survreg(Surv(time,status) ~pspline(age, theta=.95), lung, 
++ 		     subset=(sex==2))
+> 
+> # relax the tolerance a little, since the above has lots of parameters
+> #  I still don't exactly match the second group, but very close
+> aeq(fit3$scale, c(fit3a$scale, fit3b$scale), tolerance=tol*10)
+[1] "Mean relative  difference: 0.001270825"
+> aeq(fit3$loglik[2], (fit3a$loglik + fit3b$loglik)[2], tolerance=tol*10)
+[1] "Mean relative  difference: 8.673599e-05"
+> pred <- predict(fit3)
+> aeq(pred[lung$sex==1] , predict(fit3a), tolerance=tol*10)
+[1] TRUE
+> aeq(pred[lung$sex==2],  predict(fit3b), tolerance=tol*10)###????FIXME
+[1] "Mean relative  difference: 0.01158256"
+> 
+> 
+> 
+> 
+> #
+> # Some tests using the rat data
+> #
+> rats <- read.table('../testfrail/data.rats', 
++ 		   col.names=c('litter', 'rx', 'time', 'status'))
+> 
+> rfitnull <- survreg(Surv(time, status) ~1, rats)
+> temp <- rfitnull$scale^2 * pi^2/6
+> cat("Effective n =", round(temp*(solve(rfitnull$var))[1,1],1), "\n")
+Effective n = 65.8 
+> 
+> rfit0 <- survreg(Surv(time, status) ~ rx , rats)
+> print(rfit0)
+Call:
+survreg(formula = Surv(time, status) ~ rx, data = rats)
+
+Coefficients:
+(Intercept)          rx 
+  4.9831209  -0.2385013 
+
+Scale= 0.2637831 
+
+Loglik(model)= -242.3   Loglik(intercept only)= -246.3
+	Chisq= 8 on 1 degrees of freedom, p= 0.0047 
+n= 150 
+> 
+> rfit1 <- survreg(Surv(time, status) ~ rx + factor(litter), rats)
+> temp <- rbind(c(rfit0$coef, rfit0$scale), c(rfit1$coef[1:2], rfit1$scale))
+> dimnames(temp) <- list(c("rfit0", "rfit1"), c("Intercept", "rx", "scale"))
+> temp
+      Intercept         rx     scale
+rfit0  4.983121 -0.2385013 0.2637831
+rfit1  4.902437 -0.2189405 0.2025429
+> 
+> 
+> rfit2a <- survreg(Surv(time, status) ~ rx +
++ 		  frailty.gaussian(litter, df=13, sparse=F), rats )
+> rfit2b <- survreg(Surv(time, status) ~ rx +
++ 		  frailty.gaussian(litter, df=13, sparse=T), rats )
+> 
+> rfit3a <- coxph(Surv(time,status) ~ rx + 
++ 		  frailty.gaussian(litter, df=13, sparse=F), rats )
+> rfit3b <- coxph(Surv(time,status) ~ rx + 
++ 		frailty(litter, df=13, dist='gauss'), rats)
+> 
+> temp <- cbind(rfit2a$coef[3:52], rfit2b$frail, rfit3a$coef[2:51], rfit3b$frail)
+> dimnames(temp) <- list(NULL, c("surv","surv.sparse","cox","cox.sparse"))
+> pairs(temp)
+> apply(temp,2,var)/c(rfit2a$scale, rfit2b$scale, 1,1)^2
+       surv surv.sparse         cox  cox.sparse 
+  0.1346009   0.1346009   0.1224049   0.1207863 
+> apply(temp,2,mean)
+         surv   surv.sparse           cox    cox.sparse 
+-2.025290e-18 -1.186117e-18  5.412337e-18 -3.330669e-18 
+> 
+> # The parametric model gives the coefficients less variance for the
+> #  two fits, for the same df, but the scaled results are similar.
+> # 13 df is near to the rmle for the rats
+> 
+> rm(temp, rfit2a, rfit2b, rfit3a, rfit3b, rfitnull, rfit0, rfit1)
+> 
+> temp <- matrix(scan("data.mpip", skip=23), ncol=13, byrow=T)
+Read 11258 items
+> dimnames(temp) <- list(NULL, c('ved', 'angina', 'education', 'prior.mi',
++                      'nyha', 'rales', 'ef', 'ecg', 'angina2', 'futime', 
++                      'status', 'admit', 'betab'))
+>  
+> mpip <- data.frame(temp)
+> lved <- log(mpip$ved + .02)
+> 
+> fit1 <- coxph(Surv(futime, status) ~ pspline(lved) + factor(nyha) + 
++ 	      rales + pspline(ef), mpip)
+> 
+> temp <- predict(fit1, type='terms', se.fit=T)
+> yy <- cbind(temp$fit[,4], temp$fit[,4] + 1.96*temp$se[,4],
++ 	                  temp$fit[,4] - 1.96*temp$se[,4])
+> index <- order(mpip$ef)
+> index<-index[!is.na(yy[index,1])]
+> matplot(mpip$ef[index], yy[index,], type='l', lty=c(1,2,2), col=1,
++         xlab="Ejection Fraction", ylab="Cox model risk", 
++         main="Post-Infarction Survival")
+> 
+> fit2 <- coxph(Surv(futime, status) ~ lved + factor(nyha) + rales +
++ 	      pspline(ef, df=0), mpip)
+> temp <- predict(fit2, type='terms', se.fit=T)
+> yy <- cbind(temp$fit[,4], temp$fit[,4] + 1.96*temp$se[,4],
++ 	                  temp$fit[,4] - 1.96*temp$se[,4])
+> matplot(mpip$ef[index], yy[index,], type='l', lty=c(1,2,2), col=1,
++         xlab="Ejection Fraction", ylab="Cox model risk", 
++         main="Post-Infarction Survival, AIC")
+> 
+> 
+> fit3 <- survreg(Surv(futime, status) ~ lved + factor(nyha) + rales +
++ 		pspline(ef, df=2), mpip, dist='lognormal')
+> temp <- predict(fit3, type='terms', se.fit=T)
+> yy <- cbind(temp$fit[,4], temp$fit[,4] + 1.96*temp$se[,4],
++ 	                  temp$fit[,4] - 1.96*temp$se[,4])
+> matplot(mpip$ef[index], yy[index,], type='l', lty=c(1,2,2), col=1,
++         xlab="Ejection Fraction", ylab="Log-normal model predictor", 
++         main="Post-Infarction Survival")
+> q()
