@@ -118,7 +118,10 @@ a simple approximation.  It is known to be conservative.
 }
 \item{x}{a \code{survfit} object}
 \item{fit}{a \code{coxph} object}
-\item{centered}{Compute the baseline hazard at the covariate mean rather than at zero?}
+\item{centered}{Compute the baseline hazard at the covariate mean rather
+than at zero?}
+\item{drop}{Only \code{FALSE} is supported}
+\item{...}{Other arguments for future expansion}
 }
 \value{
 a \code{survfit} object; see the help on \code{survfit.object} for
