@@ -1,3 +1,10 @@
+2.11-4 make predict(type=terms) return a 1-d matrix rather than a vector,
+	to fix PR#6675-6 in termplot.
+	
+2.11-3 export survreg.fit survfit.km for Frank Harrell
+	
+2.11-1 Better namespace
+
 2.11 Namespace
 
 2.10  Codoc changes

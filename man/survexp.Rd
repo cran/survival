@@ -10,9 +10,9 @@ Returns either the expected survival of a cohort of subjects, or the
 individual expected survival for each subject.
 }
 \usage{
-survexp(formula, data, weights, subset, na.action, times, cohort=T,
-        conditional=F, ratetable=survexp.us, scale=1, npoints,
-        se.fit=<<see below>>, model=F, x=F, y=F)
+survexp(formula, data, weights, subset, na.action, times, cohort=TRUE,
+        conditional=FALSE, ratetable=survexp.us, scale=1, npoints,
+        se.fit=, model=FALSE, x=FALSE, y=FALSE)
 }
 \arguments{
 \item{formula}{

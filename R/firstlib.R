@@ -1,5 +1,6 @@
 .onLoad <- function(lib, pkg) {
-          library.dynam("survival", pkg, lib)
+	 ## moved to NAMESPACE
+          ##library.dynam("survival", pkg, lib)
           ## survfit.print.n=="start" is compatible with previous R
           ##     and with MASS
           if (is.null(getOption("survfit.print.n")))

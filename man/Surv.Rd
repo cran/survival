@@ -21,7 +21,7 @@ formula.
 \usage{
 Surv(time, event)
 or
-Surv(time, time2, event, type=<<see below>>, origin=0)
+Surv(time, time2, event, type=, origin=0)
 is.Surv(x)
 }
 \arguments{

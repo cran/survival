@@ -4,7 +4,7 @@
 #
 pspline <- function(x, df=4, theta, nterm=2.5*df, degree=3, eps=0.1, 
 		    method, ...) {
-    require(splines)
+    ##require(splines)
     if (!missing(theta)) {
 	method <- 'fixed'
 	if (theta <=0 || theta >=1) stop("Invalid value for theta")

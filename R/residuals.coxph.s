@@ -28,8 +28,8 @@ residuals.coxph <-
 
     if (type == 'martingale')
         rr <- object$residual
-    else if (type=="partial"){
-        rr<-object$residual+predict(object,type="terms")
+    else if (type=="partial"){ ## add terms component later, after naresid()
+        rr<-object$residual
     }
     else {
 	# I need Y, and perhaps the X matrix (and strata)
@@ -157,10 +157,12 @@ residuals.coxph <-
     #Expand out the missing values in the result
     if (!is.null(object$na.action)) {
 	rr <- naresid(object$na.action, rr)
-	if (is.matrix(rr)) n <- nrow(rr)
+   	if (is.matrix(rr)) n <- nrow(rr)
 	else               n <- length(rr)
 	if (type=='deviance') status <- naresid(object$na.action, status)
 	}
+    if (type=="partial") ## predict already uses naresid()
+      rr<-rr+predict(object,type="terms")
 
     # Collapse if desired
     if (!missing(collapse)) {

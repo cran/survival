@@ -1,6 +1,6 @@
 #SCCS @(#)plot.cox.zph.s	4.6 08/13/96
 plot.cox.zph <- function(x, resid=TRUE, se=TRUE, df=4, nsmo=40, var, ...) {
-    require(splines)
+    ##require(splines)
     xx <- x$x
     yy <- x$y
     d <- nrow(yy)

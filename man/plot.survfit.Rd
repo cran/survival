@@ -4,7 +4,7 @@
 Plot Method for `survfit'
 }
 \usage{
-plot.survfit(x, conf.int=<<see below>>, mark.time=TRUE,
+plot.survfit(x, conf.int=, mark.time=TRUE,
  mark=3, col=1, lty=1, lwd=1, cex=1, log=FALSE, xscale=1, yscale=1, 
  firstx=0, firsty=1, xmax, ymin=0, fun,
  xlab="", ylab="", xaxs="S", bty=NULL,

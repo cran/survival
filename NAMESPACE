@@ -1,3 +1,6 @@
+useDynLib(survival)
+importFrom(splines, ns, spline.des)
+import(stats,graphics)
 export("Surv", "as.date", "attrassign", 
     "basehaz", "clogit", "cluster", "cox.zph", 
      "coxph", "coxph.control", "coxph.detail", 
@@ -9,8 +12,8 @@ export("Surv", "as.date", "attrassign",
     "is.na.date", "is.na.ratetable",  "is.ratetable", 
     "labels.survreg", "match.ratetable", "mdy.date", 
     "pspline", "pyears", "ratetable",     "ridge", "strata", 
-    "survSplit", "survdiff", "survexp",  "survfit", 
-     "survobrien",  "survreg", "survreg.control", 
+    "survSplit", "survdiff", "survexp",  "survfit","survfit.km" ,
+     "survobrien",  "survreg", "survreg.control", "survreg.fit",
     "survreg.distributions",  "survreg.old", "tcut", 
     "untangle.specials")
 S3method(`[`, Surv)

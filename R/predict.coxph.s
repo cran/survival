@@ -109,10 +109,14 @@ function(object, newdata, type=c("lp", "risk", "expected", "terms"),
         asgn <- object$assign
         nterms<-length(terms)
         pred<-matrix(ncol=nterms,nrow=NROW(x))
-        dimnames(pred)<-list(rownames(x),terms)
+        if (is.character(terms))
+          termnames<-terms
+        else
+          termnames<-names(object$assign)[terms]
+        dimnames(pred)<-list(rownames(x),termnames)
         if (se.fit){
             se<-matrix(ncol=nterms,nrow=NROW(x))
-            dimnames(se)<-list(rownames(x),terms)
+            dimnames(se)<-list(rownames(x),termnames)
             R<-object$var
             ip <- real(NROW(x))
         }
@@ -129,14 +133,13 @@ function(object, newdata, type=c("lp", "risk", "expected", "terms"),
         }
     }
 
-    if (se.fit) se <- drop(se)
-    pred <- drop(pred)
+    ##if (se.fit) se <- drop(se)
+    ##pred <- drop(pred)
     ##Expand out the missing values in the result
     # But only if operating on the original dataset
     if (missing(newdata) && !is.null(object$na.action)) {
 	pred <- naresid(object$na.action, pred)
-	if (is.matrix(pred)) n <- nrow(pred)
-	else               n <- length(pred)
+        n<-NROW(pred)
 	if(se.fit) se <- naresid(object$na.action, se)
 	}
 
