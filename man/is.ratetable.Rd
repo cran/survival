@@ -32,11 +32,9 @@ can help in creating a new rate table.
 \seealso{
 \code{\link{pyears}}, \code{\link{survexp}}
 }
-\examples{\dontrun{
-library(ratetables)
+\examples{
 is.ratetable(survexp.us)  ##Yes
-data(cancer)
 is.ratetable(cancer)  ##No
-}}
+}
 \keyword{survival}
 % Converted by Sd2Rd version 0.3-2.

@@ -63,7 +63,6 @@ the Schoenfeld residuals.
 \seealso{
 \code{\link{coxph}}, \code{\link{residuals.coxph}}}
 \examples{
-data(ovarian)
 fit   <- coxph(Surv(futime,fustat) ~ age + rx + ecog.ps, ovarian, x=TRUE)
 fitd  <- coxph.detail(fit)
 events <- fit$y[,2]==1

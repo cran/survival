@@ -27,7 +27,6 @@ the original version, but the newer version is sometimes useful.
 \seealso{\code{\link{terms}},\code{\link{model.matrix}}}
 
 \examples{
-data(pbc)
 formula<-Surv(time,status)~factor(edtrt)
 tt<-terms(formula)
 mf<-model.frame(tt,data=pbc)

@@ -73,7 +73,7 @@ for survival models", \emph{Biometrika}, March 1990.
 \seealso{
 \code{\link{coxph}}}
 \examples{
- data(heart)
+
  fit <- coxph(Surv(start, stop, event) ~ (age + surgery)* transplant,
                data=heart)
  mresid <- resid(fit, collapse=heart$id)

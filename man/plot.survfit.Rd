@@ -135,7 +135,6 @@ in the call to \code{plot.survfit} or \code{lines.survfit}.
 \code{\link{legend}}.
 }
 \examples{
-data(aml)
 leukemia.surv <- survfit(Surv(time, status) ~ x, data = aml)
 plot(leukemia.surv, lty = 2:3)
 legend(100, .9, c("Maintenance", "No Maintenance"), lty = 2:3)

@@ -36,7 +36,6 @@ an object of class \code{survreg} is returned, which inherits from class \code{g
 }
 
 \examples{
-data(ovarian)
 survreg.old(Surv(futime, fustat) ~ ecog.ps + rx, ovarian, dist='extreme',
 		link='log', fixed=list(scale=1))   #Fit an exponential
 }

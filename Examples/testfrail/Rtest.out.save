@@ -1,6 +1,6 @@
 
 R : Copyright 2004, The R Foundation for Statistical Computing
-Version 1.9.0 alpha (2004-03-18), ISBN 3-900051-00-3
+Version 2.0.0 Under development (unstable) (2004-08-12), ISBN 3-900051-00-3
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -21,6 +21,7 @@ Type 'q()' to quit R.
 > #attach("../.Data")
 > #options(na.action="na.omit", contrasts='contr.treatment')
 > library(survival)
+Loading required package: splines 
 > #library(date)
 > #
 > # Test the logic of the new program, by fitting some no-frailty models

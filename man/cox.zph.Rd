@@ -66,9 +66,7 @@ Proportional hazards tests and diagnostics based on weighted residuals.
 }
 \seealso{
 \code{\link{coxph}}, \code{\link{Surv}}.}
-\note{The \code{plot} method requires the \code{splines} library}
 \examples{
-data(ovarian)
 fit <- coxph( Surv(futime, fustat) ~ age + rx, ovarian)
 temp<- cox.zph(fit)
 print(temp)                  #display the results

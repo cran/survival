@@ -90,7 +90,6 @@ the old one \code{survreg}.
 \code{\link{survreg.old}}
 }
 \examples{
-data(ovarian)
 ## These are all the same
 survreg(Surv(futime, fustat) ~ ecog.ps + rx, ovarian, dist='weibull',scale=1)
 survreg(Surv(futime, fustat) ~ ecog.ps + rx, ovarian,

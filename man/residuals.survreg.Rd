@@ -62,7 +62,6 @@ Assessing influence in regression analysis with censored data.
 }
 \seealso{\code{\link{predict.survreg}}}
 \examples{
-data(aml)
 fit <- survreg(Surv(time,status) ~x, aml)
 rr  <- residuals(fit, type='matrix')
 }

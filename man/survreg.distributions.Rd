@@ -54,8 +54,9 @@ are parametrised in the same way as the distributions already present in
 \deqn{F=1-e^{-e^t}.}
 
 When the logarithm of survival time has one of the first three distributions
-we obtain respectively \code{lognormal},\code{loglogistic} and
-\code{weibull}.
+we obtain respectively \code{weibull}, \code{lognormal}, and
+\code{loglogistic}. The Weibull distribution is not parameterised the
+same way as in \code{\link{rweibull}}.
 
 The other predefined distributions are defined in terms of these. The
 \code{exponential} and \code{rayleigh} distributions are Weibull
@@ -74,7 +75,6 @@ specify user-defined distributions to \code{survreg}.
   \code{\link{pnorm}},\code{\link{plogis}}, \code{\link{pt}}
 }
 \examples{
-data(ovarian)
 ## not a good fit, but a useful example
 survreg(Surv(futime,fustat)~ecog.ps+rx,data=ovarian,dist='extreme')
 ## 
@@ -94,6 +94,9 @@ my.weibull$trans<-function(y) log(y/365)
 my.weibull$itrans<-function(y) exp(365*y)
 survreg(Surv(futime,fustat)~ecog.ps+rx,data=ovarian,dist=my.weibull,scale=1)
 
-
+## Weibull parametrisation
+y<-rweibull(1000, shape=2, scale=5)
+survreg(Surv(y)~1, dist="weibull")
+## survreg reports scale=1/2, intercept=log(5)
 }
 \keyword{survival}

@@ -187,17 +187,13 @@ model for survival data. \emph{Annals of Statistics} 9, 93-108.
 \code{\link{coxph}}, \code{\link{Surv}}, \code{\link{strata}}.}
 \examples{
 #fit a Kaplan-Meier and plot it
-data(aml)
 fit <- survfit(Surv(time, status) ~ x, data=aml)
 plot(fit)
-
 # plot only 1 of the 2 curves from above
 plot(fit[2])
 
-
 #fit a cox proportional hazards model and plot the 
 #predicted survival curve
-data(ovarian)
 fit <- coxph( Surv(futime,fustat)~resid.ds+rx+ecog.ps,data=ovarian)
 plot( survfit( fit))
 }

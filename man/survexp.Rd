@@ -127,18 +127,14 @@ mortality in clinical survival studies.  \emph{Lancet} 1993, 341:872-5.
 \seealso{
 \code{\link{survfit}}, \code{\link{survexp.us}}, \code{\link{survexp.fit}}, \code{\link{pyears}}, \code{\link{date}}}
 \examples{
-## comparing data to population
-data(ratetables)	
-data(cancer)
 ## compare survival to US population
 cancer$year<-rep(as.date("1/1/1980"),nrow(cancer))
 efit <- survexp( ~ ratetable(sex=sex, year=year, age=age*365), times=(1:4)*365,data=cancer)
 plot(survfit(Surv(time, status) ~1,data=cancer))
 lines(efit)
-## compare data to Cox model
-## Mayo PBC data
-data(pbc)
-## fit to randomised patients
+
+## compare data to Cox model 
+## fit to randomised patients in Mayo PBC data
 m<-coxph(Surv(time,status)~edtrt+log(bili)+log(protime)+age+platelet,data=pbc,
       subset=trt>0)
 ##compare Kaplan-Meier to fitted model for 2 edema groups in
@@ -146,7 +142,6 @@ m<-coxph(Surv(time,status)~edtrt+log(bili)+log(protime)+age+platelet,data=pbc,
 plot(survfit(Surv(time,status)~edtrt,data=pbc,subset=trt==-9))
 lines(survexp(~edtrt+ratetable(edtrt=edtrt,bili=bili,platelet=platelet,age=age,
   protime=protime),data=pbc,subset=trt==-9,ratetable=m,cohort=TRUE),col="purple")
-
 }
 \keyword{survival}
 % Converted by Sd2Rd version 0.3-2.

@@ -87,25 +87,19 @@ A class of rank test procedures for censored survival data.
 \bold{69}, 553-566.}
 \examples{
 ## Two-sample test
-data(ovarian)
 survdiff(Surv(futime, fustat) ~ rx,data=ovarian)
-rm(ovarian)
+
 ## Stratified 7-sample test
-data(lung)
+
 survdiff(Surv(time, status) ~ pat.karno + strata(inst), data=lung)
-rm(lung)
 
-  data(heart)
-  data(ratetables)
-  ## Expected survival for heart transplant patients based on
-  ## US mortality tables
-  expect <- survexp(futime ~ ratetable(age=(accept.dt - birth.dt),
-sex=1,year=accept.dt,race="white"), jasa, cohort=FALSE,
-ratetable=survexp.usr)
-  ## actual survival is much worse (no surprise)
-  print(survdiff(Surv(jasa$futime, jasa$fustat) ~ offset(expect)))
-  rm(jasa,jasa1,heart,survexp.az,survexp.azr,survexp.fl,survexp.flr,survexp.mn,survexp.mnwhite,survexp.us,survexp.usr,survexp.wnc)
-
+## Expected survival for heart transplant patients based on
+## US mortality tables
+expect <- survexp(futime ~ ratetable(age=(accept.dt - birth.dt),
+     sex=1,year=accept.dt,race="white"), jasa, cohort=FALSE,
+     ratetable=survexp.usr)
+## actual survival is much worse (no surprise)
+survdiff(Surv(jasa$futime, jasa$fustat) ~ offset(expect))
 }
 \keyword{survival}
 % Converted by Sd2Rd version 0.3-2. and hand edited.

@@ -1,7 +1,7 @@
 \name{strata}
 \alias{strata}
 \title{
-Identify Strata Variables
+Identify Stratum Variables
 }
 \description{
 This is a special function used in the context of the Cox survival model.
@@ -35,7 +35,7 @@ a<-factor(rep(1:3,4))
 b<-factor(rep(1:4,3))
 levels(strata(a))
 levels(strata(a,b,shortlabel=TRUE))
-data(ovarian)
+
 coxph(Surv(futime, fustat) ~ age + strata(rx), data=ovarian)
 }
 \keyword{survival}

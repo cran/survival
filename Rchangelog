@@ -1,3 +1,14 @@
+2.13-2  Update the Depends: clause to the new meanings.
+
+	Edit .Rd files for lazy data.
+
+	summary.survfit was broken for stratified 
+	counting process data
+
+	change default for survival.print.mean to FALSE.
+	
+2.13-1	Kurt's fixes based on better .Rd checking
+
 2.13	stop segfault when frailty estimation breaks down.
 	(Christian Lederer)
 	

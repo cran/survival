@@ -12,7 +12,7 @@ summary.survfit <- function(object, times, censored=FALSE, scale=1, ...) {
 	}
     else {
 	nstrat <- length(fit$strata)
-	stemp <- rep(1:nstrat,fit$strata)
+	stemp <- rep(1:nstrat,fit$ntimes.strata)
 	}
 
     surv <- as.matrix(fit$surv)

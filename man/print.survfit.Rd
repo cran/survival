@@ -25,9 +25,9 @@ if the input data to survfit were in days,
 \code{x}, with the invisible flag set.
 }
 \section{Side Effects}{
-The number of observations (see Details), the number of events, the
-restricted mean survival (\code{rmean}) and its standard error, and the median survival
-with its confidence interval are printed.  If there are multiple curves, there is one line of output for each.
+The number of observations (see Details), the number of events,  the median survival
+with its confidence interval, and optionally the
+restricted mean survival (\code{rmean}) and its standard error, are printed.  If there are multiple curves, there is one line of output for each.
 }
 \details{
 The restricted mean (\code{rmean}) and its standard error \code{se(rmean)} are based on a truncated estimator.  If the
@@ -39,8 +39,7 @@ quantity is occasionally of interest.
 
 Any randomness in the last censoring time is not taken into account in
 computing the standard error of the restricted mean.  The restricted
-mean is shown mainly for compatibility with S, and may not be shown by
-default in future versions.
+mean is available mainly for compatibility with S, and is not shown by default.
 
 
 The median and its confidence interval are defined by drawing a horizontal
@@ -71,14 +70,14 @@ number at risk. The initial default is \code{"start"}.
 }
 \examples{
 ##effect of print.n and show.rmean
-data(heart)
+
 a<-coxph(Surv(start,stop,event)~age+strata(transplant),data=heart)
 b<-survfit(a)
 print(b,print.n="none")
 print(b,print.n="records")
 print(b,print.n="start")
 print(b,print.n="max")
-print(b,show.rmean=FALSE)
+print(b,show.rmean=TRUE)
 }
 
 \keyword{survival}

@@ -45,7 +45,6 @@ a plot is produced on the current graphics device.
 \seealso{
 \code{\link{cox.zph}}, \code{\link{coxph}}}
 \examples{
-data(veteran)
 vfit <- coxph(Surv(time,status) ~ trt + factor(celltype) +
               karno + age, data=veteran, x=TRUE)
 temp <- cox.zph(vfit)

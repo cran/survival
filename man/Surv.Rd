@@ -102,8 +102,8 @@ guess wrong.  Use 0/1 coding in this case.
 \seealso{
 \code{\link{coxph}}, \code{\link{survfit}}, \code{\link{survreg}}.}
 \examples{
-data(aml)
-Surv(aml$time, aml$status)
+with(aml, Surv(time, status))
+with(heart, Surv(start,stop,event))
 }
 \keyword{survival}
 % Converted by Sd2Rd version 0.3-2.

@@ -52,7 +52,6 @@ censored data. \emph{Biometrics,} 48, 507-528.
 \code{\link{survreg}}, \code{\link{residuals.survreg}}}
 \examples{
 # Draw figure 1 from Escobar and Meeker
-data(stanford2)
 fit <- survreg(Surv(time,status) ~ age + age^2, data=stanford2,
 	dist='lognormal')
 plot(stanford2$age, stanford2$time, xlab='Age', ylab='Days',

@@ -49,7 +49,6 @@ O'Brien, Peter, "A Nonparametric Test for Association with Censored Data",
 }
 \keyword{survival}
 \examples{
-data(ovarian)
 xx <- survobrien(Surv(futime, fustat) ~ age + factor(rx) + I(ecog.ps),
 			       data=ovarian)
 coxph(Surv(start, stop, event) ~ age, data=xx)

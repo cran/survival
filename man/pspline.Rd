@@ -28,7 +28,6 @@ attributes specifying control functions.
 \seealso{\code{\link{coxph}},\code{\link{survreg}},\code{\link{ridge}},\code{\link{frailty}}   }
 
 \examples{
-data(cancer)
 lfit6 <- survreg(Surv(time, status)~pspline(age, df=2), cancer)
 plot(cancer$age, predict(lfit6), xlab='Age', ylab="Spline prediction")
 title("Cancer Data")

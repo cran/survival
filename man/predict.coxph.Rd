@@ -7,7 +7,7 @@
 Compute fitted values and regression terms for a model fitted by \code{\link{coxph}}
 }
 \usage{
-predict.coxph(object, newdata, type=c("lp", "risk", "expected", "terms"), se.fit=FALSE, terms=names(object$assign), collapse, safe=FALSE,...)
+\method{predict}{coxph}(object, newdata, type=c("lp", "risk", "expected", "terms"), se.fit=FALSE, terms=names(object$assign), collapse, safe=FALSE,...)
 }
 
 \arguments{
@@ -29,7 +29,6 @@ predict.coxph(object, newdata, type=c("lp", "risk", "expected", "terms"), se.fit
 \seealso{\code{\link{predict}},\code{\link{coxph}},\code{\link{termplot}} }
 
 \examples{
-data(aml)
 fit<-coxph(Surv(time,status)~x,data=aml)
 predict(fit,type="lp")
 predict(fit,type="risk")

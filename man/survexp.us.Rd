@@ -17,7 +17,6 @@ Census Data Sets for the Expected Survival and Person Years Functions
 Census data sets for the expected survival and person years functions
 
 }\usage{
-data(ratetables)
 survexp.uswhite<-survexp.usr[,,"white",]
 }
 
@@ -61,15 +60,14 @@ In order to make the rate table be a matrix, the 1980 values were
 repeated.  (White and non-white values are quite different).
 }}
 
-Each of these tables contains the daily hazard rate for a matched subject
-from the population, defined as -log(1-q)/365.24 where q is the 1 year
-probability of death as reported in the original tables.
-For age 25 in 1970, for instance, p = 1-q is is the probability that a subject
+Each of these tables contains the daily hazard rate for a matched
+subject from the population, defined as -log(1-q)/365.24 where q is the
+1 year probability of death as reported in the original tables.  For age
+25 in 1970, for instance, p = 1-q is is the probability that a subject
 who becomes 25 years of age in 1970 will achieve his/her 26th birthday.
-The tables are recast in terms of hazard per day entirely for computational
-convenience.
-(The fraction .24 in
-the denominator is based on 24 leap years per century.)
+The tables are recast in terms of hazard per day entirely for
+computational convenience.  (The fraction .24 in the denominator is
+based on 24 leap years per century.)
 
 
 Each table is stored as an array, with additional attributes, and
@@ -79,12 +77,12 @@ routine.
 
 
 Some of the deficiencies, e.g. 1970 Arizona non-white, are a result of
-local conditions.  The data probably exists, but we don't have a copy
-it in the library.
+local (Mayo Clinic) conditions.  The data probably exists, but we don't
+have a copy it in the library.
 
 
-The tables have  been augmented to contain extrapolated
-values for 1990 and 2000.  The details can be found in Mayo Clinic Biostatistics 
+The tables have been augmented to contain extrapolated values for 1990
+and 2000.  The details can be found in Mayo Clinic Biostatistics
 technical report 63 at \url{http://www.mayo.edu/hsr/techrpt.html}
 }
 \keyword{survival}

@@ -20,7 +20,6 @@ Economists fit a parametric censored data model called the
 J. Tobin, Estimation of relationships for limited dependent variables, Econometrica, v26, 24-36, 1958.
 }
 \examples{
-data(tobin)
 tfit <- survreg(Surv(durable, durable>0, type='left') ~age + quant,
                 data=tobin, dist='gaussian')
 

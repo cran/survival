@@ -103,8 +103,10 @@ print.survfit <- function(x, scale=1,
  	    }
         if (show.rmean)
             print(x1)
-        else
+        else if (is.matrix(x1))
             print(x1[,!(colnames(x1) %in% c("rmean","se(rmean)"))])
+        else
+            print(x1[!(names(x1) %in% c("rmean","se(rmean)"))])
         }
     else {   #strata case
 	nstrat <- length(x$strata)

@@ -33,7 +33,6 @@ survSplit(data, cut, end, event, start, id = NULL, zero = 0,
 \seealso{\code{\link{Surv}}, \code{\link{cut}}, \code{\link{reshape}} }
 
 \examples{
-data(aml)
 aml3<-survSplit(aml,cut=c(5,10,50),end="time",start="start",
       event="status",episode="i")
 

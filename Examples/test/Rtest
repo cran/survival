@@ -4,11 +4,9 @@
 #dyn.load("../loadmod.o")
 #attach("../.Data")
 library(survival)
-if (R.version$minor<3 && R.version$major==1){
-    options(na.action="na.omit")
-}else{
-    options(na.action="na.exclude")
-}
+
+options(na.action="na.exclude")
+
 #
 # Compute some answers "by hand"
 #     For test1 and test2 data
@@ -176,6 +174,10 @@ resid(coxph(Surv(start, stop, event)~ x, test2, iter=0, init=log(2)), 'score')
 sfit <-survfit(fit)
 sfit
 summary(sfit)
+
+sfit.km <- survfit(Surv(start, stop, event)~ x, data=test2)
+sfit.km
+summary(sfit.km)
 
 # make a doubled data set
 temp <- rbind(test2, test2)

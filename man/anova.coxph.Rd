@@ -46,7 +46,6 @@
   \code{\link{coxph}}, \code{\link{anova}}.
 }
 \examples{
-data(ovarian)
 fit <- coxph(Surv(futime, fustat) ~ resid.ds *rx + ecog.ps, data = ovarian) 
 anova(fit)
 anova(fit,test="Chisq")

@@ -1,6 +1,6 @@
 
 R : Copyright 2004, The R Foundation for Statistical Computing
-Version 1.9.0 alpha (2004-03-18), ISBN 3-900051-00-3
+Version 2.0.0 Under development (unstable) (2004-08-12), ISBN 3-900051-00-3
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -20,11 +20,10 @@ Type 'q()' to quit R.
 > #dyn.load("../loadmod.o")
 > #attach("../.Data")
 > library(survival)
-> if (R.version$minor<3 && R.version$major==1){
-+     options(na.action="na.omit")
-+ }else{
-+     options(na.action="na.exclude")
-+ }
+Loading required package: splines 
+> 
+> options(na.action="na.exclude")
+> 
 > #
 > # Compute some answers "by hand"
 > #     For test1 and test2 data
@@ -369,8 +368,8 @@ Likelihood ratio test=0.01  on 1 df, p=0.912  n= 10
 > sfit
 Call: survfit.coxph(object = fit)
 
-        n    events     rmean se(rmean)    median   0.95LCL   0.95UCL 
-     2.00      7.00      4.77      2.16      3.00      2.00       Inf 
+      n  events  median 0.95LCL 0.95UCL 
+      2       7       3       2     Inf 
 > summary(sfit)
 Call: survfit.coxph(object = fit)
 
@@ -381,6 +380,29 @@ Call: survfit.coxph(object = fit)
     7      4       1    0.277   0.188       0.0729        1.000
     8      4       1    0.214   0.156       0.0514        0.894
     9      5       2    0.143   0.112       0.0308        0.667
+> 
+> sfit.km <- survfit(Surv(start, stop, event)~ x, data=test2)
+> sfit.km
+Call: survfit(formula = Surv(start, stop, event) ~ x, data = test2)
+
+    n events median 0.95LCL 0.95UCL
+x=0 0      3    4.5       3     Inf
+x=1 0      4    2.0     Inf     Inf
+> summary(sfit.km)
+Call: survfit(formula = Surv(start, stop, event) ~ x, data = test2)
+
+                x=0 
+ time n.risk n.event survival std.err lower 95% CI upper 95% CI
+    3      2       1     0.50   0.354       0.1250            1
+    6      2       1     0.25   0.250       0.0352            1
+    8      1       1     0.00      NA           NA           NA
+
+                x=1 
+ time n.risk n.event survival std.err lower 95% CI upper 95% CI
+    2      1       1        0      NA           NA           NA
+    7      3       1        0      NA           NA           NA
+    9      3       2        0      NA           NA           NA
+
 > 
 > # make a doubled data set
 > temp <- rbind(test2, test2)
@@ -393,9 +415,9 @@ Call: survfit.coxph(object = fit)
 > sfit
 Call: survfit.coxph(object = fitx, newdata = c(fitx$means[1], 0))
 
-     n events rmean se(rmean) median 0.95LCL 0.95UCL
-ss=0 2      7  4.77      2.16      3       2     Inf
-ss=1 2      7  4.77      2.16      3       2     Inf
+     n events median 0.95LCL 0.95UCL
+ss=0 2      7      3       2     Inf
+ss=1 2      7      3       2     Inf
 > summary(sfit)
 Call: survfit.coxph(object = fitx, newdata = c(fitx$means[1], 0))
 
@@ -630,9 +652,9 @@ Likelihood ratio test=3.3  on 1 df, p=0.0694  n= 23
 > fit
 Call: survfit(formula = Surv(aml$time, aml$status) ~ aml$x)
 
-                     n events rmean se(rmean) median 0.95LCL 0.95UCL
-aml$x=Maintained    11      7  52.6     19.83     31      18     Inf
-aml$x=Nonmaintained 12     11  22.7      4.18     23       8     Inf
+                     n events median 0.95LCL 0.95UCL
+aml$x=Maintained    11      7     31      18     Inf
+aml$x=Nonmaintained 12     11     23       8     Inf
 > summary(fit)
 Call: survfit(formula = Surv(aml$time, aml$status) ~ aml$x)
 
@@ -751,7 +773,7 @@ Likelihood ratio test=3.38  on 1 df, p=0.0658  n= 23
 > x2 <- coxph(Surv(rep(0,23),time, status) ~x, aml, method='efron')
 > x1$coef - x2$coef
 xNonmaintained 
-  1.110223e-16 
+ -1.110223e-16 
 > 
 > rm(x1, x2, atime, denom, deaths, chaz,cvar, tfit, sfit, temp, temp2, fit)
 > #
@@ -1532,11 +1554,11 @@ Call: survfit.coxph(object = fit)
 Call: survfit.coxph(object = fit, newdata = list(age = c(30, 70), ecog.ps = c(2, 
     3)))
 
-      n events rmean se(rmean) median 0.95LCL 0.95UCL
-rx=1 13      7   634      98.9    Inf     Inf     Inf
-rx=1 13      7   259      24.7    268     115     Inf
-rx=2 13      5   562      29.0    Inf     Inf     Inf
-rx=2 13      5   422       7.9    365     353     Inf
+      n events median 0.95LCL 0.95UCL
+rx=1 13      7    Inf     Inf     Inf
+rx=1 13      7    268     115     Inf
+rx=2 13      5    Inf     Inf     Inf
+rx=2 13      5    365     353     Inf
 > summary(sfit)
 Call: survfit.coxph(object = fit, newdata = list(age = c(30, 70), ecog.ps = c(2, 
     3)))
@@ -1957,7 +1979,7 @@ Call: survfit.coxph(object = sfit.1, newdata = data, individual = T)
 + 			rep(age,2)*strata(ss) + I(rep(age,2)^2*ss) )
 > fit$coef[1] - fit3$coef
   rep(age, 2) 
--1.040834e-17 
+-3.469447e-18 
 > s4 <- survfit(fit, c(fit3$means, 0,0))
 > all.equal(s4$surv[1:(s4$strata[1])],  s3$surv)
 [1] TRUE
@@ -2047,9 +2069,9 @@ Call: survfit(formula = Surv(time, status) ~ ph.ecog, data = cancer)
 Call: survfit(formula = Surv(time, status) ~ ph.ecog, data = cancer)
 
    1 observations deleted due to missing 
-            n events rmean se(rmean) median 0.95LCL 0.95UCL
-ph.ecog=1 113     82   385      27.3    306     268     429
-ph.ecog=2  50     44   259      31.2    199     156     288
+            n events median 0.95LCL 0.95UCL
+ph.ecog=1 113     82    306     268     429
+ph.ecog=2  50     44    199     156     288
 > 
 > temp <- survfit(Surv(time, status), cancer, type='fleming',
 + 		   conf.int=.9, conf.type='log-log', error='tsiatis')
