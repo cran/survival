@@ -1,3 +1,5 @@
+2.9-16 model.frame methods patches from BDR
+
 2.9-13 report an error if model frame has zero rows.
 
 2.9-12  Changed R_ext/Mathlib to Rmath.h

@@ -1,6 +1,0 @@
-Changes:
-int to long everywhere
-rewrite cox_callback, surv_callback for R
-added project file for Mac compilation.
-Various minor things to make gcc -Wall happier
-

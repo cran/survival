@@ -361,7 +361,7 @@ all.equal(resid(fit1, type='schoe') , (resid(fit2, type='schoe'))[1:ndead])
 #
 # A test to exercise the "infinity" check on 2 variables
 #
-test3 _ data.frame(futime=1:12, fustat=c(1,0,1,0,1,0,0,0,0,0,0,0),
+test3  <-  data.frame(futime=1:12, fustat=c(1,0,1,0,1,0,0,0,0,0,0,0),
 		   x1=rep(0:1,6), x2=c(rep(0,6), rep(1,6)))
 coxph(Surv(futime, fustat) ~ x1 + x2, test3)
 # Create a "counting process" version of the simplest test data set
@@ -534,7 +534,7 @@ ovarian <- read.table("data.ovarian", row.names=NULL,
 # Test the coxph program on the Ovarian data
 #
 
-xx _ order(ovarian$futime)   #put data in same order as SAS green book
+xx  <-  order(ovarian$futime)   #put data in same order as SAS green book
 temp <- ovarian[xx,]
 attach(temp)
 
@@ -574,17 +574,17 @@ detach(2)
 fit <- coxph(Surv(futime, fustat) ~ age + ecog.ps + rx, ovarian, robust=T)
 rr <- resid(fit, type='dfbeta')
 all.equal(as.vector(t(rr) %*% rr), as.vector(fit$var))
-temp _ scan("data.jasa", what=list(id=0, b.mo=0, b.d=0, b.y=0,
+temp  <-  scan("data.jasa", what=list(id=0, b.mo=0, b.d=0, b.y=0,
                                        a.mo=0, a.d=0, a.y=0,
                                        t.mo=0, t.d=0, t.y=0,
                                        f.mo=0, f.d=0, f.y=0,
                                        fu.stat=0, surg=0, mismatch=0,
                                        hla.a2=0, mscore=0, reject=0))
 
-temp3 _ mdy.date(temp$b.mo, temp$b.d, temp$b.y,nineteen=TRUE)
-temp4 _ mdy.date(temp$a.mo, temp$a.d, temp$a.y,nineteen=TRUE)
-temp5 _ mdy.date(temp$t.mo, temp$t.d, temp$t.y,nineteen=TRUE)
-temp6 _ mdy.date(temp$f.mo, temp$f.d, temp$f.y,nineteen=TRUE)
+temp3  <-  mdy.date(temp$b.mo, temp$b.d, temp$b.y,nineteen=TRUE)
+temp4  <-  mdy.date(temp$a.mo, temp$a.d, temp$a.y,nineteen=TRUE)
+temp5  <-  mdy.date(temp$t.mo, temp$t.d, temp$t.y,nineteen=TRUE)
+temp6  <-  mdy.date(temp$f.mo, temp$f.d, temp$f.y,nineteen=TRUE)
 
 # Make sure that a particular idiocy is turned off: turning logicals into 
 #       factors!
@@ -620,18 +620,18 @@ survdiff(Surv(jasa$futime, jasa$fustat) ~ offset(expect))
 #
 stan1 <- function(jasa) {
     id <- row.names(jasa)
-    tx _  1*(jasa$transplant)
-    covar _ cbind(jasa$age/365.25 -48,
+    tx  <-   1*(jasa$transplant)
+    covar  <-  cbind(jasa$age/365.25 -48,
 		  (jasa$accept.dt - mdy.date(10,1,1967))/365.25,
 		  jasa$surgery)
-    n _ length(tx)     #number in study
-    ntx _ sum(tx)      #number transplanted
+    n  <-  length(tx)     #number in study
+    ntx  <-  sum(tx)      #number transplanted
     # Per paragraph 2, p138, the patient who died on the day of transplant is
     #   treated differently, for all others deaths are assumed to occur "earlier
     #   in the day" than transplants.
     special <- id ==38
-    wait _ jasa$wait.time
-    wait[special] _ wait[special] - .5
+    wait  <-  jasa$wait.time
+    wait[special]  <-  wait[special] - .5
 
     age <- year <- surgery <- transplant <- id2 <- double(n+ntx)
     start <- stop <- event <- double(n+ntx)
@@ -670,21 +670,21 @@ stan1 <- function(jasa) {
 		    transplant=factor(transplant), id=id2)
     }
 
-jasa1 _ stan1(jasa)
+jasa1  <-  stan1(jasa)
 attach(jasa1)
 # Now fit the 6 models found in Kalbfleisch and Prentice, p139
 #options(contrasts=c("contr.treatment", "contr.treatment"))
-sfit.1 _ coxph(Surv(start, stop, event)~ (age + surgery)*transplant,
+sfit.1  <-  coxph(Surv(start, stop, event)~ (age + surgery)*transplant,
 				method='breslow')
-sfit.2 _ coxph(Surv(start, stop, event)~ year*transplant,
+sfit.2  <-  coxph(Surv(start, stop, event)~ year*transplant,
 				method='breslow')
-sfit.3 _ coxph(Surv(start, stop, event)~ (age + year)*transplant,
+sfit.3  <-  coxph(Surv(start, stop, event)~ (age + year)*transplant,
 				method='breslow')
-sfit.4 _ coxph(Surv(start, stop, event)~ (year +surgery) *transplant,
+sfit.4  <-  coxph(Surv(start, stop, event)~ (year +surgery) *transplant,
 				method='breslow')
-sfit.5 _ coxph(Surv(start, stop, event)~ (age + surgery)*transplant + year ,
+sfit.5  <-  coxph(Surv(start, stop, event)~ (age + surgery)*transplant + year ,
 				method='breslow')
-sfit.6 _ coxph(Surv(start, stop, event)~ age*transplant + surgery + year,
+sfit.6  <-  coxph(Surv(start, stop, event)~ age*transplant + surgery + year,
 				method='breslow')
 
 summary(sfit.1)
@@ -954,8 +954,8 @@ exp1 <- survexp(futime ~ ratetable(year=temp2, age=(temp2-temp1), sex=1),
 		times=xtime, conditional=T)
 
 cond <- exp2$surv
-for (i in 6:2) cond[i,] _ (cond[i,]/cond[i-1,])  #conditional survival
-for (i in 1:6) con[i] _ exp(mean(log(cond[i, i:6])))
+for (i in 6:2) cond[i,]  <-  (cond[i,]/cond[i-1,])  #conditional survival
+for (i in 1:6) con[i]  <-  exp(mean(log(cond[i, i:6])))
 
 all.equal(exp1$surv[match(futime, xtime)], cumprod(con))
 cumprod(con)
