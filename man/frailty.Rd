@@ -60,7 +60,7 @@ kfitm1 <- coxph(Surv(time,status) ~ age + sex + disease +
 		frailty(id, dist='gauss'), kidney)
 coxph(Surv(time, status) ~ age + sex + frailty(id, dist='gauss', method='aic',caic=TRUE), kidney)
 # uncorrected aic
-coxph(Surv(time, status) ~ age + sex + frailty(id, method='aic', caic=FALSE), kidney)
+coxph(Surv(time, status) ~ age + sex + frailty(id, method='aic', caic=F), kidney)
 
 data(rats)
 rfit2a <- survreg(Surv(time, status) ~ rx +

@@ -129,7 +129,7 @@ basehaz<-function(fit,centered=TRUE){
     if (!is.null(strata))
         strata<-rep(names(strata),strata)
     
-    if (centered){
+    if (!centered){
         z0<-fit$means
         bz0<-sum(z0*coef(fit))
         H<- H*exp(-bz0)

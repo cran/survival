@@ -1,3 +1,7 @@
+2.9-4 centered= argument was backwards for basehaz (Martyn Plummer);
+	add vcov.coxph, vcov.survreg if vcov exists and they don't,
+	add anova.coxph[list]
+
 2.9-3 Really change T/F to TRUE/FALSE everywhere
 
 2.9-2 Change 14 uses of _ to <-.  Fixed clogit() to allow missing data
