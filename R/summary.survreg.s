@@ -27,12 +27,22 @@ summary.survreg<- function(object, correlation = FALSE,...)
         }
 
     nsingular <- nvar - p
-    table <- matrix(rep(coef, 4), ncol = 4)
-    dimnames(table) <- list(cname, c("Value", "Std. Error", "z", "p"))
-    stds <- sqrt(diag(object$var))
-    table[, 2] <- stds
-    table[, 3] <- table[, 1]/stds
-    table[, 4] <- 2*pnorm(-abs(table[,3]))
+    if (is.null(object$naive.var)){
+        table <- matrix(rep(coef, 4), ncol = 4)
+        dimnames(table) <- list(cname, c("Value", "Std. Error", "z", "p"))
+        stds <- sqrt(diag(object$var))
+        table[, 2] <- stds
+        table[, 3] <- table[, 1]/stds
+        table[, 4] <- 2*pnorm(-abs(table[,3]))
+    } else {
+        table <- matrix(rep(coef, 5), ncol = 5)
+        dimnames(table) <- list(cname, c("Value", "Std. Err","(Naive SE)", "z", "p"))
+        stds <- sqrt(diag(object$var))
+        table[, 2] <- stds
+        table[, 3] <- sqrt(diag(object$naive.var))
+        table[, 4] <- table[, 1]/stds
+        table[, 5] <- 2*pnorm(-abs(table[,3]))
+    }
     if(correlation) {
 	nas <- is.na(coef)
 	stds <- stds[!nas]
@@ -53,7 +63,7 @@ summary.survreg<- function(object, correlation = FALSE,...)
 			'scale', 'coefficients', 'var'), 
 		      names(object), nomatch=0)]
     x <- c(x, list(table=table, correlation=correl, parms=pprint,
-		   n=n, chi=2*diff(object$loglik)))
+		   n=n, chi=2*diff(object$loglik)), robust=!is.null(object$naive.var))
 
     class(x) <- 'summary.survreg'
     x

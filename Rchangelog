@@ -1,3 +1,7 @@
+2.16	Added cluster() and robust standard errors for survreg.
+
+2.15-1  survSplit works for counting process data
+
 2.15  export vcov methods (BDR)
 
 	fix lurking longs in survindex2 (BDR)

@@ -28,6 +28,7 @@ print.summary.survreg <- function(x, digits = max(options()$digits - 4, 3),
 		"degrees of freedom, p=", 
 		format(signif(1-pchisq(x$chi, df),2)), "\n")
     else cat("\n")
+    if (x$robust) cat("(Loglikelihood assumes independent observations)\n")
     cat("Number of Newton-Raphson Iterations:", format(trunc(x$iter)),
         "\n")
     omit <- x$na.action

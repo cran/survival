@@ -19,8 +19,8 @@ survSplit<-function(data, cut, end,event,start,id=NULL,
   else
     starttime<-rep(zero,length=n)
 
-  starttime<-c(starttime, rep(cut,each=n))
-
+  starttime<-c(starttime, pmax(starttime, rep(cut,each=n)))
+  
   epi<-rep(0:ntimes,each=n)
   
   status <- ifelse( eventtime <= endtime & eventtime>starttime,

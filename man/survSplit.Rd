@@ -30,6 +30,13 @@ survSplit(data, cut, end, event, start, id = NULL, zero = 0,
  New, longer, data frame.
 }
 
+\details{
+  The function also works when the original data are in
+  counting-process format, but the \code{id} and \code{episode} options
+  are of little use in this context.
+ 
+  }
+
 \seealso{\code{\link{Surv}}, \code{\link{cut}}, \code{\link{reshape}} }
 
 \examples{
@@ -42,6 +49,9 @@ summary(aml3)
 coxph(Surv(time,status)~x,data=aml)
 ## the same
 coxph(Surv(start,time,status)~x,data=aml3)
+
+aml4<-survSplit(aml3,cut=20,end="time",start="start", event="status")
+coxph(Surv(start,time,status)~x,data=aml4)
 
 }
 \Keyword{survival }% at least one, from doc/KEYWORDS

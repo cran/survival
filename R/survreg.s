@@ -6,7 +6,7 @@
 survreg <- function(formula=formula(data), data=parent.frame(),
 	weights, subset, na.action, dist='weibull', 
 	init=NULL,  scale=0, control=survreg.control(), parms=NULL, 
-	model=FALSE, x=FALSE, y=TRUE, ...) {
+	model=FALSE, x=FALSE, y=TRUE, robust=FALSE, ...) {
 
     call <- match.call()
     m <- match.call(expand=FALSE)
@@ -168,6 +168,7 @@ survreg <- function(formula=formula(data), data=parent.frame(),
 	fit$loglik <- fit$loglik + logcorrect
 	}
 
+    
     na.action <- attr(m, "na.action")
     if (length(na.action)) fit$na.action <- na.action
     fit$df.residual <- n - sum(fit$df)
@@ -184,5 +185,13 @@ survreg <- function(formula=formula(data), data=parent.frame(),
     if (length(parms)) fit$parms <- parms
     if (any(pterms)) class(fit)<- c('survreg.penal', 'survreg')
     else	     class(fit) <- 'survreg'
-    fit
+
+    if (robust){
+        fit$naive.var<-fit$var
+        if (length(cluster))
+            fit$var<-crossprod(rowsum(resid(fit,"dfbeta"), cluster))
+        else
+            fit$var<-crossprod(rowsum(resid(fit,"dfbeta")))
     }
+    fit
+}

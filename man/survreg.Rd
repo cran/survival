@@ -21,7 +21,7 @@ accelerated failure models that use a log transformation.
 survreg(formula=formula(data), data=parent.frame(), weights, 
 subset,na.action,dist="weibull",  init=NULL, scale=0,
  control=survreg.control(),parms=NULL,model=FALSE, x=FALSE,
- y=TRUE, \dots)
+ y=TRUE, robust=FALSE, \dots)
 }
 \arguments{
 \item{formula}{
@@ -69,6 +69,10 @@ if TRUE, then the X matrix is returned.
 }
 \item{y}{
 if TRUE, then the y vector (or survival times) is returned.
+}
+\item{robust}{
+if TRUE, sandwich standard errors are computed. Defaults to TRUE when
+\code{formula} contains a \code{\link{cluster}} term.
 }
 \item{...}{
 other arguments which will be passed to \code{survreg.control}.

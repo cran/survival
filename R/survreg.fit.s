@@ -4,7 +4,7 @@
 survreg.fit<- function(x, y, weights, offset, init, controlvals, dist, 
 		       scale=0, nstrat=1, strata, parms=NULL) {
 
-    controlvals<-do.call("survreg.control",controlvals)
+    controlvals<-do.call("survreg.control", controlvals)
     iter.max <- controlvals$iter.max
     eps <- controlvals$rel.tol
     toler.chol <- controlvals$toler.chol
@@ -53,7 +53,7 @@ survreg.fit<- function(x, y, weights, offset, init, controlvals, dist,
 	    list(z=z,density=as.vector(as.double(temp)))}
         
 	survlist <- list(z=double(n2), density=double(n2*5))
-	###.C("init_survcall", expr1,PACKAGE="survival")
+	###.C("init_survcall", expr1, PACKAGE="survival")
 	}
     else {
         fitter <- 'survreg2'

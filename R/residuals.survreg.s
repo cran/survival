@@ -11,9 +11,13 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
     if(!inherits(Terms, "terms"))
 	    stop("invalid terms component of  object")
 
+    cluster<-untangle.specials(Terms,"cluster")$terms
+    if (length(cluster))
+        Terms<-Terms[-cluster]
+
     strata <- attr(Terms, 'specials')$strata
     coef <- object$coefficients
-    intercept <- attr(Terms, "intercept")
+    intercept <- attr(Terms, "intercept") 
     response  <- attr(Terms, "response")
     weights <- object$weights
     if (is.null(weights)) weighted <- FALSE
