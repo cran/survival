@@ -1,3 +1,7 @@
+2.9-2 Change 14 uses of _ to <-.  Fixed clogit() to allow missing data
+
+2.9-1 Document the mean->rmean change better
+
 2.9 Change T/F to TRUE/FALSE everywhere, fix segfault in coxph with no
 events, make survreg with user-defined distributions actually work and add
 examples. Add option "show.rmean" to print.survfit, currently TRUE by

@@ -199,7 +199,7 @@ survfit.coxph <-
 	    tvar  <- surv$varhaz[ntime]
 	    }
 	if (surv$strata[1] <=1)
-	    temp _ list(n=n,time=surv$y[ntime,1],
+	    temp <- list(n=n,time=surv$y[ntime,1],
 		     n.risk=surv$y[ntime,2],
 		     n.event=surv$y[ntime,3],
 		     surv=tsurv,
@@ -208,7 +208,7 @@ survfit.coxph <-
 	    temp <- surv$strata[1:(1+surv$strata[1])]
 	    tstrat <- diff(c(0, temp[-1])) #n in each strata
 	    names(tstrat) <- levels(data$strata)
-	    temp _ list(n=n, time=surv$y[ntime,1],
+	    temp <- list(n=n, time=surv$y[ntime,1],
 		     n.risk=surv$y[ntime,2],
 		     n.event=surv$y[ntime,3],
 		     surv=tsurv,
@@ -219,7 +219,7 @@ survfit.coxph <-
 	if (se.fit) temp$std.err <- sqrt(tvar)
 	}
 
-    zval _ qnorm(1- (1-conf.int)/2, 0,1)
+    zval <- qnorm(1- (1-conf.int)/2, 0,1)
     if (conf.type=='plain') {
 	temp1 <- temp$surv + zval* temp$std * temp$surv
 	temp2 <- temp$surv - zval* temp$std * temp$surv

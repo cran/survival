@@ -93,7 +93,7 @@ agexact.fit <- function(x, y, strata, offset, init, control,
 		   rep(1.0, n),
 		   newstrat,
 		   resid=double(n),PACKAGE="survival")
-    resid _ double(n)
+    resid <- double(n)
     resid[sorted] <- agres$resid
     names(resid) <- rownames
     coef[which.sing] <- NA

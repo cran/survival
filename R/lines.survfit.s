@@ -187,8 +187,8 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 		  lty=lty[k], lwd=lwd[k], ...)
 	    }
 
-	xend _ c(xend,max(xx))
-	yend _ c(yend,min(yy))
+	xend <- c(xend,max(xx))
+	yend <- c(yend,min(yy))
 	if (plot.surv) { 
 	    lines(dostep(xx, yy), type=type, col=col[k], 
 		      lty=lty[k], lwd=lwd[k], ...)

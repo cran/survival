@@ -8,12 +8,18 @@ clogit<-function(formula,data,method=c("exact","approximate"),
     mf<-match.call()
     mf[[1]]<-as.name("model.frame")
     mf$method<-NULL
-    mf<-eval(mf,sys.frame(sys.parent()))
+    mfn<-mf
+
+    mfn$na.action<-"I"
+    mfn$subset<-NULL
+    nrows<-NROW(eval(mfn,parent.frame()))
+
+    mf<-eval(mf,parent.frame())
     
     coxcall<-match.call()
     coxcall[[1]]<-as.name("coxph")
     newformula<-formula
-    newformula[[2]]<-substitute(Surv(rep(1,nn),case),list(case=formula[[2]],nn=NROW(mf)))
+    newformula[[2]]<-substitute(Surv(rep(1,nn),case),list(case=formula[[2]],nn=nrows))
     environment(newformula)<-environment(formula)
     coxcall$formula<-newformula
     coxcall$method<-switch(match.arg(method),exact="exact","breslow")
