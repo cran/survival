@@ -26,10 +26,9 @@ function of one argument.
 should a global chi-square test be done, in addition to the
 per-variable tests.
 }
-}}
+}
 \value{
 an object of class \code{"cox.zph"}, with components:
-}
 \item{table}{
 a matrix with one row for each variable, and optionally a last row for
 the global test.

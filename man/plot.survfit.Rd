@@ -132,8 +132,8 @@ in the call to \code{plot.survfit} or \code{lines.survfit}.
 }
 \seealso{
   \code{\link{par}}, \code{\link{survfit}}, \code{\link{lines.survfit}}
-\code{\link{legend}}
-}.
+\code{\link{legend}}.
+}
 \examples{
 data(aml)
 leukemia.surv <- survfit(Surv(time, status) ~ x, data = aml)
@@ -152,7 +152,6 @@ if (interactive()){
 cat("Click on the graphics device to place a legend\n")
 plot(leukemia.surv,lty=2:3,legend.pos=locator(1),legend.text=c("Maintenance",
 "No Maintenance"))
-}
 }
 }
 \keyword{survival}

@@ -24,7 +24,6 @@ function will be included.
 }}
 \value{
 a list with two components:
-}
 \item{vars}{
 a vector of variable names, as would be found in the data frame, of the
 specials.

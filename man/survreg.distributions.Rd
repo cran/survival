@@ -68,8 +68,11 @@ changed and new ones must not be added.  The examples show how to
 specify user-defined distributions to \code{survreg}.
 
 
-} \seealso{\code{\link{survreg}},
-  \code{\link{pnorm}},\code{\link{plogis}}, \code{\link{pt}}}}
+}
+
+\seealso{\code{\link{survreg}},
+  \code{\link{pnorm}},\code{\link{plogis}}, \code{\link{pt}}
+}
 \examples{
 data(ovarian)
 ## not a good fit, but a useful example

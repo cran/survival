@@ -35,7 +35,6 @@ days, \code{scale=365.25} would scale the output to years.
 }
 \value{
 a list with the following components
-}
 \item{time}{
 the timepoint on the curve.
 }
