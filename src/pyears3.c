@@ -1,4 +1,5 @@
 /*  SCCS @(#)pyears3.c	5.2 10/27/98
+/*
 **  Person-years calculations, leading to expected survival for a cohort.
 **    The output table depends only on factors, not on continuous.
 **
@@ -68,12 +69,12 @@ void pyears3(int   *sdeath,    int   *sn,    int   *sedim,
     ntime = *sntime;
     ngrp  = *sngrp;
     x     = dmatrix(sx, n, edim+1);
-    data2 = (double *)ALLOC(edim+1, sizeof(double));
-    wvec  = (double *)ALLOC(ntime*ngrp, sizeof(double));
+    data2 = (double *)R_alloc(edim+1, sizeof(double));
+    wvec  = (double *)R_alloc(ntime*ngrp, sizeof(double));
     /*
     ** ecut will be a ragged array
     */
-    ecut = (double **)ALLOC(edim, sizeof(double *));
+    ecut = (double **)R_alloc(edim, sizeof(double *));
     for (i=0; i<edim; i++) {
 	ecut[i] = secut;
 	if (efac[i]==0)     secut += edims[i];

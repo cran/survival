@@ -6,7 +6,6 @@
 \alias{is.category}
 \alias{is.na.ratetable2}
 \alias{is.na.coxph.penalty}
-\alias{[.terms}
 \alias{match.ratetable}
 \alias{as.matrix.ratetable}
 \alias{model.newframe}
@@ -26,7 +25,6 @@ survpenal.fit(x, y, weights, offset, init, controlvals, dist, scale = 0,
     nstrat = 1, strata, pcols, pattr, assign, parms = NULL)
 survdiff.fit(y, x, strat, rho = 0)
 is.category(x)
-termobj[i]
 match.ratetable(R, ratetable)
 as.matrix.ratetable(x)
 is.na.ratetable2(x)
@@ -42,7 +40,7 @@ coxph.fit(x, y, strata, offset, init, control, weights, method,
 coxph.wtest(var, b, toler.chol = 1e-09)
 agreg.fit(x, y, strata, offset, init, control, weights, method,
     rownames)
- agexact.fit(x, y, strata, offset, init, control, weights, method,
+agexact.fit(x, y, strata, offset, init, control, weights, method,
     rownames) 
 }
 \details{These are not to be called by the user}

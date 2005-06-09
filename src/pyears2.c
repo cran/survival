@@ -1,4 +1,5 @@
-/*  SCCS @(#)pyears2.c	5.2 10/27/98
+/*  SCCS @(#)pyears2.c	5.4 12/30/01
+/*
 **  Person-years calculations.
 **     same as pyears1, but no expected rates
 **
@@ -8,6 +9,7 @@
 **      doevent does y have an 'events' column?  1=yes, 0=no
 **              if ny=2 and doevent=1, then "start" is missing.
 **      y[3,n]  contains start, stop, and event for each subject
+**      wt      contains the case weights
 **
 **  output table's description
 **      odim        number of dimensions
@@ -32,12 +34,12 @@
 
 /* names that begin with "s" will be re-declared in the main body */
 void pyears2(int   *sn,      int   *sny,   int   *sdoevent, 
-	     double *sy,      int   *sodim, int   *ofac, 
+	     double *sy,      double *wt,    int   *sodim,    int   *ofac, 
 	     int   *odims,   double *socut, double *sodata,
 	     double *pyears,  double *pn,    double *pcount, 
 	     double *offtable)
     {
-    register int i,j;
+    int i,j;
     int     n,
 	    ny,
 	    doevent,
@@ -60,21 +62,24 @@ void pyears2(int   *sn,      int   *sny,   int   *sdoevent,
     doevent = *sdoevent;
     odim = *sodim;
     start = sy;
+
     if (ny==3 || (ny==2 && doevent==0)) {
+	/* each subject has a "start" time */
 	stop = sy +n;
 	dostart =1;
 	}
     else   {
+	/* followup starts at time 0 */
 	stop  = sy;
 	dostart =0;
 	}
     event = stop +n;
     odata = dmatrix(sodata, n, odim);
-    data  = (double *) ALLOC(odim, sizeof(double));
+    data  = (double *) R_alloc(odim, sizeof(double));
     /*
     ** will be a ragged array
     */
-    ocut = (double **)ALLOC(odim, sizeof(double *));
+    ocut = (double **)R_alloc(odim, sizeof(double *));
     for (i=0; i<odim; i++) {
 	ocut[i] = socut;
 	if (ofac[i]==0) socut += odims[i] +1;
@@ -84,6 +89,10 @@ void pyears2(int   *sn,      int   *sny,   int   *sdoevent,
     for (i=0; i<n; i++) {
 	/*
 	** initialize
+	** "data" will be the vector of starting values for each subject
+	**    for a factor variable this is just the cell number (1,2,3,...)
+	**    for a continuous one it is the value, which will be matched to
+	**       the ocuts list, by pystep, to figure out a cell number
 	*/
 	for (j=0; j<odim; j++) {
 	    if (ofac[j] ==1 || dostart==0) data[j] = odata[j][i];
@@ -93,20 +102,25 @@ void pyears2(int   *sn,      int   *sny,   int   *sdoevent,
 	else            timeleft = stop[i];
 	/*
 	** add up p-yrs
+	**   d1 and d2 are only relevant to rate tables, so ignored here
+	** If there are only factor variables, the loop below will finish in
+	**   one iteration.  Otherwise, the value "thiscell" is the amount of
+	**   person-years in the current cell, up to the next cell boundary
+	**   (or the amount of time left, whichever is lesser).
 	*/
 	while (timeleft >0) {
 	    thiscell = pystep(odim, &index, &d1, &d2, data, ofac, odims, ocut,
 				    timeleft, 0);
 	    if (index >=0) {
-		pyears[index] += thiscell;
+		pyears[index] += thiscell * wt[i];
 		pn[index] += 1;
 		}
-	    else *offtable += thiscell;
+	    else *offtable += thiscell * wt[i];
 
 	    for (j=0; j<odim; j++)
 		if (ofac[j] ==0) data[j] += thiscell;
-	    timeleft -=thiscell;
+	    timeleft -= thiscell;
 	    }
-	if (index >=0 && doevent) pcount[index] += event[i];
+	if (index >=0 && doevent) pcount[index] += event[i] * wt[i];
 	}
     }

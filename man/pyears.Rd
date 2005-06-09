@@ -145,6 +145,8 @@ survexp.uswhite<-survexp.usr[,,"white",]
 py2 <- pyears(temp.time ~ temp.age + temp.yr
 		+ ratetable(age=temp2-temp1, year=temp2, sex=1),
 	     scale=1, ratetable=survexp.uswhite ) #output in days
+
+
 }
 \keyword{survival}
 % Converted by Sd2Rd version 0.3-2.

@@ -165,7 +165,8 @@ void cox_callback (int which, double *coef, double *first,
                    double *second, double *penalty, int *flag, int p, void *fexpr, void *rho);
 
 void pyears1(int   *sn,      int   *sny,      int   *sdoevent, 
-	     double *sy,      int   *sedim,    int   *efac, 
+	     double *sy,      double *weight,       
+             int   *sedim,   int   *efac, 
 	     int   *edims,   double *secut,    double *expect, 
 	     double *sedata,  int   *sodim,    int   *ofac, 
 	     int   *odims,   double *socut,    int   *smethod, 
@@ -173,7 +174,7 @@ void pyears1(int   *sn,      int   *sny,      int   *sdoevent,
 	     double *pcount,  double *pexpect,  double *offtable);
 
 void pyears2(int   *sn,      int   *sny,   int   *sdoevent, 
-	     double *sy,      int   *sodim, int   *ofac, 
+	     double *sy,      double *wt,    int   *sodim,    int   *ofac, 
 	     int   *odims,   double *socut, double *sodata,
 	     double *pyears,  double *pn,    double *pcount, 
 	     double *offtable);
@@ -183,6 +184,7 @@ void pyears3(int   *sdeath,    int   *sn,    int   *sedim,
 	     double *expect,    double *sx,    double *y, 
 	     int   *sntime,    int   *sngrp, double *times,
 	     double *esurv,     int   *nsurv);
+
 
 double pystep(int nc,        int  *index,  int  *index2,   double *wt, 
 	      double *data,  int *fac,    int *dims,     double **cuts, 

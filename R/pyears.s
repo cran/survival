@@ -1,5 +1,5 @@
-#SCCS  @(#)pyears.s	5.4 02/19/99
-pyears <- function(formula=formula(data), data=sys.frame(sys.parent()),
+#SCCS  @(#)pyears.s	5.8 12/30/01
+pyears <- function(formula=formula(data), data=sys.parent(),
 	weights, subset, na.action,
 	ratetable=survexp.us, scale=365.25,  expect=c('event', 'pyears'),
 	model=FALSE, x=FALSE, y=FALSE) {
@@ -11,24 +11,6 @@ pyears <- function(formula=formula(data), data=sys.frame(sys.parent()),
 
     Terms <- if(missing(data)) terms(formula, 'ratetable')
 	     else              terms(formula, 'ratetable',data=data)
-    if (any(attr(Terms, 'order') >1))
-	    stop("Pyears cannot have interaction terms")
-    m$formula <- Terms
-    m[[1]] <- as.name("model.frame")
-    m <- eval(m, parent.frame())
-
-    Y <- model.extract(m, 'response')
-    if (is.null(Y)) stop ("Follow-up time must appear in the formula")
-    if (!is.Surv(Y)){
-	if (any(Y <0)) stop ("Negative follow up time")
-	Y <- as.matrix(Y)
-	if (ncol(Y) >2) stop("Y has too many columns")
-	if (ncol(Y)==2 && any(Y[,2] <= Y[,1]))
-	    stop("stop time must be > start time")
-	}
-    n <- nrow(Y)
-
-    weights <- model.extract(m, 'weights')
 
     rate <- attr(Terms, "specials")$ratetable
     if (length(rate) >1 )
@@ -49,6 +31,27 @@ pyears <- function(formula=formula(data), data=sys.frame(sys.parent()),
 	         else               terms(formula, "ratetable", data = data)
 	rate <- attr(Terms, "specials")$ratetable
 	}
+
+    if (any(attr(Terms, 'order') >1))
+	    stop("Pyears cannot have interaction terms")
+    m$formula <- Terms
+    m[[1]] <- as.name("model.frame")
+    m <- eval(m, sys.parent())
+
+    Y <- model.extract(m, 'response')
+    if (is.null(Y)) stop ("Follow-up time must appear in the formula")
+    if (!is.Surv(Y)){
+	if (any(Y <0)) stop ("Negative follow up time")
+	Y <- as.matrix(Y)
+	if (ncol(Y) >2) stop("Y has too many columns")
+	if (ncol(Y)==2 && any(Y[,2] <= Y[,1]))
+	    stop("stop time must be > start time")
+	}
+    n <- nrow(Y)
+    if (is.null(n) || n==0) stop("Data set has 0 observations")
+
+    weights <- model.extract(m, 'weights')
+    if (is.null(weights)) weights <- rep(1.0, n)
 
     if (length(rate)==1) {
 	ovars <- (dimnames(attr(Terms, 'factors'))[[1]])[-c(1, rate)]
@@ -74,7 +77,7 @@ pyears <- function(formula=formula(data), data=sys.frame(sys.parent()),
 	outdname <- vector("list", odim)
 	for (i in 1:odim) {
 	    temp <- m[[ovars[i]]]
-	    ctemp <- class(temp)
+	    ctemp <- oldClass(temp)
 	    if (!is.null(ctemp) && ctemp=='tcut') {
 		X[,i] <- temp
 		temp2 <- attr(temp, 'cutpoints')
@@ -108,8 +111,9 @@ pyears <- function(formula=formula(data), data=sys.frame(sys.parent()),
 	    #slide entry date so that it appears that they were born on Jan 1
 	    cols <- match(c("age", "year"), atts$dimid)
 	    if (any(is.na(cols))) stop("Ratetable does not have expected shape")
-	    temp <- date.mdy(R[,cols[2]]-R[,cols[1]])
-	    R[,cols[2]] <- R[,cols[2]] - mdy.date(temp$month, temp$day, 1960)
+            temp <- date.mdy(R[, cols[2]] - R[, cols[1]])
+            R[, cols[2]] <- R[, cols[2]] - mdy.date(temp$month,
+                temp$day, 1960)
 	    # Doctor up "cutpoints"
 	    temp <- (1:length(rfac))[us.special]
 	    nyear <- length(cuts[[temp]])
@@ -123,23 +127,24 @@ pyears <- function(formula=formula(data), data=sys.frame(sys.parent()),
 			as.integer(ncol(Y)),
 			as.integer(is.Surv(Y)),
 			as.double(Y),
+		        as.double(weights),
 			as.integer(length(atts$dim)),
 			as.integer(rfac),
 			as.integer(atts$dim),
 			as.double(unlist(cuts)),
-			ratetable,
+			as.double(ratetable),
 			as.double(R),
 			as.integer(odim),
 			as.integer(ofac),
 			as.integer(odims),
 			as.double(ocut),
 			as.integer(expect=='event'),
-			X,
+			as.double(X),
 			pyears=double(osize),
 			pn    =double(osize),
 			pcount=double(if(is.Surv(Y)) osize else 1),
 			pexpect=double(osize),
-			offtable=double(1),PACKAGE="survival")[17:21]
+			offtable=double(1), PACKAGE="survival")[18:22]
 	}
     else {
 	temp <- .C('pyears2',
@@ -147,15 +152,16 @@ pyears <- function(formula=formula(data), data=sys.frame(sys.parent()),
 			as.integer(ncol(Y)),
 			as.integer(is.Surv(Y)),
 			as.double(Y),
+		        as.double(weights),
 			as.integer(odim),
 			as.integer(ofac),
 			as.integer(odims),
 			as.double(ocut),
-			X,
+			as.double(X),
 			pyears=double(osize),
 			pn    =double(osize),
 			pcount=double(if(is.Surv(Y)) osize else 1),
-			offtable=double(1),PACKAGE="survival") [10:13]
+			offtable=double(1), PACKAGE="survival") [11:14]
 	}
 
     if (prod(odims) ==1) {  #don't make it an array
@@ -188,7 +194,7 @@ pyears <- function(formula=formula(data), data=sys.frame(sys.parent()),
 	if (x) out$x <- cbind(X, R)
 	if (y) out$y <- Y
 	}
-    class(out) <- 'pyears'
+    oldClass(out) <- 'pyears'
     out
     }
 
