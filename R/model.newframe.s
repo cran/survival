@@ -8,7 +8,14 @@
 #   transforms that support it by adding data dependent info as an attribute
 #   of their output.
 # If you know this isn't so, then safe=T uses a method that is much longer,
-#   but is guarranteed to work, see predict.gam
+#   but is guaranteed to work, see predict.gam
+
+
+bareterms<-function(formula){
+    if(length(formula)>2) formula<-delete.response(formula)
+    v<-all.vars(formula)
+    terms(formula(paste("~",paste(v,collapse="+"))))
+}
 
 model.newframe <- function(object, newdata, safe=FALSE, response=FALSE, ...) {
     if (inherits(object, 'terms'))  Terms <- object
@@ -42,9 +49,9 @@ model.newframe <- function(object, newdata, safe=FALSE, response=FALSE, ...) {
 	#Do a safe call, by building up a brand new model frame
 	Call <- object$call
 	Call[[1]] <- as.name("model.frame")
-	Call$formula <- terms.inner(formula(object))
+	Call$formula <- bareterms(formula(object))
    #might need to tack on the response here!
-	if (response) stop("Not implimented yet for safe=TRUE, response=TRUE")
+	if (response) stop("Not implemented yet for safe=TRUE, response=TRUE")
 	Call$na.action <- function(x)  x
 	Call <- Call[match(c("", "formula", "data", "subset", "na.action"),
 	    names(Call), 0)]

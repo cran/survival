@@ -1,14 +1,17 @@
 
-R : Copyright 2004, The R Foundation for Statistical Computing
-Version 2.0.0 Under development (unstable) (2004-08-12), ISBN 3-900051-00-3
+R : Copyright 2005, The R Foundation for Statistical Computing
+Version 2.2.0 alpha (2005-09-08 r35523)
+ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
 Type 'license()' or 'licence()' for distribution details.
 
+  Natural language support but running in an English locale
+
 R is a collaborative project with many contributors.
 Type 'contributors()' for more information and
-'citation()' on how to cite R in publications.
+'citation()' on how to cite R or R packages in publications.
 
 Type 'demo()' for some demos, 'help()' for on-line help, or
 'help.start()' for a HTML browser interface to help.
@@ -20,7 +23,7 @@ Type 'q()' to quit R.
 > #dyn.load("../loadmod.o")
 > #attach("../.Data")
 > library(survival)
-Loading required package: splines 
+Loading required package: splines
 > 
 > options(na.action="na.exclude")
 > 
@@ -982,7 +985,6 @@ coxph(formula = Surv(time, status) ~ x, data = testw1, weights = wt,
     method = "breslow")
 
   n= 9 
-
   coef exp(coef) se(coef)    z    p
 x 0.86      2.36    0.713 1.21 0.23
 
@@ -1086,7 +1088,6 @@ coxph(formula = Surv(begin, time, status) ~ x, data = testw2,
     weights = wt, method = "breslow")
 
   n= 14 
-
   coef exp(coef) se(coef)    z    p
 x 0.86      2.36    0.713 1.21 0.23
 
@@ -1514,7 +1515,6 @@ Call:
 coxph(formula = Surv(futime, fustat) ~ age + ecog.ps + strata(rx))
 
   n= 26 
-
            coef exp(coef) se(coef)      z      p
 age      0.1385     1.149    0.048  2.885 0.0039
 ecog.ps -0.0967     0.908    0.630 -0.154 0.8800
@@ -1692,6 +1692,16 @@ Observed Expected        Z        p
 > 
 > jasa1  <-  stan1(jasa)
 > attach(jasa1)
+
+	The following object(s) are masked from package:stats :
+
+	 start 
+
+
+	The following object(s) are masked from package:base :
+
+	 stop 
+
 > # Now fit the 6 models found in Kalbfleisch and Prentice, p139
 > #options(contrasts=c("contr.treatment", "contr.treatment"))
 > sfit.1  <-  coxph(Surv(start, stop, event)~ (age + surgery)*transplant,
@@ -1713,7 +1723,6 @@ coxph(formula = Surv(start, stop, event) ~ (age + surgery) *
     transplant, method = "breslow")
 
   n= 172 
-
                        coef exp(coef) se(coef)      z    p
 age                  0.0138     1.014   0.0181  0.763 0.45
 surgery             -0.5457     0.579   0.6109 -0.893 0.37
@@ -1751,7 +1760,6 @@ coxph(formula = Surv(start, stop, event) ~ (age + year) * transplant,
     method = "breslow")
 
   n= 172 
-
                     coef exp(coef) se(coef)      z      p
 age               0.0155     1.016   0.0173  0.895 0.3700
 year             -0.2735     0.761   0.1058 -2.585 0.0097
@@ -2124,7 +2132,6 @@ coxph(formula = Surv(time, status) ~ ph.ecog + ph.karno + pat.karno +
     wt.loss + sex + age + meal.cal + strata(inst), data = cancer)
 
   n=167 (61 observations deleted due to missing)
-
               coef exp(coef) se(coef)      z      p
 ph.ecog    0.73000     2.075 0.268940  2.714 0.0066
 ph.karno   0.01305     1.013 0.013736  0.950 0.3400
@@ -2229,12 +2236,11 @@ Likelihood ratio test=29.4  on 12 df, p=0.00344  n= 340
            [,1]       [,2]       [,3]       [,4]
 [1,] -0.5176209 -0.6194404 -0.6998771 -0.6507935
 > t(cmat) %*% wfit$var[rx,rx] %*% cmat  # var matrix (eqn 3.2)
-      
-             [,1]       [,2]      [,3]      [,4]
-  [1,] 0.09455501 0.06017669 0.0567733 0.0437777
-  [2,] 0.06017669 0.13242834 0.1301156 0.1160420
-  [3,] 0.05677331 0.13011557 0.1723588 0.1590865
-  [4,] 0.04377770 0.11604200 0.1590865 0.2398112
+           [,1]       [,2]      [,3]      [,4]
+[1,] 0.09455501 0.06017669 0.0567733 0.0437777
+[2,] 0.06017669 0.13242834 0.1301156 0.1160420
+[3,] 0.05677331 0.13011557 0.1723588 0.1590865
+[4,] 0.04377770 0.11604200 0.1590865 0.2398112
 > 
 > # Anderson-Gill fit
 > fita <- coxph(Surv(start, stop, event) ~ rx + size + number + cluster(id),
@@ -2370,27 +2376,27 @@ Likelihood ratio test=4.16  on 3 df, p=0.245  n= 27
 > 
 > ##xx <- survexp.uswhite[,1,]
 > xx <- survexp.usr[,1,"white",]
-> check <- c(       (.6*xx[19,2] + .4*xx[19,3])    +
-+ 	     365* (.5*xx[20,2] + .5*xx[20,3]) ,
+> check <- c(       (.6*xx["18","1950"] + .4*xx["18","1960"])    +
++              365* (.5*xx["19","1950"] + .5*xx["19","1960"]) ,
 + 
-+ 	     365* (.4*xx[21,2] + .6*xx[21,3]) +
-+ 	     365* (.3*xx[22,2] + .7*xx[22,3]) +
-+ 	     366* (.2*xx[23,2] + .8*xx[23,3]) +
-+ 	     365* (.1*xx[24,2] + .9*xx[24,3]) ,
++ 	     365* (.4*xx["20","1950"] + .6*xx["20","1960"]) +
++ 	     365* (.3*xx["21","1950"] + .7*xx["21","1960"]) +
++ 	     366* (.2*xx["22","1950"] + .8*xx["23","1960"]) +
++ 	     365* (.1*xx["23","1950"] + .9*xx["24","1960"]) ,
 + 
-+ 	     365* (   xx[25,3]              ) +
-+ 	     365* (.9*xx[26,3] + .1*xx[26,4]) +
-+ 	     366* (.8*xx[27,3] + .2*xx[27,4]) +
-+ 	     365* (.7*xx[28,3] + .3*xx[28,4]) +
-+ 	     365* (.6*xx[29,3] + .4*xx[29,4]) ,
++ 	     365* (   xx["24","1960"]              ) +
++ 	     365* (.9*xx["25","1960"] + .1*xx["25","1970"]) +
++ 	     366* (.8*xx["26","1960"] + .2*xx["26","1970"]) +
++ 	     365* (.7*xx["27","1960"] + .3*xx["27","1970"]) +
++ 	     365* (.6*xx["28","1960"] + .4*xx["28","1970"]) ,
 + 
-+ 	     365* (.5*xx[30,3] + .5*xx[30,4]) +
-+ 	     365* (.4*xx[31,3] + .6*xx[31,4]) )
++ 	     365* (.5*xx["29","1960"] + .5*xx["29","1970"]) +
++ 	     365* (.4*xx["30","1960"] + .6*xx["30","1970"]) )
 > 
 > print(exp1$surv)
 [1] 0.9984869 0.9917560 0.9840415 0.9808834
 > print(exp(-cumsum(check))) ###?FIXME
-[1] 0.9988430 0.9930819 0.9845172 0.9813910
+[1] 0.9984871 0.9918346 0.9841193 0.9809609
 > 
 > # This does not pass the "all.equal" test.  Because of leap year (again),
 > #  the internal S code does not do exactly what is stated above.  US

@@ -124,7 +124,7 @@ survfit.coxph <-
 		#
 		strata.all <- object$n
 		if (length(strat)) {
-		    strata2 <- factor(x2[,strat], levels=levels(stratum))
+		    strata2 <- factor(x2[,strat], levels=levels(data$strata))
 		    x2 <- x2[, -strat, drop=FALSE]
 		    }
 		else strata2 <- rep(1, nrow(x2))

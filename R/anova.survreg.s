@@ -41,7 +41,7 @@ anova.survreg <- function(object, ..., test = c("Chisq", "none")) {
 		 paste("Response: ", as.character(formula(object))[2], 
 		       "\n", sep = ""),
                  if (nrow(fit$var) == length(fit$coefficients))
-        paste("Scale fixed at", format(x$scale, digits = digits),"\n")
+        paste("Scale fixed at", format(object$scale, digits = getOption("digits")),"\n")
                  else "Scale estimated\n",
 		 "Terms added sequentially (first to last)")
     aod <- data.frame(Df = df, Deviance = dev, "Resid. Df" = df.res, 

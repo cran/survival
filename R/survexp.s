@@ -26,8 +26,9 @@ survexp <- function(formula=formula(data), data=parent.frame(),
 	if(is.ratetable(ratetable))   varlist <- attr(ratetable, "dimid")
 	else if(inherits(ratetable, "coxph")) {
 	    varlist <- names(ratetable$coef)
-	    # Now remove "log" and such things, using terms.inner
-	    temp <- terms.inner(xx(paste("~", paste(varlist, collapse='+'))))
+	    ## Now remove "log" and such things, using terms.inner
+            ## in R it is survival:::bareterms
+	    temp <- bareterms(xx(paste("~", paste(varlist, collapse='+'))))
 	    varlist <- attr(temp, 'term.labels')
             }
 	else stop("Invalid rate table")
@@ -195,7 +196,7 @@ survexp <- function(formula=formula(data), data=parent.frame(),
 	if (model) out$model <- m
 	else {
 	    if (x) out$x <- structure(cbind(X, R),
-		dimnames=list(row.names(m), c("group", dimid)))
+		dimnames=list(row.names(m), c("group", varlist ))) ### was dimid)))
 	    if (y) out$y <- Y
 	    }
 	if (israte && !is.null(rtemp$summ)) out$summ <- rtemp$summ

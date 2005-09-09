@@ -1,6 +1,7 @@
 #SCCS 03/25/97 @(#)summary.coxph.s	4.8
 summarycoxph <-
- function(object, table = TRUE, coef = TRUE, conf.int = 0.95, scale = 1, ...)
+ function(object, table = TRUE, coef = TRUE, conf.int = 0.95, scale = 1,
+          digits=getOption("digits"),...)
     {
         cox<-object
     if (!is.null(cl<- cox$call)) {
@@ -173,7 +174,7 @@ print.summary.coxph <-
 	cat("  n=", x$n, " (", naprint(omit), ")\n", sep="")
     else cat("  n=", x$n, "\n")
     if (length(x$icc))
-	cat("  robust variance based on", cox$icc[1],
+	cat("  robust variance based on", x$icc[1],
 	    "groups\n")
     if (nrow(x$coef)==0) {   # Null model
 	cat ("   Null model\n")

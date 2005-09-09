@@ -1,4 +1,4 @@
- #
+#
 # Set up for the test
 #
 #dyn.load("../loadmod.o")
@@ -153,7 +153,7 @@ temp1 <- coxph(Surv(time, status) ~ age + sex + disease +
 rr <- tapply(resid(temp1), kidney$id, sum)
 temp2 <- log(rr/1 +1)
 all.equal(temp1$coef, kfit1$coef) ##FAILS in S-PLUS
-all.equal(temp2, kfit1$frail) ##FAILS in S-PLUS
+all.equal(as.vector(temp2), kfit1$frail) ##FAILS in S-PLUS
 
 kfit
 kfit1
