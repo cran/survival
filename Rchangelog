@@ -1,3 +1,5 @@
+2.20    export coxph.fit
+
 2.19	Fixes for codetools complaints
 
 	Added Norman Breslow's case-cohort code.

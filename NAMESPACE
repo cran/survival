@@ -3,7 +3,7 @@ importFrom(splines, ns, spline.des)
 import(stats,graphics)
 export("Surv", "as.date", "attrassign", 
     "basehaz", "cch", "clogit", "cluster", "cox.zph", 
-     "coxph", "coxph.control", "coxph.detail", 
+     "coxph", "coxph.control", "coxph.detail", "coxph.fit",
     "date.ddmmmyy", 
     "date.mdy", "date.mmddyy", "date.mmddyyyy", "format.Surv", 
     "frailty",  "frailty.gamma", 
