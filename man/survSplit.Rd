@@ -54,5 +54,5 @@ aml4<-survSplit(aml3,cut=20,end="time",start="start", event="status")
 coxph(Surv(start,time,status)~x,data=aml4)
 
 }
-\Keyword{survival }% at least one, from doc/KEYWORDS
+\keyword{survival }% at least one, from doc/KEYWORDS
 \keyword{utilities}% __ONLY ONE__ keyword per line
