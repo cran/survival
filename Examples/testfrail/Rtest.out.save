@@ -1,6 +1,6 @@
 
-R : Copyright 2005, The R Foundation for Statistical Computing
-Version 2.2.0 alpha (2005-09-08 r35523)
+R : Copyright 2006, The R Foundation for Statistical Computing
+Version 2.3.0 Under development (unstable) (2006-03-06 r37488)
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -14,7 +14,7 @@ Type 'contributors()' for more information and
 'citation()' on how to cite R or R packages in publications.
 
 Type 'demo()' for some demos, 'help()' for on-line help, or
-'help.start()' for a HTML browser interface to help.
+'help.start()' for an HTML browser interface to help.
 Type 'q()' to quit R.
 
 > #
@@ -258,21 +258,21 @@ Likelihood ratio test=25.2  on 7.06 df, p=0.000726
 [1] 0.9426611 1.9293052
 > 
 > fit2$history
-$"pspline(age, df = 2)"
-$"pspline(age, df = 2)"$theta
+$`pspline(age, df = 2)`
+$`pspline(age, df = 2)`$theta
 [1] 0.4468868
 
-$"pspline(age, df = 2)"$done
+$`pspline(age, df = 2)`$done
 [1] TRUE
 
-$"pspline(age, df = 2)"$history
+$`pspline(age, df = 2)`$history
         thetas      dfs
 [1,] 1.0000000 1.000000
 [2,] 0.0000000 5.000000
 [3,] 0.6000000 1.734267
 [4,] 0.4845205 1.929305
 
-$"pspline(age, df = 2)"$half
+$`pspline(age, df = 2)`$half
 [1] 0
 
 
@@ -851,7 +851,7 @@ Likelihood ratio test=363  on 33.8 df, p=0  n= 1858
 > tempf <- predict(kfit1, type='terms')[,3]  
 > temp  <- kfit1$frail[match(kidney$id, sort(unique(kidney$id)))]
 >  all.equal(unclass(tempf), unclass(temp))
-[1] TRUE
+[1] "names for target but not for current"
 >  all.equal(as.vector(tempf), as.vector(temp))
 [1] TRUE
 > 

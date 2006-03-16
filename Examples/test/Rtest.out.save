@@ -1,6 +1,6 @@
 
-R : Copyright 2005, The R Foundation for Statistical Computing
-Version 2.2.0 alpha (2005-09-08 r35523)
+R : Copyright 2006, The R Foundation for Statistical Computing
+Version 2.3.0 Under development (unstable) (2006-03-06 r37488)
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -14,7 +14,7 @@ Type 'contributors()' for more information and
 'citation()' on how to cite R or R packages in publications.
 
 Type 'demo()' for some demos, 'help()' for on-line help, or
-'help.start()' for a HTML browser interface to help.
+'help.start()' for an HTML browser interface to help.
 Type 'q()' to quit R.
 
 > #
@@ -776,7 +776,7 @@ Likelihood ratio test=3.38  on 1 df, p=0.0658  n= 23
 > x2 <- coxph(Surv(rep(0,23),time, status) ~x, aml, method='efron')
 > x1$coef - x2$coef
 xNonmaintained 
- -1.110223e-16 
+  1.110223e-16 
 > 
 > rm(x1, x2, atime, denom, deaths, chaz,cvar, tfit, sfit, temp, temp2, fit)
 > #
@@ -1692,16 +1692,6 @@ Observed Expected        Z        p
 > 
 > jasa1  <-  stan1(jasa)
 > attach(jasa1)
-
-	The following object(s) are masked from package:stats :
-
-	 start 
-
-
-	The following object(s) are masked from package:base :
-
-	 stop 
-
 > # Now fit the 6 models found in Kalbfleisch and Prentice, p139
 > #options(contrasts=c("contr.treatment", "contr.treatment"))
 > sfit.1  <-  coxph(Surv(start, stop, event)~ (age + surgery)*transplant,
@@ -1987,7 +1977,7 @@ Call: survfit.coxph(object = sfit.1, newdata = data, individual = T)
 + 			rep(age,2)*strata(ss) + I(rep(age,2)^2*ss) )
 > fit$coef[1] - fit3$coef
   rep(age, 2) 
--3.469447e-18 
+-6.938894e-18 
 > s4 <- survfit(fit, c(fit3$means, 0,0))
 > all.equal(s4$surv[1:(s4$strata[1])],  s3$surv)
 [1] TRUE
@@ -2375,6 +2365,9 @@ Likelihood ratio test=4.16  on 3 df, p=0.245  n= 27
 > # remember, a first subscript of "1" is for age 0
 > 
 > ##xx <- survexp.uswhite[,1,]
+> 
+> ## Edited to account for change to survexp.usr, which has more categories
+> ## before age 1.
 > xx <- survexp.usr[,1,"white",]
 > check <- c(       (.6*xx["18","1950"] + .4*xx["18","1960"])    +
 +              365* (.5*xx["19","1950"] + .5*xx["19","1960"]) ,

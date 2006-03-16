@@ -8,18 +8,10 @@
 char *id();
 
 void
-char_date(n, order, cdate, month, day, year)
-    int  *n,
-    order[],			/* 1=year, 2=month, 3=day */
-    month[],
-    day[],
-    year[];
-    char *cdate[];
-
-{
-    register int i,k, ii;
-    register char *j;
-    register char *cc;
+char_date(int *n, int *order, char **cdate, int *month, int *day, int *year) {
+      int i,k, ii;
+      char *j;
+      char *cc;
     
     int what[3];
     int len;
@@ -89,14 +81,9 @@ char_date(n, order, cdate, month, day, year)
     }
 
 
-char *
-id(str, array, k)
-    char *str;
-    int  array[];
-    int  k;
-{
-    register int i;
-    register char *j;
+char *id(char *str, int *array, int k){
+      int i;
+      char *j;
 
     /*skip any delimiters (leading blanks are always ok) */
     while (*str==' ') str++;

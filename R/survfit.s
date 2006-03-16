@@ -60,7 +60,7 @@ survfit <- function (formula, data, weights, subset, na.action, ...) {
 #  often in plotting
 
 "[.survfit" <- function(x, ..., drop=FALSE) {
-    if (missing(..1)) i<- NULL  else i <- ..1
+    if (missing(..1)) i<- NULL  else i <- sort(..1)
     if (missing(..2)) j<- NULL  else j <- ..2
     if (is.null(x$strata)) {
 	if (is.matrix(x$surv)) {

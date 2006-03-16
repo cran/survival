@@ -2,14 +2,17 @@
 \name{cch}
 \title{Fits proportional hazards regression model to case-cohort data}
 
-\description{
-Returns estimates and standard errors from relative risk regression fit to
-data from case-cohort studies. A choice is available among the Prentice,
-Self-Prentice and Lin-Ying methods for estimation of regression coefficients 
-and standard errors.}
+\description{ Returns estimates and standard errors from relative risk
+regression fit to data from case-cohort studies. A choice is available
+among the Prentice, Self-Prentice and Lin-Ying methods for unstratified
+data. For stratified data the choice is between Borgan I, a
+generalization of the Self-Prentice estimator for unstratified
+case-cohort data, and Borgan II, a generalization of the Lin-Ying
+estimator.
+}
 \usage{
-cch(formula, data = sys.parent(), subcoh, id, cohort.size,
-    method = c("Prentice", "SelfPrentice", "LinYing"))
+cch(formula, data = sys.parent(), subcoh, id, stratum=NULL, cohort.size,
+    method = c("Prentice", "SelfPrentice","LinYing","I.Borgan","II.Borgan"))
 }
 \arguments{
 \item{formula}{
@@ -23,11 +26,12 @@ The Surv object must be of type \code{"right"}, or of type \code{"counting"}.
   data frame then \code{subcoh} may be a one-sided formula.
 }
 \item{id}{
-Vector of unique identifiers, or formula specifying such a vector. If \code{data} is a
-  data frame then \code{subcoh} may be a one-sided formula.
+Vector of unique identifiers, or formula specifying such a vector.
 }
+\item{stratum}{A vector of stratum indicators or a formula specifying
+  such a vector}
 \item{cohort.size}{
-Scalar with size of original cohort from which subcohort was sampled
+Vector with size of each stratum original cohort from which subcohort was sampled
 }
 \item{data}{
 An optional data frame in which to interpret the variables 
@@ -38,7 +42,7 @@ Three procedures are available. The default method is "Prentice", with
 options for "SelfPrentice" or "LinYing". 
 }}
 \value{
-A whole bunch of stuff including list of estimated regression coefficients and two estimates of their 
+An object of class "cch"  incorporating a list of estimated regression coefficients and two estimates of their 
 asymptotic variance-covariance matrix.
 \item{coef}{
 regression coefficients.
@@ -124,5 +128,16 @@ fit.ccSP <- cch(Surv(edrel, rel) ~ stage + histol + age, data =ccoh.data,
    subcoh = ~subcohort, id=~seqno, cohort.size=4028, method="SelfPren")
 
 summary(fit.ccSP)
+
+##
+## (post-)stratified on instit
+##
+stratsizes<-table(nwtco$instit)
+fit.BI<- cch(Surv(edrel, rel) ~ stage + histol + age, data =ccoh.data,
+   subcoh = ~subcohort, id=~seqno, stratum=~instit, cohort.size=stratsizes,
+   method="I.Borgan")
+
+summary(fit.BI)
 }
+
 \keyword{survival}

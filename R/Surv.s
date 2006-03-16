@@ -1,4 +1,4 @@
-#SCCS @(#)Surv.s	5.5 07/09/00
+# SCCS @(#)Surv.s	5.5 07/09/00
 # Package up surivival type data as a structure
 #
 Surv <- function(time, time2, event,

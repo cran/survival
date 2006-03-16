@@ -1,3 +1,15 @@
+2.22    bug in p-values for robust standard errors in survreg.
+
+        bug in cch: var vs naive.var
+
+	[.survfit handled non-increasing indices wrongly (Aniko Szabo)
+
+	Remove obsolete recommendation to use I() to wrap Surv objects
+
+	Register the .C calls.
+	
+2.21    added stratified case-cohort code (also from Norman Breslow)
+
 2.20    export coxph.fit
 
 2.19	Fixes for codetools complaints
@@ -8,7 +20,7 @@
 
 2.15-1  survSplit works for counting process data
 
-2.15  export vcov methods (BDR)
+2.15    export vcov methods (BDR)
 
 	fix lurking longs in survindex2 (BDR)
 

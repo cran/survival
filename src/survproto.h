@@ -56,13 +56,18 @@ void agfit5_c(int *nusedx, int *nvar, int *strata,
 void agfit_null(int   *n,      int   *method,   double *start, double *stop, 
 		int   *event,  double * offset,  double *weights,
 		int   *strata, double loglik[2]);
-
+/*
 void aghaz2(int   *n,     double *start,   double *stop,   int   *event, 
 	    double *score, int   * strata, double *hazard, double * cumhaz);
-
+*/
 void agmart(int   *n,     int   *method,  double *start,   double *stop, 
 	    int   *event, double *score,   double *wt,      int   *strata, 
 	    double *resid);
+
+void agmart2(int   *n,     int   *method,  double *start,   double *stop, 
+	    int   *event,  int   *nstrat,  int *strata,    int *sort1,
+	    int   *sort2,  double *score,   double *wt,      
+	     double *resid,  double *haz);
 
 void agres12(int   *nx,     int   *nvarx,   double *y,    double *covar2, 
 	     int   *strata, double *score,   int *method, double *resid2, 
@@ -211,6 +216,13 @@ void survfit2(int   *sn,      double *y,       double *wt,
 	      double *mark,    double *surv,    double *varh, 
 	      double *risksum  );
 
+void survfit3(int   *sn,              double *y,               double *wt,
+	      int   *strata,          int   *method,          int   *error,
+	      int   *nstrat,          double *ntimes_strata,  
+	      double *timelist,	       double *weighted_event,  double *surv,
+	      double *varh,	       double *risksum,         double *enter,
+	      double *exit_censored);
+
 /* void survindex2(int   *n,          double *stime,      int   *strata, */
 /* 		int   *ntime,      double *time,       int   *nstrat, */
 /* 		int   *o_n_risk,   int   *o_n_event,  double *o_surv, */
@@ -260,3 +272,5 @@ void survreg5(int   *maxiter,   int   *nx,       int   *nvarx,
              int *ptype2,  	 int   *pdiag2,
 	     int *nfrail2,      int   *frail2,   double *fdiag2,
 	      void *fexpr1, void *fexpr2, void *density, void *rho );
+
+void char_date(int *n, int *order, char *cdate, int *month, int*day, int *year);

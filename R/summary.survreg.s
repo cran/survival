@@ -41,7 +41,7 @@ summary.survreg<- function(object, correlation = FALSE,...)
         table[, 2] <- stds
         table[, 3] <- sqrt(diag(object$naive.var))
         table[, 4] <- table[, 1]/stds
-        table[, 5] <- 2*pnorm(-abs(table[,3]))
+        table[, 5] <- 2*pnorm(-abs(table[,4]))
     }
     if(correlation) {
 	nas <- is.na(coef)

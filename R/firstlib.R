@@ -3,12 +3,15 @@
     ##     and with MASS
     if (is.null(getOption("survfit.print.n")))
         options(survfit.print.n="start")
+    
     ## survfit.print.mean==TRUE is compatible with previous R/SPLUS
     ##     (but is silly)
     if (is.null(getOption("survfit.print.mean")))
         options(survfit.print.mean=FALSE)
 }
 
+.onUnload <- function(libpath)
+    library.dynam.unload("survival", libpath)
 
 
 is.category <- function(x) inherits(x,"factor") || is.factor(x)

@@ -62,13 +62,12 @@ another.
 }}
 \value{
 An object of class \code{Surv}.  There are methods for \code{print}, \code{is.na}, and
-subscripting survival objects.  To include a survival object inside a
-data frame, use the \code{I()} function.  \code{Surv} objects are implemented as
+subscripting survival objects.   \code{Surv} objects are implemented as
 a matrix of 2 or 3 columns.
 
 
-In the case of \code{is.Surv}, a logical value \code{T} if \code{x} inherits from 
-class \code{"Surv"}, otherwise an \code{F}.
+In the case of \code{is.Surv}, a logical value \code{TRUE} if \code{x} inherits from 
+class \code{"Surv"}, otherwise an \code{FALSE}.
 }
 \section{DETAILS}{
 In theory it is possible to represent interval censored data without a
