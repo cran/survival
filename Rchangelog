@@ -1,3 +1,7 @@
+2.23    plot.survfit with fun=cloglog error
+
+	plot.date no longer tries to pass log to axis()
+
 2.22    bug in p-values for robust standard errors in survreg.
 
         bug in cch: var vs naive.var

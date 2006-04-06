@@ -199,7 +199,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 	    # (1, .2), (1.4, .2), (1.8, .2), (2.3, .2), (2.9, .2), (3, .1)
             # with (1, .2), (3, .1).  They are slow, and can smear the looks
 	    # of the line type.
-	    dupy <- c(TRUE, diff(y[-n]) !=0, TRUE)
+	    dupy <- c(!duplicated(y)[-n], TRUE)
 	    n2 <- sum(dupy)
 
 	    #create a step function

@@ -117,7 +117,7 @@ as.vector.date <- function(x, mode = "any") {
 is.na.date <- function(x) {
     NextMethod(.Generic)
 }
-plot.date <- function(x, y, ..., axes, xaxt, xlab, ylab,
+plot.date <- function(x, y, ..., axes, xaxt, xlab, ylab,log=NULL,
                       xlim = range(x, na.rm = TRUE),
                       ylim = range(y, na.rm = TRUE))
 {
@@ -127,13 +127,13 @@ plot.date <- function(x, y, ..., axes, xaxt, xlab, ylab,
         ylab <- deparse(substitute(y))
     class(x) <- NULL                    # after deparse(substitute())
     if(!missing(axes) && !axes)         # argument axes works
-        plot(x, y, ..., axes = axes, xlab = xlab, ylab = ylab,
+        plot(x, y, ..., axes = axes, xlab = xlab, ylab = ylab,log=log,
             xlim = xlim, ylim = ylim)
     else if(!missing(xaxt))
-        plot(x, y, ..., xaxt = xaxt, xlab = xlab, ylab = ylab,
+        plot(x, y, ..., xaxt = xaxt, xlab = xlab, ylab = ylab,log=log,
             xlim = xlim, ylim = ylim)
     else {
-        plot(x, y, ..., xaxt = "n", xlab = xlab, ylab = ylab,
+        plot(x, y, ..., xaxt = "n", xlab = xlab, ylab = ylab,log=log,
             xlim = xlim, ylim = ylim)
         x <- c(x[!is.na(x)], xlim)      # draws axis completely when
                                         # using xlim
