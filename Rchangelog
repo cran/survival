@@ -1,3 +1,5 @@
+2.24    Bug fix for p-values in cch()
+
 2.23    plot.survfit with fun=cloglog error
 
 	plot.date no longer tries to pass log to axis()

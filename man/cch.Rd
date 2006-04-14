@@ -35,7 +35,7 @@ Vector with size of each stratum original cohort from which subcohort was sample
 }
 \item{data}{
 An optional data frame in which to interpret the variables 
-occurring in the formula.
+occurring in the formula. 
 }
 \item{method}{
 Three procedures are available. The default method is "Prentice", with 
@@ -66,7 +66,10 @@ the failure if that occurs outside the sub-cohort and is score unbiased.
 two have the same asymptotic variance-covariance matrix. "LinYing" (Lin-Ying)
 uses the all members of the sub-cohort and all failures outside the sub-cohort
 who are "at risk". The methods also differ in the weights given to different
-score contributions.          
+score contributions.
+
+The \code{data} argument must not have missing values for any variables
+in the model.
 }
 \author{Norman Breslow, modified by Thomas Lumley}
 \references{

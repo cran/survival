@@ -1,5 +1,4 @@
 ### Suite of programs for case-cohort analysis
-
 ### Main program
 
 cch <- function(formula, data=sys.parent(), subcoh, id, stratum=NULL, cohort.size, 
@@ -75,7 +74,7 @@ cch <- function(formula, data=sys.parent(), subcoh, id, stratum=NULL, cohort.siz
         out<-fitter(tenter=tenter, texit=texit, cc=cc, id=id, X=X, ntot=nn)
     ##out <- eval(z, sys.parent())
     out$method <- method
-    names(out$coef) <- dimnames(X)[[2]]
+    names(out$coefficients) <- dimnames(X)[[2]]
     if(!is.null(out$var))
         dimnames(out$var) <- list(dimnames(X)[[2]], dimnames(X)[[2]])
     if(!is.null(out$naive.var))
@@ -124,7 +123,7 @@ Prentice <- function(tenter, texit, cc,  id, X, ntot){
     db <- as.matrix(db)
     db <- db[gp==0,]
     fit$var<-fit$naive.var <- fit$naive.var+(1-(nc/ntot))*t(db)%*%(db)
-    fit$coef <- fit1$coefficients
+    fit$coefficients <- fit$coef <- fit1$coefficients
     fit
 }
 
@@ -296,10 +295,10 @@ vcov.cch<-function(object,...) object$var
 {
     ## produces summary from an x of the class "cch"
     call<-x$call
-    coef <- x$coef
+    coef <- coef(x)
     method <- x$method
-    se <- sqrt(diag(x$var))
-    Z<- coef/se
+    se <- sqrt(diag(vcov(x)))
+    Z<- abs(coef/se)
     p<- pnorm(Z)
     cohort.size<-x$cohort.size
     subcohort.size<-x$subcohort.size
@@ -332,10 +331,10 @@ vcov.cch<-function(object,...) object$var
 {
     ## produces summary from an object of the class "cch"
     call<-object$call
-	coef <- object$coef
+	coef <- coef(object)
 	method <- object$method
-	se <- sqrt(diag(object$var))
-      Z<- coef/se
+	se <- sqrt(diag(vcov(object)))
+      Z<- abs(coef/se)
       p<- pnorm(Z)
       cohort.size<-object$cohort.size
       subcohort.size<-object$subcohort.size
