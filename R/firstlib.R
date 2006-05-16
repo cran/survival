@@ -5,7 +5,6 @@
         options(survfit.print.n="start")
     
     ## survfit.print.mean==TRUE is compatible with previous R/SPLUS
-    ##     (but is silly)
     if (is.null(getOption("survfit.print.mean")))
         options(survfit.print.mean=FALSE)
 }

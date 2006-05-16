@@ -12,7 +12,8 @@ estimator.
 }
 \usage{
 cch(formula, data = sys.parent(), subcoh, id, stratum=NULL, cohort.size,
-    method = c("Prentice", "SelfPrentice","LinYing","I.Borgan","II.Borgan"))
+    method =c("Prentice","SelfPrentice","LinYing","I.Borgan","II.Borgan"),
+    robust=FALSE)
 }
 \arguments{
 \item{formula}{
@@ -39,8 +40,10 @@ occurring in the formula.
 }
 \item{method}{
 Three procedures are available. The default method is "Prentice", with 
-options for "SelfPrentice" or "LinYing". 
-}}
+options for "SelfPrentice" or "LinYing". }
+\item{robust}{For \code{"LinYing"} only, if \code{robust=TRUE}, use design-based standard errors even for
+  phase I}
+}
 \value{
 An object of class "cch"  incorporating a list of estimated regression coefficients and two estimates of their 
 asymptotic variance-covariance matrix.

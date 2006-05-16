@@ -2,7 +2,8 @@
 ### Main program
 
 cch <- function(formula, data=sys.parent(), subcoh, id, stratum=NULL, cohort.size, 
-                method=c("Prentice", "SelfPrentice", "LinYing","I.Borgan","II.Borgan")){
+                method=c("Prentice", "SelfPrentice", "LinYing","I.Borgan","II.Borgan"),
+                robust=FALSE){
     call <- match.call()
     
     if (is.data.frame(data)){
@@ -30,6 +31,8 @@ cch <- function(formula, data=sys.parent(), subcoh, id, stratum=NULL, cohort.siz
     if (!is.null(stratum))
         stratum<-factor(stratum)
     if (stratified){
+        if (robust)
+            warning("`robust' not implemented for stratified analysis.")
         if (is.null(stratum))
             stop("method (",method,") requires 'stratum'")
         if (length(cohort.size)!=length(levels(stratum)))
@@ -38,6 +41,8 @@ cch <- function(formula, data=sys.parent(), subcoh, id, stratum=NULL, cohort.siz
             warning("stratum levels and names(cohort.size) do not agree")
         subcohort.sizes<-table(stratum)
     } else if(!stratified) {
+        if (!(method =="LinYing"))
+            warning("`robust' ignored for  method (",method,")")
         if (!is.null(stratum))
             warning("'stratum' ignored for method (",method,")")
         if (length(cohort.size)!=1)
@@ -48,7 +53,7 @@ cch <- function(formula, data=sys.parent(), subcoh, id, stratum=NULL, cohort.siz
         stop("Population smaller than sample in some strata")
     ## Evaluate model formula
     m <- match.call(expand.dots=FALSE)
-    m$method <- m$cohort.size <- m$id <- m$subcoh <- m$stratum <- NULL
+    m$method <- m$cohort.size <- m$id <- m$subcoh <- m$stratum <-m$robust<- NULL
     m[[1]] <- as.name("model.frame")
     m <- eval(m,sys.parent())
     Terms <- attr(m,"terms")
@@ -71,8 +76,7 @@ cch <- function(formula, data=sys.parent(), subcoh, id, stratum=NULL, cohort.siz
         out<-fitter(tenter=tenter, texit=texit, cc=cc, id=id, X=X,
                     stratum=as.numeric(stratum), stratum.sizes=cohort.size)
     else
-        out<-fitter(tenter=tenter, texit=texit, cc=cc, id=id, X=X, ntot=nn)
-    ##out <- eval(z, sys.parent())
+        out<-fitter(tenter=tenter, texit=texit, cc=cc, id=id, X=X, ntot=nn, robust=robust)
     out$method <- method
     names(out$coefficients) <- dimnames(X)[[2]]
     if(!is.null(out$var))
@@ -94,7 +98,7 @@ cch <- function(formula, data=sys.parent(), subcoh, id, stratum=NULL, cohort.siz
 
 ### Subprograms
 
-Prentice <- function(tenter, texit, cc,  id, X, ntot){
+Prentice <- function(tenter, texit, cc,  id, X, ntot,robust){
     eps <- 0.00000001
     cens <- as.numeric(cc>0) # Censorship indicators
     subcoh <- as.numeric(cc<2) # Subcohort indicators
@@ -122,12 +126,15 @@ Prentice <- function(tenter, texit, cc,  id, X, ntot){
     db <- resid(fit,type="dfbeta")
     db <- as.matrix(db)
     db <- db[gp==0,]
-    fit$var<-fit$naive.var <- fit$naive.var+(1-(nc/ntot))*t(db)%*%(db)
+    fit$phase2var<-(1-(nc/ntot))*t(db)%*%(db)
+    fit$naive.var <- fit$naive.var+fit$phase2var
+    fit$var<-fit$naive.var
+    
     fit$coefficients <- fit$coef <- fit1$coefficients
     fit
 }
 
-SelfPrentice <- function(tenter, texit, cc,  id, X, ntot){
+SelfPrentice <- function(tenter, texit, cc,  id, X, ntot,robust){
     eps <- 0.00000001
     cens <- as.numeric(cc>0) # Censorship indicators
     subcoh <- as.numeric(cc<2) # Subcohort indicators
@@ -149,12 +156,14 @@ SelfPrentice <- function(tenter, texit, cc,  id, X, ntot){
     db <- resid(fit,type="dfbeta")
     db <- as.matrix(db)
     db <- db[gp==0,,drop=FALSE]
-    fit$var<-fit$naive.var <- fit$naive.var+(1-(nc/ntot))*t(db)%*%(db)
+    fit$phase2var<-(1-(nc/ntot))*t(db)%*%(db)
+    fit$naive.var <- fit$naive.var+fit$phase2var
+    fit$var<-fit$naive.var
     fit
 }
 
-LinYing <- function(tenter, texit, cc,  id, X, ntot){
-    eps <- 0.00000001
+LinYing <- function(tenter, texit, cc,  id, X, ntot,robust){
+    eps <- 0.000000001
     cens <- as.numeric(cc>0) # Censorship indicators
     subcoh <- as.numeric(cc<2) # Subcohort indicators
     nd <- sum(cens) # Number of failures
@@ -169,10 +178,15 @@ LinYing <- function(tenter, texit, cc,  id, X, ntot){
                  eps=eps,x=TRUE)
     db <- resid(fit,type="dfbeta")
     db <- as.matrix(db)
-    db <- db[cens==0,,drop=FALSE]
-    dbm <- apply(db,2,mean)
-    db <- sweep(db,2,dbm)
-    fit$var<-fit$naive.var <- fit$naive.var+(1-(nc-ncd)/(ntot-nd))*t(db)%*%db
+    db0 <- db[cens==0,,drop=FALSE]
+    dbm <- apply(db0,2,mean)
+    db0 <- sweep(db0,2,dbm)
+    fit$phase2var<-(1-(nc-ncd)/(ntot-nd))*crossprod(db0)
+    fit$naive.var <- fit$naive.var+fit$phase2var
+    if (robust)
+        fit$var<- crossprod(db,db/offs)+fit$phase2var
+    else
+        fit$var<-fit$naive.var
     fit
 }
 
@@ -231,7 +245,9 @@ I.Borgan <- function(tenter, texit, cc,  id, X, stratum, stratum.sizes){
   }
   z <- apply(opt,2,sum)
   fit$opt <- sweep(opt,2,z,FUN="/")
-  fit$var <- fit$naive.var+fit$naive.var%*%delta%*%fit$naive.var
+  fit$phase2var<-fit$naive.var%*%delta%*%fit$naive.var
+  fit$naive.var <- fit$naive.var+fit$phase2var
+  fit$var<-fit$naive.var
   fit$delta <- delta
   fit$sc <- sc
   fit
@@ -281,7 +297,9 @@ II.Borgan <- function(tenter, texit, cc,  id, X, stratum, stratum.sizes){
   }
   z <- apply(opt,2,sum)
   fit$opt <- sweep(opt,2,z,FUN="/")
-  fit$var <- fit$naive.var+fit$naive.var %*% delta %*% fit$naive.var
+  fit$phase2var<-fit$naive.var %*% delta %*% fit$naive.var
+  fit$naive.var <- fit$naive.var+fit$phase2var
+  fit$var<-fit$naive.var
   fit$delta <- delta
   fit$sc <- sc
   fit
