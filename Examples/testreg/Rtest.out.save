@@ -1,6 +1,6 @@
 
-R : Copyright 2006, The R Foundation for Statistical Computing
-Version 2.3.0 Under development (unstable) (2006-03-06 r37488)
+R version 2.4.0 Under development (unstable) (2006-05-18 r38118)
+Copyright (C) 2006 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -212,7 +212,7 @@ Scale= 0.738
 Iterations: 1 outer, 5 Newton-Raphson
 Degrees of freedom for terms= 1 1 1 1 
 Likelihood ratio test=18.6  on 2 df, p=8.73e-05
-  n=227 (1 observations deleted due to missing)
+  n=227 (1 observation deleted due to missingness)
 > lfit2
 Call:
 survreg(formula = Surv(time, status) ~ sex + ridge(age, ph.ecog, 
@@ -229,7 +229,7 @@ Scale= 0.731
 Iterations: 1 outer, 6 Newton-Raphson
 Degrees of freedom for terms= 1 1 2 1 
 Likelihood ratio test=30  on 3 df, p=1.37e-06
-  n=227 (1 observations deleted due to missing)
+  n=227 (1 observation deleted due to missingness)
 > lfit3
 Call:
 survreg(formula = Surv(time, status) ~ sex + age + ph.ecog, data = lung)
@@ -242,7 +242,7 @@ Scale= 0.731109
 
 Loglik(model)= -1132.4   Loglik(intercept only)= -1147.4
 	Chisq= 29.98 on 3 degrees of freedom, p= 1.4e-06 
-n=227 (1 observations deleted due to missing)
+n=227 (1 observation deleted due to missingness)
 > 
 > 
 > xx <- pspline(lung$age, nterm=3, theta=.3)
@@ -837,7 +837,7 @@ rfit1  4.902438 -0.2189410 0.2025434
   0.1346218   0.1346218   0.1224049   0.1207863 
 > apply(temp,2,mean)
          surv   surv.sparse           cox    cox.sparse 
--1.267636e-18  4.920584e-19  5.269358e-18 -6.649683e-18 
+ 6.546887e-19  1.242665e-18 -1.301043e-17 -2.279128e-18 
 > 
 > # The parametric model gives the coefficients less variance for the
 > #  two fits, for the same df, but the scaled results are similar.

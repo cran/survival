@@ -169,14 +169,14 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 	    yy <- c(firsty, ssurv[who])
 	    yyu<- c(firsty, supper[who])
 	    yyl<- c(firsty, slower[who])
-	    deaths <- c(-1, ssurv$n.event[who])
+	    deaths <- c(-1, x$n.event[who])
 	    }
 	else {
 	    xx <- time[who]
 	    yy <- ssurv[who]
 	    yyu<- supper[who]
 	    yyl<- slower[who]
-	    deaths <- ssurv$n.event[who]
+	    deaths <- x$n.event[who]
 	    }
 	nn <- length(xx)
 

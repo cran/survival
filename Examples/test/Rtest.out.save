@@ -1,6 +1,6 @@
 
-R : Copyright 2006, The R Foundation for Statistical Computing
-Version 2.3.0 Under development (unstable) (2006-03-06 r37488)
+R version 2.4.0 Under development (unstable) (2006-05-18 r38118)
+Copyright (C) 2006 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -137,7 +137,7 @@ coxph(formula = Surv(time, status) ~ x, data = test1, method = "breslow")
   coef exp(coef) se(coef)    z    p
 x 1.48      4.37     1.26 1.17 0.24
 
-Likelihood ratio test=1.48  on 1 df, p=0.224  n=6 (1 observations deleted due to missing)
+Likelihood ratio test=1.48  on 1 df, p=0.224  n=6 (1 observation deleted due to missingness)
 > fit0 <-coxph(Surv(time, status) ~x, test1, iter=0)
 > fit0$coef
 x 
@@ -160,7 +160,7 @@ coxph(formula = Surv(time, status) ~ x, data = test1, method = "efron")
   coef exp(coef) se(coef)    z    p
 x 1.68      5.35     1.28 1.31 0.19
 
-Likelihood ratio test=1.84  on 1 df, p=0.175  n=6 (1 observations deleted due to missing)
+Likelihood ratio test=1.84  on 1 df, p=0.175  n=6 (1 observation deleted due to missingness)
 > coxph(Surv(time, status) ~ x, test1, method='exact')
 Call:
 coxph(formula = Surv(time, status) ~ x, data = test1, method = "exact")
@@ -169,7 +169,7 @@ coxph(formula = Surv(time, status) ~ x, data = test1, method = "exact")
   coef exp(coef) se(coef)        z p
 x 21.2  1.62e+09    28421 0.000746 1
 
-Likelihood ratio test=2.77  on 1 df, p=0.0959  n=6 (1 observations deleted due to missing)
+Likelihood ratio test=2.77  on 1 df, p=0.0959  n=6 (1 observation deleted due to missingness)
 > 
 > resid(fit0)
          1          2          3          4          5          6          7 
@@ -776,7 +776,7 @@ Likelihood ratio test=3.38  on 1 df, p=0.0658  n= 23
 > x2 <- coxph(Surv(rep(0,23),time, status) ~x, aml, method='efron')
 > x1$coef - x2$coef
 xNonmaintained 
-  1.110223e-16 
+ -1.110223e-16 
 > 
 > rm(x1, x2, atime, denom, deaths, chaz,cvar, tfit, sfit, temp, temp2, fit)
 > #
@@ -1977,7 +1977,7 @@ Call: survfit.coxph(object = sfit.1, newdata = data, individual = T)
 + 			rep(age,2)*strata(ss) + I(rep(age,2)^2*ss) )
 > fit$coef[1] - fit3$coef
   rep(age, 2) 
--6.938894e-18 
+-3.469447e-18 
 > s4 <- survfit(fit, c(fit3$means, 0,0))
 > all.equal(s4$surv[1:(s4$strata[1])],  s3$surv)
 [1] TRUE
@@ -2008,7 +2008,7 @@ Call: survfit.coxph(object = sfit.1, newdata = data, individual = T)
 > summary(temp, times=c(30*1:11, 365*1:3))
 Call: survfit(formula = Surv(time, status) ~ ph.ecog, data = cancer)
 
-1 observations deleted due to missing 
+1 observation deleted due to missingness 
                 ph.ecog=0 
  time n.risk n.event survival std.err lower 95% CI upper 95% CI
    30     60       3    0.952  0.0268       0.9012        1.000
@@ -2066,7 +2066,7 @@ Call: survfit(formula = Surv(time, status) ~ ph.ecog, data = cancer)
 > print(temp[2:3])
 Call: survfit(formula = Surv(time, status) ~ ph.ecog, data = cancer)
 
-   1 observations deleted due to missing 
+   1 observation deleted due to missingness 
             n events median 0.95LCL 0.95UCL
 ph.ecog=1 113     82    306     268     429
 ph.ecog=2  50     44    199     156     288
@@ -2090,7 +2090,7 @@ Call:
 survdiff(formula = Surv(time, status) ~ inst, data = cancer, 
     rho = 0.5)
 
-n=227, 1 observations deleted due to missing.
+n=227, 1 observation deleted due to missingness.
 
          N  Observed  Expected   (O-E)^2/E   (O-E)^2/V
 inst=1  36 21.190058 17.455181 0.799149708 1.171232977
@@ -2121,7 +2121,7 @@ Call:
 coxph(formula = Surv(time, status) ~ ph.ecog + ph.karno + pat.karno + 
     wt.loss + sex + age + meal.cal + strata(inst), data = cancer)
 
-  n=167 (61 observations deleted due to missing)
+  n=167 (61 observations deleted due to missingness)
               coef exp(coef) se(coef)      z      p
 ph.ecog    0.73000     2.075 0.268940  2.714 0.0066
 ph.karno   0.01305     1.013 0.013736  0.950 0.3400
@@ -2183,7 +2183,7 @@ sex       -0.66125     0.516 0.233998 -2.826 0.0047
 age        0.00509     1.005 0.013729  0.371 0.7100
 meal.cal  -0.00024     1.000 0.000302 -0.794 0.4300
 
-Likelihood ratio test=30.6  on 7 df, p=7.38e-05  n=167 (61 observations deleted due to missing)
+Likelihood ratio test=30.6  on 7 df, p=7.38e-05  n=167 (61 observations deleted due to missingness)
 > bladder <- read.table('data.bladder4',
 + 	     col.names=c('id', 'rx', 'number', 'size', 'start', 'stop',
 + 				'event', 'enum'))
@@ -2570,7 +2570,7 @@ Scale= 0.255742
 
 Loglik(model)= -4.9   Loglik(intercept only)= -7.1
 	Chisq= 4.35 on 1 degrees of freedom, p= 0.037 
-n=6 (1 observations deleted due to missing)
+n=6 (1 observation deleted due to missingness)
 > summary(fit1w)
 
 Call:
@@ -2586,7 +2586,7 @@ Weibull distribution
 Loglik(model)= -4.9   Loglik(intercept only)= -7.1
 	Chisq= 4.35 on 1 degrees of freedom, p= 0.037 
 Number of Newton-Raphson Iterations: 6 
-n=6 (1 observations deleted due to missing)
+n=6 (1 observation deleted due to missingness)
 
 > 
 > fit1e <- survreg(Surv(time, status) ~x, test1, dist='exp')
@@ -2602,7 +2602,7 @@ Scale fixed at 1
 
 Loglik(model)= -8.4   Loglik(intercept only)= -8.7
 	Chisq= 0.64 on 1 degrees of freedom, p= 0.42 
-n=6 (1 observations deleted due to missing)
+n=6 (1 observation deleted due to missingness)
 > summary(fit1e)
 
 Call:
@@ -2617,7 +2617,7 @@ Exponential distribution
 Loglik(model)= -8.4   Loglik(intercept only)= -8.7
 	Chisq= 0.64 on 1 degrees of freedom, p= 0.42 
 Number of Newton-Raphson Iterations: 3 
-n=6 (1 observations deleted due to missing)
+n=6 (1 observation deleted due to missingness)
 
 > 
 > fit1l <- survreg(Surv(time, status) ~x, test1, dist='loglogistic')
@@ -2633,7 +2633,7 @@ Scale= 0.2159941
 
 Loglik(model)= -5.3   Loglik(intercept only)= -7.1
 	Chisq= 3.62 on 1 degrees of freedom, p= 0.057 
-n=6 (1 observations deleted due to missing)
+n=6 (1 observation deleted due to missingness)
 > summary(fit1l)
 
 Call:
@@ -2649,7 +2649,7 @@ Log logistic distribution
 Loglik(model)= -5.3   Loglik(intercept only)= -7.1
 	Chisq= 3.62 on 1 degrees of freedom, p= 0.057 
 Number of Newton-Raphson Iterations: 5 
-n=6 (1 observations deleted due to missing)
+n=6 (1 observation deleted due to missingness)
 
 > 
 > fit1g <- survreg(Surv(time, status) ~x, test1, dist='lognormal')
@@ -2668,7 +2668,7 @@ Log Normal distribution
 Loglik(model)= -5   Loglik(intercept only)= -7
 	Chisq= 3.89 on 1 degrees of freedom, p= 0.049 
 Number of Newton-Raphson Iterations: 6 
-n=6 (1 observations deleted due to missing)
+n=6 (1 observation deleted due to missingness)
 
 > #
 > #  Do a test with the ovarian data
