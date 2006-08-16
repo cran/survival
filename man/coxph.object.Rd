@@ -1,5 +1,6 @@
 \name{coxph.object}
 \alias{coxph.object}
+\alias{extractAIC.coxph.penal}
 \alias{print.coxph}
 \alias{summary.coxph}
 \title{

@@ -9,6 +9,11 @@ vcov.survreg<-function (object, ...) {
         object$var
 }
 
+extractAIC.coxph.penal<- function(fit,scale,k=2,...){
+    edf<-sum(fit$df)
+    loglik <- fit$loglik[length(fit$loglik)]
+    c(edf, -2 * loglik + k * edf)
+}
 
 
  anova.coxph<-function (object, ...,  test = NULL) 

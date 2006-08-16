@@ -3,10 +3,11 @@
 \alias{jasa}
 \alias{heart}
 \title{Stanford Heart Transplant data}
-\usage{data(heart)
+\usage{
+data(heart)
 data(jasa)
-data(jasa1)}
-\synopsis{data(heart)}
+data(jasa1)
+}
 \description{Survival of patients on the waiting list for the Stanford
   heart transplant program.}
 \format{

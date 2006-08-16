@@ -66,6 +66,8 @@ cch <- function(formula, data=sys.parent(), subcoh, id, stratum=NULL, cohort.siz
                  stop(paste("Cox model doesn't support \"", type, "\" survival data", sep = "")),
                  Y[,2],
                  Y[,3])
+    if (any(!subcoh & !cens))
+        stop(sum(!subcoh & !cens),"censored observations not in subcohort")
     cc<-cens+1-subcoh
     texit<-switch(itype+1, stop(), Y[,1], Y[,2])
     tenter<-switch(itype+1, stop(), rep(0,length(texit)), Y[,1])

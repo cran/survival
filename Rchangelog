@@ -1,3 +1,14 @@
+2.28	Start eliminating Rd \synopsis entries.
+
+	Convert all .rda data files to version 2 (RDX2).
+
+        fix log=, type= in plot.date
+
+        change row names on 'jasa' object to character.
+
+2.27	cch checks for censored observations outside subcohort (Ellen O'Meara)
+	Updated reference for stratified case-cohort design.
+	
 2.24    Bug fix for p-values in cch()
 
 2.23    plot.survfit with fun=cloglog error

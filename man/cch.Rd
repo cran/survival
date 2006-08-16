@@ -72,8 +72,9 @@ who are "at risk". The methods also differ in the weights given to different
 score contributions.
 
 The \code{data} argument must not have missing values for any variables
-in the model.
+in the model.  There must not be any censored observations outside the subcohort.
 }
+
 \author{Norman Breslow, modified by Thomas Lumley}
 \references{
 Prentice, RL (1986). A case-cohort design for epidemiologic cohort studies and
@@ -82,10 +83,6 @@ disease prevention trials. Biometrika 73: 1--11.
 
 Self, S and Prentice, RL (1988). Asymptotic distribution theory and efficiency
 results for case-cohort studies. Annals of Statistics 16: 64--81.
-
-
-Lin, DY and Wei, LJ (1989). The robust inference for the Cox proportional hazards
-model. Journal of the American Statistical Association 84: 1074--1078.
 
 
 Lin, DY and Ying, Z (1993). Cox regression with incomplete covariate measurements.
@@ -100,9 +97,13 @@ Therneau, TM and Li, H (1999). Computing the Cox model for case-cohort designs.
 Lifetime Data Analysis 5: 99--112.
 
 
-Borgan, O et al. (1999). Exposure stratified case-cohort designs. Lifetime Data
-Analysis 
+Borgan, \eqn{\O}{O}, Langholz, B, Samuelsen, SO, Goldstein, L and Pogoda, J (2000)
+ Exposure stratified case-cohort designs. Lifetime Data Analysis 6, 39-58.
 
+}
+\seealso{
+\code{twophase} and \code{svycoxph} in the "survey" package for
+more general two-phase designs. \url{http://faculty.washington.edu/tlumley/survey/}
 }
 \examples{
 ## The complete Wilms Tumor Data 
@@ -116,8 +117,10 @@ subcoh <- nwtco$in.subcohort
 selccoh <- with(nwtco, rel==1|subcoh==1)
 ccoh.data <- nwtco[selccoh,]
 ccoh.data$subcohort <- subcoh[selccoh]
-ccoh.data$histol <- factor(ccoh.data$histol,labels=c("FH","UH"))  # Central histology 
-ccoh.data$stage <- factor(ccoh.data$stage,labels=c("I","II","III","IV")) # Stage
+## central-lab histology 
+ccoh.data$histol <- factor(ccoh.data$histol,labels=c("FH","UH"))
+## tumour stage
+ccoh.data$stage <- factor(ccoh.data$stage,labels=c("I","II","III","IV"))
 ccoh.data$age <- ccoh.data$age/12 # Age in years
 
 ##
