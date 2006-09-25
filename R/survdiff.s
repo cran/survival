@@ -9,7 +9,7 @@ survdiff <- function(formula, data, subset, na.action, rho=0) {
     m$formula <- Terms
     m[[1]] <- as.name("model.frame")
     m <- eval(m, parent.frame())
-    y <- model.extract(m, response)
+    y <- model.extract(m, "response")
     if (!inherits(y, "Surv")) stop("Response must be a survival object")
     if (attr(y, 'type') != 'right') stop("Right censored data only")
     ny <- ncol(y)

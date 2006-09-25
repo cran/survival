@@ -29,7 +29,7 @@ survfit <- function (formula, data, weights, subset, na.action, ...) {
 	m <- eval(m, parent.frame())
 
 	n <- nrow(m)
-	Y <- model.extract(m, response)
+	Y <- model.extract(m, "response")
 	if (!is.Surv(Y)) stop("Response must be a survival object")
 
 	casewt <- model.extract(m, "weights")

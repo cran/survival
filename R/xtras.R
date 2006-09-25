@@ -62,7 +62,7 @@ extractAIC.coxph.penal<- function(fit,scale,k=2,...){
     dispersion<-1
     if (!is.null(test)) 
         table <- stat.anova(table = table, test = test, scale = dispersion, 
-            df.scale = df.dispersion, n = NROW(x))
+            df.scale = df.dispersion, n =object$n)
     structure(table, heading = title, class = c("anova", "data.frame"))
 }
 

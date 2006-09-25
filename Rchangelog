@@ -1,3 +1,5 @@
+2.29    Fix anova.coxph(, test="Cp")
+
 2.28	Start eliminating Rd \synopsis entries.
 
 	Convert all .rda data files to version 2 (RDX2).

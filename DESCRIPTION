@@ -2,7 +2,7 @@ Title: Survival analysis, including penalised likelihood.
 Maintainer: Thomas Lumley <tlumley@u.washington.edu>
 Priority: recommended
 Package: survival
-Version: 2.28
+Version: 2.29
 Depends: stats, utils, graphics, splines, R (>= 2.0.0)
 LazyData: Yes
 LazyLoad: Yes
@@ -12,4 +12,4 @@ Description: survival analysis: descriptive statistics, two-sample
   (truncation) allowed for all models; interval censoring for parametric
   models. Case-cohort designs.
 License: GPL2
-Packaged: Wed Aug 16 08:39:14 2006; tlumley
+Packaged: Mon Sep 25 09:25:27 2006; tlumley

@@ -57,7 +57,7 @@ cch <- function(formula, data=sys.parent(), subcoh, id, stratum=NULL, cohort.siz
     m[[1]] <- as.name("model.frame")
     m <- eval(m,sys.parent())
     Terms <- attr(m,"terms")
-    Y <- model.extract(m, response)
+    Y <- model.extract(m, "response")
     if(!inherits(Y, "Surv"))
         stop("Response must be a survival object")
     type <- attr(Y, "type")
