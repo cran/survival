@@ -45,7 +45,7 @@ Ops.date <- function(e1, e2) {
     if (missing(e2))
         stop("Unary operations not meaningful for dates")
     if (.Generic == "&" || .Generic== "|")
-	stop(paste("\`", .Generic, "' not meaningful for dates",
+	stop(paste("`", .Generic, "' not meaningful for dates",
                    sep = ""))
     class(e1) <- NULL
     class(e2) <- NULL

@@ -1,3 +1,5 @@
+2.30	Several minor bug fixes/improvements.
+
 2.29    Fix anova.coxph(, test="Cp")
 
 2.28	Start eliminating Rd \synopsis entries.

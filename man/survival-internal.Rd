@@ -26,11 +26,11 @@ survpenal.fit(x, y, weights, offset, init, controlvals, dist, scale = 0,
 survdiff.fit(y, x, strat, rho = 0)
 is.category(x)
 match.ratetable(R, ratetable)
-as.matrix.ratetable(x)
+\method{as.matrix}{ratetable}(x)
 is.na.ratetable2(x)
 is.na.coxph.penalty(x)
 model.newframe(object, newdata, safe = FALSE, response = FALSE, ...)
-as.data.frame.difftime(x, row.names = NULL, optional = FALSE,...)
+\method{as.data.frame}{difftime}(x, row.names = NULL, optional = FALSE,...)
 coxpenal.df(hmat, hinv, fdiag, assign.list, ptype, nvar, pen1,
     pen2, sparse)
 coxpenal.fit(x, y, strata, offset, init, control, weights, method,
