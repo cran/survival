@@ -111,8 +111,6 @@ more general two-phase designs. \url{http://faculty.washington.edu/tlumley/surve
 ## subcohort selected by simple random sampling.
 ##
 
-data(nwtco)
-
 subcoh <- nwtco$in.subcohort
 selccoh <- with(nwtco, rel==1|subcoh==1)
 ccoh.data <- nwtco[selccoh,]

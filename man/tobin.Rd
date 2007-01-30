@@ -3,10 +3,10 @@
 \docType{data}
 \title{Tobin's Tobit data}
 \description{
-Economists fit a parametric censored data model called the
-`tobit'. These data are from Tobin's original paper.
+  Economists fit a parametric censored data model called the
+  \sQuote{tobit}.  These data are from Tobin's original paper. 
 }
-\usage{data(tobin)}
+\usage{tobin}
 \format{
   A data frame with 20 observations on the following 3 variables.
   \describe{
@@ -15,9 +15,10 @@ Economists fit a parametric censored data model called the
     \item{quant}{Liquidity ratio (x 1000)}
   }
 }
-
 \source{
-J. Tobin, Estimation of relationships for limited dependent variables, Econometrica, v26, 24-36, 1958.
+  J Tobin (1958),
+  Estimation of relationships for limited dependent variables.
+  \emph{Econometrica} \bold{26}, 24--36.
 }
 \examples{
 tfit <- survreg(Surv(durable, durable>0, type='left') ~age + quant,

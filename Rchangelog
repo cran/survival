@@ -1,3 +1,6 @@
+2.31	Fix formals for as.character() and as.matrix() methods.
+	Improve documentation for data sets.
+
 2.30	Several minor bug fixes/improvements.
 
 2.29    Fix anova.coxph(, test="Cp")

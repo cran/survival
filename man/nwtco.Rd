@@ -7,7 +7,7 @@
   survival, but prediction is stronger with central lab histology than
   with the local institution determination.
 }
-\usage{data(nwtco)}
+\usage{nwtco}
 \format{
   A data frame with 4028 observations on the following 9 variables.
   \describe{
@@ -24,15 +24,17 @@
   }
 }
 \source{
- \url{http://faculty.washington.edu/norm/software.html}
+  \url{http://faculty.washington.edu/norm/software.html}
 }
 \references{
- N.E. Breslow and N. Chatterjee, "Design and analysis of two-phase studies with binary outcome applied to Wilms tumour prognosis"  Applied Statistics  48:457-68, 1999
+  NE Breslow and N Chatterjee (1999),
+  Design and analysis of two-phase studies with binary outcome applied
+  to Wilms tumour prognosis.
+  \emph{Applied Statistics} \bold{48}, 457--68.
 }
 \examples{
-data(nwtco)
 with(nwtco, table(instit,histol))
 anova(coxph(Surv(edrel,rel)~histol+instit,data=nwtco))
 anova(coxph(Surv(edrel,rel)~instit+histol,data=nwtco))
-  }
+}
 \keyword{datasets}

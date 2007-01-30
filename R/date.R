@@ -98,7 +98,7 @@ Summary.date <- function (..., na.rm = FALSE) {
     x
 }
 
-as.character.date <- function(x) {
+as.character.date <- function(x, ...) {
     fun <- options()$print.date
     if (is.null(fun))
         date.ddmmmyy(x)

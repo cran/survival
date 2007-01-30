@@ -106,7 +106,7 @@ Ops.ratetable <- function(e1, e2) {
     NextMethod(.Generic)
     }
 
-as.matrix.ratetable <- function(x) {
+as.matrix.ratetable <- function(x, ...) {
     attributes(x) <- attributes(x)[c("dim", "dimnames")]
     x
     }

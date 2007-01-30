@@ -89,31 +89,31 @@ Surv <- function(time, time2, event,
 print.Surv <- function(x, quote=FALSE, ...)
     invisible(print(as.character.Surv(x), quote=quote, ...))
 
-as.character.Surv <- function(xx) {
-    class(xx) <- NULL
-    type <- attr(xx, 'type')
+as.character.Surv <- function(x, ...) {
+    class(x) <- NULL
+    type <- attr(x, 'type')
     if (type=='right') {
-	temp <- xx[,2]
+	temp <- x[,2]
 	temp <- ifelse(is.na(temp), "?", ifelse(temp==0, "+"," "))
-	paste(format(xx[,1]), temp, sep='')
+	paste(format(x[,1]), temp, sep='')
 	}
     else if (type=='counting') {
-	temp <- xx[,3]
+	temp <- x[,3]
 	temp <- ifelse(is.na(temp), "?", ifelse(temp==0, "+"," "))
-	paste('(', format(xx[,1]), ',', format(xx[,2]), temp,
+	paste('(', format(x[,1]), ',', format(x[,2]), temp,
 			 ']', sep='')
 	}
     else if (type=='left') {
-	temp <- xx[,2]
+	temp <- x[,2]
 	temp <- ifelse(is.na(temp), "?", ifelse(temp==0, "<"," "))
-	paste(temp, format(xx[,1]), sep='')
+	paste(temp, format(x[,1]), sep='')
 	}
     else {   #interval type
-	stat <- xx[,3]
+	stat <- x[,3]
 	temp <- c("+", "", "-", "]")[stat+1]
 	temp2 <- ifelse(stat==3,
-			 paste("[", format(xx[,1]), ", ",format(xx[,2]), sep=''),
-			 format(xx[,1]))
+			 paste("[", format(x[,1]), ", ",format(x[,2]), sep=''),
+			 format(x[,1]))
 	ifelse(is.na(stat), as.character(NA), paste(temp2, temp, sep=''))
 	}
     }

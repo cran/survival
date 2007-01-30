@@ -22,12 +22,15 @@ Data on the recurrence times to infection, at the point of insertion of
   exactly reproduced by survival.
 }
 \examples{
-data(kidney)
 kfit <- coxph(Surv(time, status)~ age + sex + disease + frailty(id), kidney)
 kfit0 <- coxph(Surv(time, status)~ age + sex + disease, kidney)
 kfitm1 <- coxph(Surv(time,status) ~ age + sex + disease + 
 		frailty(id, dist='gauss'), kidney)
 
 }
-\source{McGilchrist and Aisbett, Biometrics 47, 461-66, 1991}
+\source{
+  CA McGilchrist, CW Aisbett (1991),
+  Regression with frailty in survival analysis. 
+  \emph{Biometrics} \bold{47}, 461--66.
+}
 \keyword{survival}

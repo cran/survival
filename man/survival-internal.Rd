@@ -26,7 +26,7 @@ survpenal.fit(x, y, weights, offset, init, controlvals, dist, scale = 0,
 survdiff.fit(y, x, strat, rho = 0)
 is.category(x)
 match.ratetable(R, ratetable)
-\method{as.matrix}{ratetable}(x)
+\method{as.matrix}{ratetable}(x, ...)
 is.na.ratetable2(x)
 is.na.coxph.penalty(x)
 model.newframe(object, newdata, safe = FALSE, response = FALSE, ...)

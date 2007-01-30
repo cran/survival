@@ -1,9 +1,16 @@
 \name{lung}
+\docType{data}
 \alias{cancer}
 \alias{lung}
 \title{Mayo Clinic Lung Cancer Data}
-\usage{data(lung)
-data(cancer)}
+\description{
+  Survival in patients with lung cancer at Mayo Clinic.  Performance
+  scores rate how well the patient can perform usual daily activities.
+}
+\usage{
+lung
+cancer
+}
 \format{
   \tabular{ll}{
     inst:\tab Institution code\cr
@@ -16,11 +23,7 @@ data(cancer)}
     pat.karno:\tab Karnofsky performance score  rated by patient\cr
     meal.cal:\tab Calories consumed at meals\cr
     wt.loss:\tab Weight loss in last six months\cr
-     }
- }
- \description{Survival in patients with lung cancer at Mayo
-     Clinic. Performance scores rate how well the patient can perform
-     usual daily activities.}
-\source{Terry Therneau
+  }
 }
+\source{Terry Therneau}
 \keyword{datasets}
