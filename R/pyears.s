@@ -6,7 +6,7 @@ pyears <- function(formula=formula(data), data=sys.parent(),
 
     expect <- match.arg(expect)
     call <- match.call()
-    m <- match.call(expand=FALSE)
+    m <- match.call(expand.dots=FALSE)
     m$ratetable <- m$model <- m$x <- m$y <- m$scale<- m$expect <- NULL
 
     Terms <- if(missing(data)) terms(formula, 'ratetable')

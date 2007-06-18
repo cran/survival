@@ -5,7 +5,7 @@ untangle.specials <- function(tt, special, order=1) {
     if (length(spc)==0)
 	return(list(vars=character(0), terms=numeric(0)))
 
-    facs <- attr(tt, 'factor')
+    facs <- attr(tt, 'factors')
     fname <- dimnames(facs)
     ff <- apply(facs[spc,,drop=FALSE], 2, sum)
     list(vars= (fname[[1]])[spc],

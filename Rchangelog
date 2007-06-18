@@ -1,3 +1,5 @@
+2.32    patches from Brian Ripley to remove partial matching in the code
+
 2.31	Fix formals for as.character() and as.matrix() methods.
 	Improve documentation for data sets.
 

@@ -85,7 +85,7 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
     deviance <- dd$deviance
     dens <- dd$density
 
-    nvar <- length(object$coef)
+    nvar <- length(object$coefficients)
     if (rsigma) vv <- object$var
     else        vv <- object$var[1:nvar, 1:nvar]
 
@@ -93,7 +93,7 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
     #  The "density" function returns F, 1-F, f, f'/f, and f''/f
     if (type != 'response') {
 	status <- y[,ncol(y)]
-	eta <- object$linear.predictor
+	eta <- object$linear.predictors
 	z <- (y[,1] - eta)/sigma
 	dmat <- dens(z, object$parms)
 	dtemp<- dmat[,3] * dmat[,4]    #f'

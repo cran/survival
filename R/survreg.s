@@ -9,7 +9,7 @@ survreg <- function(formula=formula(data), data=parent.frame(),
 	model=FALSE, x=FALSE, y=TRUE, robust=FALSE, ...) {
 
     call <- match.call()
-    m <- match.call(expand=FALSE)
+    m <- match.call(expand.dots=FALSE)
     temp <- c("", "formula", "data", "weights", "subset", "na.action")
     m <- m[ match(temp, names(m), nomatch=0)]
     m[[1]] <- as.name("model.frame")
@@ -154,8 +154,8 @@ survreg <- function(formula=formula(data), data=parent.frame(),
     if (is.character(fit))  fit <- list(fail=fit)  #error message
     else {
 	if (scale==0) {
-	    nvar <- length(fit$coef) - nstrata
-	    fit$scale <- exp(fit$coef[-(1:nvar)])
+	    nvar <- length(fit$coefficients) - nstrata
+	    fit$scale <- exp(fit$coefficients[-(1:nvar)])
 	    if (nstrata==1) names(fit$scale) <- NULL
 	    else names(fit$scale) <- levels(strata.keep)
 	    fit$coefficients  <- fit$coefficients[1:nvar]
@@ -178,7 +178,7 @@ survreg <- function(formula=formula(data), data=parent.frame(),
     fit$means <- apply(X,2, mean)
     fit$call <- call
     fit$dist <- dist
-    fit$df.resid<n-sum(fit$df) ##used for anova.survreg
+    fit$df.residual <- n-sum(fit$df) ##used for anova.survreg
     if (model) fit$model <- m
     if (x)     fit$x <- X
     if (y)     fit$y <- Y

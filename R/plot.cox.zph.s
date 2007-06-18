@@ -6,7 +6,7 @@ plot.cox.zph <- function(x, resid=TRUE, se=TRUE, df=4, nsmo=40, var, ...) {
     d <- nrow(yy)
     df <- max(df)     #error proofing
     nvar <- ncol(yy)
-    pred.x <- seq(from=min(xx), to=max(xx), length=nsmo)
+    pred.x <- seq(from=min(xx), to=max(xx), length.out=nsmo)
     temp <- c(pred.x, xx)
     lmat <- ns(temp, df=df, intercept=TRUE)
     pmat <- lmat[1:nsmo,]       # for prediction
@@ -38,7 +38,7 @@ plot.cox.zph <- function(x, resid=TRUE, se=TRUE, df=4, nsmo=40, var, ...) {
 	}
     else if (x$transform != 'identity') {
 	xtime <- as.numeric(dimnames(yy)[[1]])
-	apr1  <- approx(xx, xtime, seq(min(xx), max(xx), length=17)[2*(1:8)])
+	apr1  <- approx(xx, xtime, seq(min(xx), max(xx), length.out=17)[2*(1:8)])
 	temp <- signif(apr1$y,2)
 	apr2  <- approx(xtime, xx, temp)
 	xaxisval <- apr2$y

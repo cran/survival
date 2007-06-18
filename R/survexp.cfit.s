@@ -16,7 +16,7 @@ survexp.cfit <- function(x, y, death, individual, cox, se.fit, method) {
     #
     if (individual) {
 	fit <- survfit.coxph(cox, se.fit=FALSE)
-	risk <- x[,-1,drop=FALSE] %*% cox$coef  -  sum(cox$coef *cox$means)
+	risk <- x[,-1,drop=FALSE] %*% cox$coefficients  -  sum(cox$coefficients *cox$means)
 	nt <- length(fit$time)
 	surv <- approx(-c(0,fit$time), c(1,fit$surv), -y,
 				method='constant', rule=2, f=1)$y
@@ -24,11 +24,11 @@ survexp.cfit <- function(x, y, death, individual, cox, se.fit, method) {
 	}
 
     # Otherwise, get on with the real work
-    temp <- coxph.getdata(cox, y=TRUE, x=se.fit, strata=FALSE)
+    temp <- coxph.getdata(cox, y=TRUE, x=se.fit, stratax=FALSE)
     cy <- temp$y
     cx <- temp$x
     cn <- nrow(cy)
-    nvar <- length(cox$coef)
+    nvar <- length(cox$coefficients)
 
     if (ncol(x) != (1+ nvar))
 	stop("x matrix does not match the cox fit")
@@ -76,7 +76,7 @@ survexp.cfit <- function(x, y, death, individual, cox, se.fit, method) {
 			  as.double(score),
 			  y = as.double(y[ord]),
 			  x[ord,],
-			  cox$coef,
+			  cox$coefficients,
 			  cox$var,
 			  cox$means,
 			  as.integer(cn),

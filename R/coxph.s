@@ -9,7 +9,7 @@ coxph <- function(formula=formula(data), data=parent.frame(),
 
     method <- match.arg(method)
     call <- match.call()
-    m <- match.call(expand=FALSE)
+    m <- match.call(expand.dots=FALSE)
     temp <- c("", "formula", "data", "weights", "subset", "na.action")
     m <- m[ match(temp, names(m), nomatch=0)]
     special <- c("strata", "cluster")
@@ -119,8 +119,8 @@ coxph <- function(formula=formula(data), data=parent.frame(),
 	class(fit) <- 'coxph'
 	}
     else {
-	if (!is.null(fit$coef) && any(is.na(fit$coef))) {
-	   vars <- (1:length(fit$coef))[is.na(fit$coef)]
+	if (!is.null(fit$coefficients) && any(is.na(fit$coefficients))) {
+	   vars <- (1:length(fit$coefficients))[is.na(fit$coefficients)]
 	   msg <-paste("X matrix deemed to be singular; variable",
 			   paste(vars, collapse=" "))
 	   if (singular.ok) warning(msg)
@@ -159,11 +159,11 @@ coxph <- function(formula=formula(data), data=parent.frame(),
 	    fit$rscore <- coxph.wtest(t(temp0)%*%temp0, u, control$toler.chol)$test
 	    }
 	#Wald test
-	if (length(fit$coef) && is.null(fit$wald.test)) {  
+	if (length(fit$coefficients) && is.null(fit$wald.test)) {
 	    #not for intercept only models, or if test is already done
-	    nabeta <- !is.na(fit$coef)
-	    if (is.null(init)) temp <- fit$coef[nabeta]
-	    else temp <- (fit$coef - init)[nabeta]
+	    nabeta <- !is.na(fit$coefficients)
+	    if (is.null(init)) temp <- fit$coefficients[nabeta]
+	    else temp <- (fit$coefficients - init)[nabeta]
 	    fit$wald.test <-  coxph.wtest(fit$var[nabeta,nabeta], temp,
 					  control$toler.chol)$test
 	    }

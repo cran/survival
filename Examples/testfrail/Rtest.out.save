@@ -1,6 +1,6 @@
 
-R version 2.4.0 Under development (unstable) (2006-05-18 r38118)
-Copyright (C) 2006 The R Foundation for Statistical Computing
+R version 2.6.0 Under development (unstable) (2007-06-18 r41992)
+Copyright (C) 2007 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -24,7 +24,6 @@ Type 'q()' to quit R.
 > #attach("../.Data")
 > #options(na.action="na.omit", contrasts='contr.treatment')
 > library(survival)
-Loading required package: splines
 > #library(date)
 > #
 > # Test the logic of the new program, by fitting some no-frailty models

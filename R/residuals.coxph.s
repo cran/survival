@@ -14,7 +14,7 @@ residuals.coxph <-
     if (type=='scaledsch') type<-'schoenfeld'
 
     n <- length(object$residuals)
-    rr <- object$residual
+    rr <- object$residuals
     y <- object$y
     x <- object$x
     vv <- object$naive.var
@@ -27,9 +27,9 @@ residuals.coxph <-
 	stop(paste(type, 'residuals are not available for the exact method'))
 
     if (type == 'martingale')
-        rr <- object$residual
+        rr <- object$residuals
     else if (type=="partial"){ ## add terms component later, after naresid()
-        rr<-object$residual
+        rr<-object$residuals
     }
     else {
 	# I need Y, and perhaps the X matrix (and strata)
@@ -38,7 +38,7 @@ residuals.coxph <-
 		stop("invalid terms component of object")
 	strats <- attr(Terms, "specials")$strata
 	if (is.null(y)  ||  (is.null(x) && type!= 'deviance')) {
-	    temp <- coxph.getdata(object, y=TRUE, x=TRUE, strata=TRUE)
+	    temp <- coxph.getdata(object, y=TRUE, x=TRUE, stratax=TRUE)
 	    y <- temp$y
 	    x <- temp$x
 	    if (length(strats)) strat <- temp$strata
@@ -63,7 +63,7 @@ residuals.coxph <-
 	    # sort the data
 	    x <- x[ord,]
 	    y <- y[ord,]
-	    score <- exp(object$linear.predictor)[ord]
+	    score <- exp(object$linear.predictors)[ord]
 	    }
 	}
 
@@ -93,12 +93,12 @@ residuals.coxph <-
 
 	if (length(strats)) attr(rr, "strata")  <- table((strat[ord])[deaths])
 	time <- c(y[deaths,2])  # 'c' kills all of the attributes
-	if (is.matrix(rr)) dimnames(rr)<- list(time, names(object$coef))
+	if (is.matrix(rr)) dimnames(rr)<- list(time, names(object$coefficients))
 	else               names(rr) <- time
 
 	if (otype=='scaledsch') {
 	    ndead <- sum(deaths)
-	    coef <- ifelse(is.na(object$coef), 0, object$coef)
+	    coef <- ifelse(is.na(object$coefficients), 0, object$coefficients)
 	    if (nvar==1) rr <- rr*vv *ndead + coef
 	    else         rr <- rr %*%vv * ndead +
 						outer(rep(1,nrow(rr)),coef)
@@ -135,7 +135,7 @@ residuals.coxph <-
 	if (nvar >1) {
 	    rr <- matrix(0, n, nvar)
 	    rr[ord,] <- matrix(resid, ncol=nvar)
-	    dimnames(rr) <- list(names(object$resid), names(object$coef))
+	    dimnames(rr) <- list(names(object$residuals), names(object$coefficients))
 	    }
 	else rr[ord] <- resid
 

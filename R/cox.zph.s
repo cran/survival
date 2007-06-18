@@ -8,7 +8,7 @@ cox.zph <- function(fit, transform='km', global=TRUE) {
 	stop("The are no score residuals for a Null model")
 
     sresid <- resid(fit, 'schoenfeld')
-    varnames <- names(fit$coef)
+    varnames <- names(fit$coefficients)
     nvar <- length(varnames)
     ndead<- length(sresid)/nvar
     if (nvar==1) times <- as.numeric(names(sresid))
@@ -55,8 +55,8 @@ cox.zph <- function(fit, transform='km', global=TRUE) {
 	}
     else dimnames(Z.ph) <- list(varnames, c("rho", "chisq", "p"))
 
-    dimnames(r2) <- list(times, names(fit$coef))
-    temp <-list(table=Z.ph, x=ttimes, y=r2 + outer(rep(1,ndead), fit$coef),
+    dimnames(r2) <- list(times, names(fit$coefficients))
+    temp <-list(table=Z.ph, x=ttimes, y=r2 + outer(rep(1,ndead), fit$coefficients),
     var=fit$var, call=call, transform=tname)
     class(temp) <- "cox.zph"
     temp

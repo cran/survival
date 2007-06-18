@@ -17,7 +17,7 @@ survfit <- function (formula, data, weights, subset, na.action, ...) {
     else {
 	# Ok, I have a formula
         # grab the data and process it
-	m <- match.call(expand=FALSE)
+	m <- match.call(expand.dots=FALSE)
 	m$... <- NULL
 
 	Terms <- terms(formula, 'strata')
@@ -72,13 +72,13 @@ survfit <- function (formula, data, weights, subset, na.action, ...) {
 	else warning("Survfit object has only a single survival curve")
 	}
     else {
-	if (is.null(i)) keep <- seq(along=x$time)
+	if (is.null(i)) keep <- seq(along.with=x$time)
 	else {
 	    if (is.null(x$ntimes.strata)) strata.var <- x$strata
 	    else strata.var <- x$ntimes.strata
 	    if (is.character(i)) strat <- rep(names(x$strata), strata.var)
 	    else                 strat <- rep(1:length(x$strata), strata.var)
-	    keep <- seq(along=strat)[match(strat, i, nomatch=0)>0]
+	    keep <- seq(along.with=strat)[match(strat, i, nomatch=0)>0]
 	    if (length(i) <=1) x$strata <- NULL
 	    else               x$strata  <- x$strata[i]
 	    if (!is.null(x$ntimes.strata)) {

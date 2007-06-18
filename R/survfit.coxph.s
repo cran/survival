@@ -18,8 +18,8 @@ survfit.coxph <-
 	}
     resp <-  attr(Terms, "variables")[attr(Terms, "response")]
     n <- object$n
-    nvar <- length(object$coef)
-    score <- exp(object$linear.predictor)
+    nvar <- length(object$coefficients)
+    score <- exp(object$linear.predictors)
     
     temp <- c('aalen', 'kalbfleisch-prentice', 'efron',
 	           'tsiatis', 'breslow', 'kaplan-meier', 'fleming-harringon',
@@ -37,7 +37,7 @@ survfit.coxph <-
     # Recreate a copy of the data
     #  (The coxph.getdata routine never returns cluster() terms).
     data <- coxph.getdata(object, y=TRUE, x=se.fit,
-			           strata=(length(strat)))
+			           stratax=(length(strat)))
     y <- data$y
     ny <- ncol(y)
     if (nrow(y) != n) stop ("Mismatched lengths: logic error")
@@ -139,7 +139,7 @@ survfit.coxph <-
     n2 <- nrow(x2)
 
     # Compute risk scores for the new subjects
-    coef <- ifelse(is.na(object$coef), 0, object$coef)
+    coef <- ifelse(is.na(object$coefficients), 0, object$coefficients)
     newrisk <- exp(c(x2 %*% coef) + offset2 - sum(coef*object$means))
 
     dimnames(y) <- NULL   #I only use part of Y, so names become invalid
@@ -221,25 +221,25 @@ survfit.coxph <-
 
     zval <- qnorm(1- (1-conf.int)/2, 0,1)
     if (conf.type=='plain') {
-	temp1 <- temp$surv + zval* temp$std * temp$surv
-	temp2 <- temp$surv - zval* temp$std * temp$surv
+	temp1 <- temp$surv + zval* temp$std.err * temp$surv
+	temp2 <- temp$surv - zval* temp$std.err * temp$surv
 	temp <- c(temp, list(upper=pmin(temp1,1), lower=pmax(temp2,0),
 			conf.type='plain', conf.int=conf.int))
 	}
     if (conf.type=='log') {
 	xx <- ifelse(temp$surv==0,1,temp$surv)  #avoid some "log(0)" messages
-	temp1 <- ifelse(temp$surv==0, 0*temp$std, exp(log(xx) + zval* temp$std))
-	temp2 <- ifelse(temp$surv==0, 0*temp$std, exp(log(xx) - zval* temp$std))
+	temp1 <- ifelse(temp$surv==0, 0*temp$std.err, exp(log(xx) + zval* temp$std.err))
+	temp2 <- ifelse(temp$surv==0, 0*temp$std.err, exp(log(xx) - zval* temp$std.err))
 	temp <- c(temp, list(upper=pmin(temp1,1), lower=temp2,
 			conf.type='log', conf.int=conf.int))
 	}
     if (conf.type=='log-log') {
 	who <- (temp$surv==0 | temp$surv==1) #special cases
 	xx <- ifelse(who, .1,temp$surv)  #avoid some "log(0)" messages
-	temp1 <- exp(-exp(log(-log(xx)) + zval*temp$std/log(xx)))
-	temp1 <- ifelse(who, temp$surv + 0*temp$std, temp1)
-	temp2 <- exp(-exp(log(-log(xx)) - zval*temp$std/log(xx)))
-	temp2 <- ifelse(who, temp$surv + 0*temp$std, temp2)
+	temp1 <- exp(-exp(log(-log(xx)) + zval*temp$std.err/log(xx)))
+	temp1 <- ifelse(who, temp$surv + 0*temp$std.err, temp1)
+	temp2 <- exp(-exp(log(-log(xx)) - zval*temp$std.err/log(xx)))
+	temp2 <- ifelse(who, temp$surv + 0*temp$std.err, temp2)
 	temp <- c(temp, list(upper=temp1, lower=temp2,
 			conf.type='log-log', conf.int=conf.int))
 	}

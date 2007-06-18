@@ -32,18 +32,18 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 	    stop("First arg must be the result of survfit")
 
     if (missing(conf.int)) {
-	if (is.null(x$strata) && !is.matrix(x$surv)) conf.int <-TRUE
+	if (is.null(x$strata.all) && !is.matrix(x$surv)) conf.int <-TRUE
 	else conf.int <- FALSE
         }
 
-    if (is.null(x$strata)) {
+    if (is.null(x$strata.all)) {
 	nstrat <- 1
 	stemp <- rep(1, length(x$time))
         }
     else {
-	nstrat <- length(x$strata)
+	nstrat <- length(x$strata.all)
 	stemp <- rep(1:nstrat,x$ntimes.strata)
-	##stemp <- rep(1:nstrat,x$strata)
+	##stemp <- rep(1:nstrat,x$strata.all)
         }
 
     ssurv <- x$surv
@@ -140,10 +140,10 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
     if (is.matrix(ssurv)) ncurve <- nstrat * ncol(ssurv)
     else 		  ncurve <- nstrat
 
-    mark <- rep(mark, length=ncurve)
-    col  <- rep(col, length=ncurve)
-    lty  <- rep(lty, length=ncurve)
-    lwd  <- rep(lwd, length=ncurve)
+    mark <- rep(mark, length.out=ncurve)
+    col  <- rep(col, length.out=ncurve)
+    lty  <- rep(lty, length.out=ncurve)
+    lwd  <- rep(lwd, length.out=ncurve)
 
     if (is.numeric(mark.time)) mark.time <- sort(mark.time)
 
@@ -235,7 +235,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 
 		if (is.numeric(mark.time)) {
 		    indx <- mark.time
-		    for (k in seq(along=mark.time))
+		    for (k in seq(along.with=mark.time))
 			indx[k] <- sum(mark.time[k] > xx)
 		    points(mark.time[indx<nn], yy[indx[indx<nn]],
 			   pch=mark[i],col=col[i],cex=cex)
@@ -265,7 +265,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 
 	    if (is.numeric(mark.time)) {
 		indx <- mark.time
-		for (k in seq(along=mark.time))
+		for (k in seq(along.with=mark.time))
 		    indx[k] <- sum(mark.time[k] > xx)
 		points(mark.time[indx<nn], yy[indx[indx<nn]],
 		       pch=mark[i],col=col[i],cex=cex)

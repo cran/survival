@@ -78,7 +78,7 @@ survobrien <- function(formula, data= sys.frame(sys.parent())) {
 	logit<- log(temp/(1-temp))           #logits
 	deaths <- (status[who]==1 & time[who]==i)
 
-	k <- seq(from=j, length=nrisk)
+	k <- seq(from=j, length.out=nrisk)
 	start[k] <- ltime
 	stop[k] <-  i
 	event[k] <- deaths

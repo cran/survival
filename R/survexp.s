@@ -7,7 +7,7 @@ survexp <- function(formula=formula(data), data=parent.frame(),
 	model=FALSE, x=FALSE, y=FALSE) {
 
     call <- match.call()
-    m <- match.call(expand=FALSE)
+    m <- match.call(expand.dots=FALSE)
     m$ratetable <- m$model <- m$x <- m$y <- m$scale<- m$cohort <- NULL
     m$times <- m$conditional <- m$npoints <- m$se.fit <- NULL
 
@@ -25,7 +25,7 @@ survexp <- function(formula=formula(data), data=parent.frame(),
     
 	if(is.ratetable(ratetable))   varlist <- attr(ratetable, "dimid")
 	else if(inherits(ratetable, "coxph")) {
-	    varlist <- names(ratetable$coef)
+	    varlist <- names(ratetable$coefficients)
 	    ## Now remove "log" and such things, using terms.inner
             ## in R it is survival:::bareterms
 	    temp <- bareterms(xx(paste("~", paste(varlist, collapse='+'))))
@@ -101,7 +101,7 @@ survexp <- function(formula=formula(data), data=parent.frame(),
 	if (length(strats))
 	    stop("survexp cannot handle stratified Cox models")
 	R <- model.matrix(delete.response(Terms), m2)[,-1,drop=FALSE]
-	if (any(dimnames(R)[[2]] != names(ratetable$coef)))
+	if (any(dimnames(R)[[2]] != names(ratetable$coefficients)))
 	    stop("Unable to match new data to old formula")
 	if (no.Y) {
 	    if (missing(se.fit)) se.fit <- TRUE

@@ -15,7 +15,7 @@ print.survreg.penal <-  function(x, terms=FALSE, maxlabel=25,
     savedig <- options(digits = digits)
     on.exit(options(savedig))
 
-    coef <- x$coef
+    coef <- x$coefficients
     if (length(coef)==0)
 	    stop("Penalized fits must have an intercept!")
 

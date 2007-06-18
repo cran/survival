@@ -14,7 +14,7 @@ print.coxph <-
     savedig <- options(digits = digits)
     on.exit(options(savedig))
 
-    coef <- x$coef
+    coef <- x$coefficients
     se <- sqrt(diag(x$var))
     if(is.null(coef) | is.null(se))
         stop("Input is not valid")

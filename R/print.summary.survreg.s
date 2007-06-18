@@ -1,7 +1,7 @@
 # SCCS @(#)print.summary.survreg.s	4.14 02/11/99
 print.summary.survreg <- function(x, digits = max(options()$digits - 4, 3),
 				  ...) {
-    correl <- x$correl
+    correl <- x$correlation
     n <- x$n
 
     if(is.null(digits))

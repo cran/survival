@@ -7,16 +7,16 @@ summary.survreg<- function(object, correlation = FALSE,...)
 	}
     wt <- object$weights
     
-    nvar0 <- length(object$coef)
+    nvar0 <- length(object$coefficients)
     nvar <- nrow(object$var)
     if (nvar > nvar0) {
-	coef <- c(object$coef, log(object$scale))
-	if ( (nvar-nvar0)==1) cname <- c(names(object$coef), "Log(scale)")
-	else cname <- c(names(object$coef), names(object$scale))
+	coef <- c(object$coefficients, log(object$scale))
+	if ( (nvar-nvar0)==1) cname <- c(names(object$coefficients), "Log(scale)")
+	else cname <- c(names(object$coefficients), names(object$scale))
 	}
     else {
-	coef <- object$coef
-	cname <- names(object$coef)
+	coef <- object$coefficients
+	cname <- names(object$coefficients)
 	}
 
     n <- length(object$linear.predictors)

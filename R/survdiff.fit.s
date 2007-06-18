@@ -37,8 +37,8 @@ survdiff.fit <- function(y, x, strat, rho=0) {
 
     if (nstrat==1)  list(expected = xx$expected,
 			 observed = xx$observed,
-			 var      = matrix(xx$var, ngroup, ngroup))
+			 var      = matrix(xx$var.e, ngroup, ngroup))
     else            list(expected = matrix(xx$expected, ngroup),
 			 observed = matrix(xx$observed, ngroup),
-			 var      = matrix(xx$var, ngroup, ngroup))
+			 var      = matrix(xx$var.e, ngroup, ngroup))
     }

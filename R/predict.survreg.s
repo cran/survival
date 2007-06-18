@@ -32,7 +32,7 @@ predict.survreg <-
     Terms <- delete.response(Terms)
     coef <- object$coefficients
     intercept <- attr(Terms, "intercept")
-    nvar <- length(object$coef)
+    nvar <- length(object$coefficients)
     vv <- object$var[1:nvar, 1:nvar]
     fixedscale <- (nvar == ncol(object$var)) || ripley
 

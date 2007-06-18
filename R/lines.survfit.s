@@ -34,14 +34,14 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 	coffset <- 0
         }
 
-    if (is.null(x$strata)) {
+    if (is.null(x$strata.all)) {
 	nstrat <- 1
 	stemp <- rep(1, length(x$time))
 	}
     else {
-	nstrat <- length(x$strata)
+	nstrat <- length(x$strata.all)
 	ncurve <- ncurve * nstrat
-	stemp <- rep(1:nstrat, x$strata)
+	stemp <- rep(1:nstrat, x$strata.all)
 	}
 
     ssurv <- x$surv
@@ -128,10 +128,10 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 
     strata <- table(stemp)
     soffset<- ncol.per.strat * c(0, cumsum(strata))
-    mark <- rep(mark, length=ncurve)
-    col  <- rep(col , length=ncurve)
-    lty  <- rep(lty , length=ncurve)
-    lwd  <- rep(lwd , length=ncurve)
+    mark <- rep(mark, length.out=ncurve)
+    col  <- rep(col , length.out=ncurve)
+    lty  <- rep(lty , length.out=ncurve)
+    lwd  <- rep(lwd , length.out=ncurve)
     time <- rep(stime, ncol.per.strat)
 
 
@@ -163,7 +163,7 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
     for (i in 1:nstrat) {
       for (j in 1:ncol.per.strat) {
 	k <- k +1  
-	who <- seq(soffset[i]+ coffset[j]+1, length=strata[i])  
+	who <- seq(soffset[i]+ coffset[j]+1, length.out=strata[i])
 	if (is.finite(firstx) && is.finite(firsty)) {
 	    xx <- c(firstx, time[who])
 	    yy <- c(firsty, ssurv[who])
@@ -194,7 +194,7 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 		      lty=lty[k], lwd=lwd[k], ...)
 	    if (is.numeric(mark.time)) {
 		indx <- mark.time
-		for (k in seq(along=mark.time))
+		for (k in seq(along.with=mark.time))
 			indx[k] <- sum(mark.time[k] > xx)
 		points(mark.time[indx<nn], yy[indx[indx<nn]],
 		       pch=mark[k],col=col[k], ...)

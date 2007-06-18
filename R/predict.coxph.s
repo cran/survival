@@ -81,10 +81,10 @@ function(object, newdata, type=c("lp", "risk", "expected", "terms"),
     # Now, lay out the code one case at a time.
     #  There is some repetition this way, but otherwise the code just gets
     #    too complicated.
-    if (is.null(object$coef))
+    if (is.null(object$coefficients))
         coef<-numeric(0)
     else
-        coef <- ifelse(is.na(object$coef), 0, object$coef)
+        coef <- ifelse(is.na(object$coefficients), 0, object$coefficients)
     if (type=='lp' || type=='risk') {
 	if (missing(newdata)) {
 	    pred <- object$linear.predictors
@@ -100,7 +100,7 @@ function(object, newdata, type=c("lp", "risk", "expected", "terms"),
 	}
 
     else if (type=='expected') {
-	if (missing(newdata)) pred <- y[,ncol(y)] - object$residual
+	if (missing(newdata)) pred <- y[,ncol(y)] - object$residuals
 	else  stop("Method not yet finished")
 	se   <- sqrt(pred)
 	}

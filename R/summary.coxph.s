@@ -23,12 +23,12 @@ summarycoxph <-
     if (length(cox$icc))
 	cat("  robust variance based on", cox$icc[1],
 	    "groups, intra-class correlation =", format(cox$icc[2:3]), "\n")
-    if (is.null(cox$coef)) {   # Null model
+    if (is.null(cox$coefficients)) {   # Null model
 	cat ("   Null model\n")
 	return()
 	}
 
-    beta <- cox$coef
+    beta <- cox$coefficients
     nabeta <- !(is.na(beta))          #non-missing coefs
     beta2 <- beta[nabeta]
     if(is.null(beta) | is.null(cox$var))
@@ -95,7 +95,7 @@ summary.coxph <-
           digits = max(options()$digits - 4, 3),...)
 {
      cox<-object
-     beta <- cox$coef
+     beta <- cox$coefficients
      nabeta <- !(is.na(beta))          #non-missing coefs
      beta2 <- beta[nabeta]
      if(is.null(beta) | is.null(cox$var))

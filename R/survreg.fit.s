@@ -6,7 +6,7 @@ survreg.fit<- function(x, y, weights, offset, init, controlvals, dist,
 
     controlvals<-do.call("survreg.control", controlvals)
     iter.max <- controlvals$iter.max
-    eps <- controlvals$rel.tol
+    eps <- controlvals$rel.tolerance
     toler.chol <- controlvals$toler.chol
     debug <- controlvals$debug
 
@@ -167,7 +167,7 @@ survreg.fit<- function(x, y, weights, offset, init, controlvals, dist,
 	wt <-  -1*deriv$ddg*weights
 	coef <- coxph.wtest(t(x)%*% (wt*x), 
 		       c((wt*eta + weights*deriv$dg)%*% x),
-			    toler=toler.chol)$solve
+			    toler.chol=toler.chol)$solve
 	init <- c(coef, vars)
 	}
 

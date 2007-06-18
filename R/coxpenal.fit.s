@@ -80,7 +80,7 @@ coxpenal.fit <- function(x, y, strata, offset, init, control,
 					     all(x==y)), pcols[[i]]))
 	if (sparse[i]) pterms[temp] <- 2
 	else pterms[temp] <- 1
-	pindex[i] <- (seq(along=temp))[temp]
+	pindex[i] <- (seq(along.with=temp))[temp]
 	}
     if ((sum(pterms==2) != sum(sparse)) || (sum(pterms>0) != npenal))
 	    stop("pcols and assign arguments disagree")

@@ -19,7 +19,7 @@ summary.coxph.penal <-
 	cat("  n=", object$n, " (", naprint(omit), ")\n", sep="")
     else cat("  n=", object$n, "\n")
 
-    coef <- object$coef
+    coef <- object$coefficients
     if (length(coef)==0 && length(object$frail)==0)
             stop("Penalized summary function can't be used for a null model")
 

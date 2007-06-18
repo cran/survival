@@ -1,7 +1,7 @@
 #SCCS 08/30/98 @(#)survdiff.s	5.1
 survdiff <- function(formula, data, subset, na.action, rho=0) {
     call <- match.call()
-    m <- match.call(expand=FALSE)
+    m <- match.call(expand.dots=FALSE)
     m$rho <- NULL
 
     Terms <- if(missing(data)) terms(formula, 'strata')

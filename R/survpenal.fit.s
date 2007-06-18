@@ -8,7 +8,7 @@ survpenal.fit<- function(x, y, weights, offset, init, controlvals, dist,
 
     iter.max <- controlvals$iter.max
     outer.max <- controlvals$outer.max
-    eps <- controlvals$rel.tol
+    eps <- controlvals$rel.tolerance
     toler.chol <- controlvals$toler.chol
     debug <- controlvals$debug
 
@@ -131,7 +131,7 @@ survpenal.fit<- function(x, y, weights, offset, init, controlvals, dist,
 					     all(x==y)), pcols[[i]]))
 	if (sparse[i]) pterms[temp] <- 2
 	else pterms[temp] <- 1
-	pindex[i] <- (seq(along=temp))[temp]
+	pindex[i] <- (seq(along.with=temp))[temp]
 	}
     if ((sum(pterms==2) != sum(sparse)) || (sum(pterms>0) != npenal))
 	    stop("pcols and assign arguments disagree")
@@ -348,7 +348,7 @@ survpenal.fit<- function(x, y, weights, offset, init, controlvals, dist,
 
     # The "effective n" of the model
     temp <-  mean(exp(fit0$coef[-1]))   #overall sd
-    n.eff <- sd$var(temp^2) * (solve(fit0$var))[1,1]
+    n.eff <- sd$variance(temp^2) * (solve(fit0$var))[1,1]
 
     #
     # Fit the model with all covariates

@@ -15,7 +15,7 @@ print.coxph.penal <-  function(x, terms=FALSE, maxlabel=25,
     savedig <- options(digits = digits)
     on.exit(options(savedig))
 
-    coef <- x$coef
+    coef <- x$coefficients
     if (length(coef)==0 && length(x$frail)==0)
 	    stop("Penalized print function can't be used for a null model")
 

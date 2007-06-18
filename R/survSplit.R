@@ -17,7 +17,7 @@ survSplit<-function(data, cut, end,event,start,id=NULL,
   if( start %in% names(data))
     starttime<-data[[start]]
   else
-    starttime<-rep(zero,length=n)
+    starttime<-rep(zero,length.out=n)
 
   starttime<-c(starttime, pmax(starttime, rep(cut,each=n)))
   

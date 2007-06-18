@@ -9,7 +9,7 @@ print.survreg <- function(x, ...)
 	cat(" Survreg failed.", x$fail, "\n")
 	return(invisible(x))
 	}
-    coef <- x$coef
+    coef <- x$coefficients
     if(any(nas <- is.na(coef))) {
 	if(is.null(names(coef))) names(coef) <- paste("b", 1:length(coef), sep = "")
         cat("\nCoefficients: (", sum(nas), 
@@ -27,7 +27,7 @@ print.survreg <- function(x, ...)
 	}
 
 
-    nobs <- length(x$linear)
+    nobs <- length(x$linear.predictors)
     chi <- 2*diff(x$loglik)
     df  <- sum(x$df) - x$idf   # The sum is for penalized models
     cat("\nLoglik(model)=", format(round(x$loglik[2],1)),

@@ -5,7 +5,7 @@ coxph.detail <-  function(object) {
 	stop(paste("Detailed output is not available for the", method,
 			"method"))
     n <- length(object$residuals)
-    rr <- object$residual
+    rr <- object$residuals
     weights <- object$weights        #always present if there are weights
     x <- object$x
     y <- object$y
@@ -42,7 +42,7 @@ coxph.detail <-  function(object) {
     x <- x[ord,]
     y <- y[ord,]
     storage.mode(y) <- 'double'
-    score <- exp(object$linear.predictor)[ord]
+    score <- exp(object$linear.predictors)[ord]
     if (is.null(weights)) weights <- rep(1,n)
     else                  weights <- weights[ord]
 
