@@ -32,8 +32,5 @@ coxph.control (eps = 1e-09, toler.chol = .Machine$double.eps^0.75,
 
 \seealso{ \code{\link{survreg}}, \code{\link{coxph}}  }
 
-\examples{
-
-}
 \keyword{survival}
 

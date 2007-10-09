@@ -61,9 +61,16 @@ survreg <- function(formula=formula(data), data=parent.frame(),
     else                  offset <- rep(0, n)
 
     if (is.character(dist)) {
-	dlist <- survreg.distributions[[dist]]
-	if (is.null(dlist)) stop(paste(dist, ": distribution not found"))
-	}
+        ## explicit partial matching: R will default to perfect matches
+        ## for [[]]  in the future.
+        idist<-charmatch(dist, names(survreg.distributions))
+        if (is.na(idist))
+            stop(paste("no match found for distribution: ", dist))
+        if (idist==0)
+            stop(paste(dist,"matches multiple distribution names"))
+	dlist <- survreg.distributions[[idist]]
+        dist <- names(survreg.distributions)[idist]
+    }
     else if (is.list(dist)) dlist <- dist
     else stop("Invalid distribution object")
     if (is.null(dlist$dist)) {

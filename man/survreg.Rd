@@ -40,10 +40,14 @@ subset of the observations to be used in the fit.
 function to be used to handle any NAs in the data.
 }
 \item{dist}{
-assumed distribution for y variable. 
+  assumed distribution for y variable.
+  
 If the argument is a character string, then it is assumed to name an
 element from \code{\link{survreg.distributions}}. These include
-\code{"weibull"}, \code{"exponential"}, \code{"gaussian"}, \code{"logistic"}, \code{"lognormal"} and \code{"loglogistic"}.
+\code{"weibull"}, \code{"exponential"}, \code{"gaussian"},
+\code{"logistic"}, \code{"lognormal"} and \code{"loglogistic"}. Only
+enough of the name needs to be given to make the choice unique.
+
 Otherwise, it is assumed to be a user defined list conforming to the
 format described in \code{\link{survreg.distributions}}.
 }
