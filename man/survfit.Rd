@@ -200,7 +200,9 @@ model for survival data. \emph{Annals of Statistics} 9, 93-108.
 fit <- survfit(Surv(time, status) ~ x, data=aml)
 plot(fit)
 # plot only 1 of the 2 curves from above
-plot(fit[2])
+plot(fit[1])
+## the other line
+lines(fit[2], col="blue")
 
 #fit a cox proportional hazards model and plot the 
 #predicted survival curve

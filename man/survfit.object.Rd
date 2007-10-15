@@ -63,7 +63,8 @@ Usually a single subscript will be used.  In one particular case --
 survival curves for multiple covariate values, from a Cox model that includes
 a \code{strata} statement -- there is a matrix of curves and 2 subscripts may
 be used.
-(In this case \code{summary.survfit} will also print the data as a matrix).
+(In this case \code{summary.survfit} will also print the data as a
+matrix).
 }
 \seealso{
 \code{\link{survfit}}, \code{\link{plot.survfit}},

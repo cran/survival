@@ -28,7 +28,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 	logax  <- log
         }
 
-    if (!inherits(x, 'survfit'))
+    if (!inherits(x, 'survfit') || inherits(x,'survexp'))
 	    stop("First arg must be the result of survfit")
 
     if (missing(conf.int)) {
@@ -36,12 +36,12 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 	else conf.int <- FALSE
         }
 
-    if (is.null(x$strata.all)) {
+    if (is.null(x$strata)) {
 	nstrat <- 1
 	stemp <- rep(1, length(x$time))
         }
-    else {
-	nstrat <- length(x$strata.all)
+     else {
+	nstrat <- length(x$strata)
 	stemp <- rep(1:nstrat,x$ntimes.strata)
 	##stemp <- rep(1:nstrat,x$strata.all)
         }

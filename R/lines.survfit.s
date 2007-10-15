@@ -34,14 +34,21 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 	coffset <- 0
         }
 
-    if (is.null(x$strata.all)) {
+    if (is.null(x$strata)) {
 	nstrat <- 1
 	stemp <- rep(1, length(x$time))
 	}
-    else {
-	nstrat <- length(x$strata.all)
+    else if (inherits(x,"survexp")){
+        ##has correct x$strata, doesn't have x$ntimes.strata
+        nstrat <- length(x$strata)
 	ncurve <- ncurve * nstrat
-	stemp <- rep(1:nstrat, x$strata.all)
+	stemp <- rep(1:nstrat, x$strata)
+    } else {
+        ##output of [.survfit can have wrong x$strata, cf ?survfit
+        ##need to use x$ntimes.strata
+	nstrat <- length(x$strata)
+	ncurve <- ncurve * nstrat
+	stemp <- rep(1:nstrat, x$ntimes.strata)
 	}
 
     ssurv <- x$surv

@@ -1,3 +1,5 @@
+2.34    fix to lines.survfit() for subsets of fits.
+
 2.33    Add explicit partial matching for names of survreg.distributions in survreg()
 	
 2.32    patches from Brian Ripley to remove partial matching in the code
