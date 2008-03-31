@@ -30,7 +30,8 @@ anova.survreglist <- function(object, ..., test = c("Chisq", "none")) {
 	    stop("The first model has a different response from the rest")
     forms <- forms[, subs]
     object <- object[subs]
-    dfres <- sapply(object, "[[", "df.resid")
+    ## older survival objects might have  df.resid: recent ones have df.residual
+    dfres <- sapply(object, "[[", "df.resid", exact=FALSE)
     m2loglik <- -2 * sapply(object, "[[", "loglik")[2,  ]
     tl <- lapply(object, labels)
     rt <- length(m2loglik)

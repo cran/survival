@@ -1,5 +1,5 @@
 
-R version 2.7.0 Under development (unstable) (2007-10-09 r43132)
+R version 2.7.0 Under development (unstable) (2007-12-21 r43754)
 Copyright (C) 2007 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
@@ -231,7 +231,7 @@ $fit
 
 $se.fit
         1         2         3         4         5         6         7 
-0.4342009        NA 0.9079142 0.9079142 0.9079142 0.4342009 0.4342009 
+0.3002712        NA 1.3128704 1.3128704 1.3128704 0.3002712 0.3002712 
 
 > predict(fit, type='expected', se.fit=T)
 $fit

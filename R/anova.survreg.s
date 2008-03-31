@@ -27,8 +27,8 @@ anova.survreg <- function(object, ..., test = c("Chisq", "none")) {
 	    loglik[iterm] <- -2 * fit$loglik[2]
 	    df.res[iterm] <- fit$df.residual
 	    }
-	dev <- c(NA,  - diff(loglik))
-        df <- c(NA,  diff(df.res)) 
+	dev <- c(NA,  -diff(loglik))
+        df <- c(NA,  -diff(df.res)) 
 	}
     else {
 	loglik[1] <- -2 * object$loglik[2]

@@ -95,7 +95,7 @@ function(object, newdata, type=c("lp", "risk", "expected", "terms"),
 
 	if (type=='risk') {
 	    pred <- exp(pred)
-	    if (se.fit) se <- se * sqrt(pred)
+	    if (se.fit) se <- se * pred ## sqrt(pred): should be sqrt(pred^2)
 	    }
 	}
 
