@@ -1,4 +1,4 @@
-# SCCS @(#)print.coxph.penal.s	1.1 10/28/98
+# $Id: print.coxph.penal.S 11059 2008-10-23 12:32:50Z therneau $
 print.coxph.penal <-  function(x, terms=FALSE, maxlabel=25,
 			       digits=max(options()$digits - 4, 3), ...) {
     if (!inherits(x, 'coxph.penal')) stop("Invalid object")

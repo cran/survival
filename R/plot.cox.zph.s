@@ -1,17 +1,18 @@
-#SCCS @(#)plot.cox.zph.s	4.6 08/13/96
+# $Id: plot.cox.zph.S 10788 2008-09-18 00:48:23Z therneau $
 plot.cox.zph <- function(x, resid=TRUE, se=TRUE, df=4, nsmo=40, var, ...) {
-    ##require(splines)
     xx <- x$x
     yy <- x$y
     d <- nrow(yy)
     df <- max(df)     #error proofing
     nvar <- ncol(yy)
-    pred.x <- seq(from=min(xx), to=max(xx), length.out=nsmo)
+    pred.x <- seq(from=min(xx), to=max(xx), length=nsmo)
     temp <- c(pred.x, xx)
     lmat <- ns(temp, df=df, intercept=TRUE)
     pmat <- lmat[1:nsmo,]       # for prediction
     xmat <- lmat[-(1:nsmo),]
     qmat <- qr(xmat)
+    if (qmat$rank < df) 
+	 stop("Spline fit is singular, try a smaller degrees of freedom")
 
     if (se) {
 	bk <- backsolve(qmat$qr[1:df, 1:df], diag(df))
@@ -38,7 +39,7 @@ plot.cox.zph <- function(x, resid=TRUE, se=TRUE, df=4, nsmo=40, var, ...) {
 	}
     else if (x$transform != 'identity') {
 	xtime <- as.numeric(dimnames(yy)[[1]])
-	apr1  <- approx(xx, xtime, seq(min(xx), max(xx), length.out=17)[2*(1:8)])
+	apr1  <- approx(xx, xtime, seq(min(xx), max(xx), length=17)[2*(1:8)])
 	temp <- signif(apr1$y,2)
 	apr2  <- approx(xtime, xx, temp)
 	xaxisval <- apr2$y
@@ -64,8 +65,7 @@ plot.cox.zph <- function(x, resid=TRUE, se=TRUE, df=4, nsmo=40, var, ...) {
 	    plot(range(xx), yr, type='n', xlab="Time", ylab=ylab[i], log='x',
 			...)
 	else {
-	    plot(range(xx), yr, type='n', xlab="Time", ylab=ylab[i],
-                 axes=FALSE,...)
+	    plot(range(xx), yr, type='n', xlab="Time", ylab=ylab[i], axes=FALSE,...)
 	    axis(1, xaxisval, xaxislab)
 	    axis(2)
 	    box()

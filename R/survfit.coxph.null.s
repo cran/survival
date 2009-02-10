@@ -1,6 +1,6 @@
-# SCCS @(#)survfit.coxph.null.s	5.5 07/09/00
+# $Id: survfit.coxph.null.S 11228 2009-02-09 21:51:45Z therneau $
 survfit.coxph.null <-
-  function(object, newdata, se.fit=TRUE, conf.int=.95, individual=FALSE,
+  function(formula, newdata, se.fit=TRUE, conf.int=.95, individual=FALSE,
 	    type, vartype,
 	    conf.type=c('log', 'log-log', 'plain', 'none'), ...) {
     # May have strata and/or offset terms, linear predictor = offset
@@ -8,6 +8,7 @@ survfit.coxph.null <-
     #  This is survfit.coxph with lots of lines removed
 
     call <- match.call()
+    object <- formula
     Terms <- terms(object)
     strat <- attr(Terms, "specials")$strata
     n <- object$n
@@ -35,7 +36,7 @@ survfit.coxph.null <-
 	if (is.null(stratx)) {
 	    temp <- untangle.specials(Terms, 'strata', 1)
 	    stratx <- strata(m[temp$vars])
-	    strata.all <- table(stratx)
+	    n.all <- table(stratx)
 	    }
 	if (is.null(y)) y <- model.extract(m, 'response')
 	}
@@ -57,6 +58,9 @@ survfit.coxph.null <-
 	}
     else stop("Cannot handle \"", type, "\" type survival data")
 
+    if (is.null(object$weights)) weights <- rep(1,n)
+    else                         weights <- object$weights
+
     if (length(strat)) {
 	newstrat <- (as.numeric(stratx))[ord]
 	newstrat <- as.integer(c(1*(diff(newstrat)!=0), 1))
@@ -73,6 +77,7 @@ survfit.coxph.null <-
 			  y = y[ord,],
 			  as.double(score[ord]),
 			  strata = as.integer(newstrat),
+                          wt = as.double(weights),
 			  surv = double(n),
 			  varhaz = double(n),
 			  double(1),
@@ -81,7 +86,7 @@ survfit.coxph.null <-
 			  double(2),
 			  as.integer(1),
 			  double(1),
-			  newrisk= as.double(1), PACKAGE="survival")
+			  newrisk= as.double(1))
     nsurv <- surv$nsurv[1]
     ntime <- 1:nsurv
     tsurv <- surv$surv[ntime]
@@ -95,11 +100,11 @@ survfit.coxph.null <-
 	temp <- surv$strata[1:(1+surv$strata[1])]
 	tstrat <- diff(c(0, temp[-1])) #n in each strata
 	names(tstrat) <- levels(stratx)
-	temp <- list(n=n, time=surv$y[ntime,1],
+	temp <- list(n=n.all, time=surv$y[ntime,1],
 		 n.risk=surv$y[ntime,2],
 		 n.event=surv$y[ntime,3],
-		 surv=tsurv,ntimes.strata=tstrat,
-		 strata= tstrat, strata.all=strata.all, type=type)
+		 surv=tsurv, 
+		 strata= tstrat, type=type)
 	}
     if (se.fit) temp$std.err <- sqrt(tvar)
 
@@ -129,12 +134,10 @@ survfit.coxph.null <-
 	}
 
     temp$call <- call
-    class(temp) <- c('survfit.cox', 'survfit')
+    if (is.R()) class(temp) <- c('survfit.cox', 'survfit')
+    else        oldClass(temp) <- 'survfit.cox'
     temp
     }
-
-
-
 
 
 

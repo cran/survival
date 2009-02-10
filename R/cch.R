@@ -385,8 +385,8 @@ print.summary.cch <- function(x,digits=3,...){
     cat("Call: "); print(x$call)
     cat("\nCoefficients:\n")
     output<-cbind(Coef=x$coefficients[,1],HR=exp(x$coefficients[,1]),
-                  "(95%"=exp(x$coefficients[,1]-2*x$coefficients[,2]),
-                  "CI)"=exp(x$coefficients[,1]+2*x$coefficients[,2]),
+                  "(95%"=exp(x$coefficients[,1]-1.96*x$coefficients[,2]),
+                  "CI)"=exp(x$coefficients[,1]+1.96*x$coefficients[,2]),
                   "p"=x$coefficients[,4]
                   )
     print(round(output,3))

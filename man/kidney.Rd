@@ -1,6 +1,6 @@
 \name{kidney}
 \alias{kidney}
-\title{Kidney data from survival5  }
+\title{Kidney catheter data}
 \format{
 \tabular{ll}{
 patient:\tab id\cr
@@ -16,10 +16,16 @@ Data on the recurrence times to infection, at the point of insertion of
   the catheter, for kidney patients using portable dialysis equipment.
   Catheters may be removed for reasons other than infection, in which case
   the observation is censored.  Each patient has exactly 2 observations.
+
+This data has often been used to illustrate the use of random effects
+(frailty) in a survival model.  However, one of the males (id 21) is a
+large outlier, with much longer survival than his peers.  If this
+observation is removed no evidence remains for a random subject effect.
+  
 }
 \section{Note}{
-  The original analysis had incorrect handling of ties and so is not
-  exactly reproduced by survival.
+  The original paper ignored the issue of tied times and so is not
+  exactly reproduced by the survival package.
 }
 \examples{
 kfit <- coxph(Surv(time, status)~ age + sex + disease + frailty(id), kidney)

@@ -1,0 +1,337 @@
+
+R version 2.7.1 (2008-06-23)
+Copyright (C) 2008 The R Foundation for Statistical Computing
+ISBN 3-900051-07-0
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> options(na.action=na.exclude) # preserve missings
+> options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
+> library(survival)
+Loading required package: splines
+> 
+> expect <- survexp(futime ~ ratetable(age=(accept.dt - birth.dt), sex=1,
++ 		year=accept.dt, race='white'), jasa, cohort=F, 
++                   ratetable=survexp.usr)
+> 
+> survdiff(Surv(jasa$futime, jasa$fustat) ~ offset(expect))
+Call:
+survdiff(formula = Surv(jasa$futime, jasa$fustat) ~ offset(expect))
+
+Observed Expected        Z        p 
+  75.000    0.587  -97.119    0.000 
+> # Now fit the 6 models found in Kalbfleisch and Prentice, p139
+> sfit.1 <- coxph(Surv(start, stop, event)~ (age + surgery)*transplant,
++ 				jasa1, method='breslow')
+> sfit.2 <- coxph(Surv(start, stop, event)~ year*transplant,
++ 				jasa1, method='breslow')
+> sfit.3 <- coxph(Surv(start, stop, event)~ (age + year)*transplant,
++ 				jasa1, method='breslow')
+> sfit.4 <- coxph(Surv(start, stop, event)~ (year +surgery) *transplant,
++ 				jasa1, method='breslow')
+> sfit.5 <- coxph(Surv(start, stop, event)~ (age + surgery)*transplant + year ,
++ 				jasa1, method='breslow')
+> sfit.6 <- coxph(Surv(start, stop, event)~ age*transplant + surgery + year,
++ 				jasa1, method='breslow')
+> 
+> summary(sfit.1)
+Call:
+coxph(formula = Surv(start, stop, event) ~ (age + surgery) * 
+    transplant, data = jasa1, method = "breslow")
+
+  n= 170 
+
+                       coef exp(coef) se(coef)      z Pr(>|z|)
+age                 0.01386   1.01395  0.01813  0.765    0.445
+surgery            -0.54652   0.57896  0.61091 -0.895    0.371
+transplant          0.11572   1.12268  0.32729  0.354    0.724
+age:transplant      0.03473   1.03534  0.02725  1.274    0.202
+surgery:transplant -0.29037   0.74799  0.75819 -0.383    0.702
+
+                   exp(coef) exp(-coef) lower .95 upper .95
+age                    1.014     0.9862    0.9786     1.051
+surgery                0.579     1.7272    0.1748     1.917
+transplant             1.123     0.8907    0.5911     2.132
+age:transplant         1.035     0.9659    0.9815     1.092
+surgery:transplant     0.748     1.3369    0.1692     3.306
+
+Rsquare= 0.071   (max possible= 0.97 )
+Likelihood ratio test= 12.45  on 5 df,   p=0.02915
+Wald test            = 11.62  on 5 df,   p=0.04031
+Score (logrank) test = 12.02  on 5 df,   p=0.03457
+
+> sfit.2
+Call:
+coxph(formula = Surv(start, stop, event) ~ year * transplant, 
+    data = jasa1, method = "breslow")
+
+
+                  coef exp(coef) se(coef)      z     p
+year            -0.265     0.767    0.105 -2.522 0.012
+transplant      -0.287     0.750    0.514 -0.559 0.580
+year:transplant  0.137     1.147    0.141  0.973 0.330
+
+Likelihood ratio test=8.61  on 3 df, p=0.0349  n= 170 
+> summary(sfit.3)
+Call:
+coxph(formula = Surv(start, stop, event) ~ (age + year) * transplant, 
+    data = jasa1, method = "breslow")
+
+  n= 170 
+
+                    coef exp(coef) se(coef)      z Pr(>|z|)   
+age              0.01558   1.01571  0.01734  0.899  0.36887   
+year            -0.27413   0.76023  0.10588 -2.589  0.00962 **
+transplant      -0.59388   0.55218  0.54222 -1.095  0.27339   
+age:transplant   0.03380   1.03438  0.02795  1.209  0.22653   
+year:transplant  0.20228   1.22419  0.14247  1.420  0.15566   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+                exp(coef) exp(-coef) lower .95 upper .95
+age                1.0157     0.9845    0.9818    1.0508
+year               0.7602     1.3154    0.6178    0.9356
+transplant         0.5522     1.8110    0.1908    1.5981
+age:transplant     1.0344     0.9668    0.9792    1.0926
+year:transplant    1.2242     0.8169    0.9259    1.6185
+
+Rsquare= 0.084   (max possible= 0.97 )
+Likelihood ratio test= 14.85  on 5 df,   p=0.01102
+Wald test            = 13.77  on 5 df,   p=0.01716
+Score (logrank) test = 14.06  on 5 df,   p=0.01525
+
+> sfit.4
+Call:
+coxph(formula = Surv(start, stop, event) ~ (year + surgery) * 
+    transplant, data = jasa1, method = "breslow")
+
+
+                     coef exp(coef) se(coef)      z     p
+year               -0.254     0.776    0.108 -2.360 0.018
+surgery            -0.237     0.789    0.628 -0.377 0.710
+transplant         -0.297     0.743    0.505 -0.588 0.560
+year:transplant     0.165     1.180    0.142  1.167 0.240
+surgery:transplant -0.550     0.577    0.776 -0.709 0.480
+
+Likelihood ratio test=12.4  on 5 df, p=0.0302  n= 170 
+> sfit.5
+Call:
+coxph(formula = Surv(start, stop, event) ~ (age + surgery) * 
+    transplant + year, data = jasa1, method = "breslow")
+
+
+                      coef exp(coef) se(coef)      z     p
+age                 0.0150     1.015   0.0176  0.855 0.390
+surgery            -0.4202     0.657   0.6156 -0.683 0.490
+transplant          0.0741     1.077   0.3311  0.224 0.820
+year               -0.1363     0.873   0.0710 -1.921 0.055
+age:transplant      0.0269     1.027   0.0271  0.992 0.320
+surgery:transplant -0.2966     0.743   0.7580 -0.391 0.700
+
+Likelihood ratio test=16.2  on 6 df, p=0.0127  n= 170 
+> sfit.6
+Call:
+coxph(formula = Surv(start, stop, event) ~ age * transplant + 
+    surgery + year, data = jasa1, method = "breslow")
+
+
+                  coef exp(coef) se(coef)      z     p
+age             0.0153     1.015   0.0175  0.873 0.380
+transplant      0.0446     1.046   0.3217  0.139 0.890
+surgery        -0.6211     0.537   0.3679 -1.688 0.091
+year           -0.1361     0.873   0.0709 -1.919 0.055
+age:transplant  0.0270     1.027   0.0271  0.996 0.320
+
+Likelihood ratio test=16.1  on 5 df, p=0.00669  n= 170 
+> 
+> # Survival curve for the "average" subject
+> summary(survfit(sfit.1))
+Call: survfit(formula = sfit.1)
+
+   time n.risk n.event survival std.err lower 95% CI upper 95% CI
+    0.5    103       1    0.991 0.00937       0.9725        1.000
+    1.0    102       3    0.963 0.01874       0.9270        1.000
+    2.0     99       3    0.935 0.02489       0.8878        0.985
+    4.0     96       2    0.917 0.02820       0.8631        0.974
+    5.0     94       2    0.898 0.03111       0.8393        0.961
+    7.0     92       1    0.889 0.03244       0.8276        0.955
+    8.0     91       1    0.880 0.03368       0.8160        0.948
+   11.0     89       1    0.870 0.03485       0.8045        0.941
+   15.0     88       3    0.842 0.03784       0.7713        0.920
+   16.0     85       1    0.833 0.03879       0.7601        0.912
+   17.0     84       1    0.823 0.03961       0.7494        0.905
+   20.0     83       2    0.806 0.04092       0.7292        0.890
+   27.0     81       1    0.797 0.04148       0.7192        0.882
+   29.0     80       1    0.787 0.04200       0.7092        0.874
+   31.0     78       1    0.778 0.04250       0.6991        0.866
+   34.0     77       1    0.769 0.04293       0.6892        0.858
+   35.0     76       1    0.760 0.04335       0.6793        0.850
+   36.0     75       1    0.750 0.04375       0.6694        0.841
+   38.0     74       1    0.741 0.04411       0.6595        0.833
+   39.0     72       2    0.723 0.04482       0.6399        0.816
+   42.0     70       1    0.713 0.04516       0.6301        0.808
+   44.0     69       1    0.704 0.04551       0.6202        0.799
+   49.0     68       1    0.695 0.04584       0.6103        0.791
+   50.0     67       1    0.685 0.04617       0.6005        0.782
+   52.0     66       1    0.676 0.04649       0.5908        0.774
+   57.0     65       1    0.667 0.04681       0.5809        0.765
+   60.0     64       1    0.657 0.04714       0.5711        0.756
+   65.0     63       1    0.648 0.04747       0.5611        0.748
+   67.0     62       2    0.629 0.04813       0.5411        0.730
+   68.0     60       1    0.619 0.04848       0.5309        0.722
+   71.0     59       2    0.600 0.04915       0.5109        0.704
+   76.0     57       1    0.590 0.04951       0.5006        0.696
+   77.0     56       1    0.580 0.04987       0.4901        0.686
+   79.0     55       1    0.570 0.05023       0.4794        0.677
+   80.0     54       1    0.559 0.05059       0.4686        0.668
+   84.0     53       1    0.549 0.05097       0.4577        0.659
+   89.0     52       1    0.539 0.05135       0.4467        0.649
+   95.0     51       1    0.528 0.05172       0.4356        0.640
+   99.0     50       1    0.517 0.05210       0.4243        0.630
+  101.0     49       1    0.506 0.05247       0.4129        0.620
+  109.0     47       1    0.495 0.05286       0.4014        0.610
+  148.0     45       1    0.484 0.05328       0.3898        0.600
+  152.0     44       1    0.473 0.05369       0.3782        0.590
+  164.0     43       1    0.461 0.05412       0.3665        0.581
+  185.0     41       1    0.450 0.05453       0.3549        0.571
+  187.0     40       1    0.439 0.05491       0.3435        0.561
+  206.0     39       1    0.428 0.05526       0.3320        0.551
+  218.0     38       1    0.416 0.05563       0.3205        0.541
+  262.0     37       1    0.405 0.05598       0.3088        0.531
+  284.0     35       2    0.382 0.05660       0.2854        0.510
+  307.0     33       1    0.370 0.05686       0.2738        0.500
+  333.0     32       1    0.358 0.05713       0.2621        0.490
+  339.0     31       1    0.346 0.05735       0.2505        0.479
+  342.0     29       1    0.334 0.05764       0.2383        0.469
+  583.0     21       1    0.317 0.05860       0.2207        0.455
+  674.0     17       1    0.297 0.05987       0.2002        0.441
+  732.0     16       1    0.277 0.06087       0.1797        0.426
+  851.0     14       1    0.253 0.06199       0.1566        0.409
+  979.0     11       1    0.226 0.06310       0.1309        0.391
+  995.0     10       1    0.201 0.06293       0.1087        0.371
+ 1031.0      9       1    0.177 0.06170       0.0893        0.350
+ 1386.0      6       1    0.150 0.05979       0.0685        0.328
+> 
+> # Survival curve for a subject of age 50, with prior surgery, tx at 6 months
+> data <- data.frame(start=c(0,183), stop=c(183,3*365), event=c(1,1),
++ 		   age=c(50,50),  surgery=c(1,1), transplant=c(0,1))
+> summary(survfit(sfit.1, data, individual=T))
+Call: survfit(formula = sfit.1, newdata = data, individual = T)
+
+   time n.risk n.event survival std.err lower 95% CI upper 95% CI
+    0.5    103       1 0.987705  0.0178     9.53e-01            1
+    1.0    102       3 0.951481  0.0554     8.49e-01            1
+    2.0     99       3 0.915583  0.0910     7.53e-01            1
+    4.0     96       2 0.891716  0.1139     6.94e-01            1
+    5.0     94       2 0.867996  0.1360     6.38e-01            1
+    7.0     92       1 0.856157  0.1468     6.12e-01            1
+    8.0     91       1 0.844345  0.1574     5.86e-01            1
+   11.0     89       1 0.832476  0.1679     5.61e-01            1
+   15.0     88       3 0.797380  0.1978     4.90e-01            1
+   16.0     85       1 0.785518  0.2076     4.68e-01            1
+   17.0     84       1 0.774016  0.2169     4.47e-01            1
+   20.0     83       2 0.751892  0.2346     4.08e-01            1
+   27.0     81       1 0.740734  0.2433     3.89e-01            1
+   29.0     80       1 0.729556  0.2518     3.71e-01            1
+   31.0     78       1 0.718263  0.2603     3.53e-01            1
+   34.0     77       1 0.707052  0.2686     3.36e-01            1
+   35.0     76       1 0.695860  0.2767     3.19e-01            1
+   36.0     75       1 0.684689  0.2846     3.03e-01            1
+   38.0     74       1 0.673537  0.2924     2.88e-01            1
+   39.0     72       2 0.651457  0.3072     2.59e-01            1
+   42.0     70       1 0.640456  0.3143     2.45e-01            1
+   44.0     69       1 0.629362  0.3213     2.31e-01            1
+   49.0     68       1 0.618379  0.3280     2.19e-01            1
+   50.0     67       1 0.607458  0.3345     2.06e-01            1
+   52.0     66       1 0.596654  0.3407     1.95e-01            1
+   57.0     65       1 0.585764  0.3468     1.84e-01            1
+   60.0     64       1 0.574913  0.3526     1.73e-01            1
+   65.0     63       1 0.564020  0.3582     1.62e-01            1
+   67.0     62       2 0.542168  0.3687     1.43e-01            1
+   68.0     60       1 0.531158  0.3737     1.34e-01            1
+   71.0     59       2 0.509631  0.3827     1.17e-01            1
+   76.0     57       1 0.498698  0.3869     1.09e-01            1
+   77.0     56       1 0.487481  0.3909     1.01e-01            1
+   79.0     55       1 0.476189  0.3946     9.38e-02            1
+   80.0     54       1 0.464828  0.3981     8.68e-02            1
+   84.0     53       1 0.453416  0.4014     8.00e-02            1
+   89.0     52       1 0.442045  0.4043     7.36e-02            1
+   95.0     51       1 0.430541  0.4069     6.75e-02            1
+   99.0     50       1 0.418859  0.4092     6.17e-02            1
+  101.0     49       1 0.407172  0.4111     5.63e-02            1
+  109.0     47       1 0.395430  0.4127     5.11e-02            1
+  148.0     45       1 0.383701  0.4138     4.63e-02            1
+  152.0     44       1 0.372047  0.4146     4.19e-02            1
+  164.0     43       1 0.360399  0.4150     3.77e-02            1
+  185.0     41       1 0.308626  0.3633     3.07e-02            1
+  187.0     40       1 0.263598  0.3239     2.37e-02            1
+  206.0     39       1 0.224005  0.2924     1.74e-02            1
+  218.0     38       1 0.189274  0.2662     1.20e-02            1
+  262.0     37       1 0.158775  0.2430     7.91e-03            1
+  284.0     35       2 0.109517  0.2009     3.01e-03            1
+  307.0     33       1 0.090097  0.1811     1.75e-03            1
+  333.0     32       1 0.073486  0.1618     9.81e-04            1
+  339.0     31       1 0.059534  0.1433     5.31e-04            1
+  342.0     29       1 0.047416  0.1250     2.71e-04            1
+  583.0     21       1 0.034045  0.1017     9.76e-05            1
+  674.0     17       1 0.022650  0.0777     2.73e-05            1
+  732.0     16       1 0.014436  0.0567     6.57e-06            1
+  851.0     14       1 0.008250  0.0377     1.07e-06            1
+  979.0     11       1 0.004076  0.0219     1.10e-07            1
+  995.0     10       1 0.001932  0.0120     9.75e-09            1
+ 1031.0      9       1 0.000867  0.0062     7.08e-10            1
+> 
+> # These should all give the same answer
+> j.age <- jasa$age -48
+> fit1 <- coxph(Surv(futime, fustat) ~ j.age, data=jasa)
+> fit2 <- coxph(Surv(futime, fustat) ~ j.age, jasa, init=fit1$coef, iter=0)
+> fit3 <- coxph(Surv(start, stop, event) ~ age, jasa1)
+> fit4 <- coxph(Surv(start, stop, event) ~ offset((age-fit3$means)*fit1$coef),
++               jasa1)
+> s1 <- survfit(fit1, fit3$means)
+> s2 <- survfit(fit2, fit3$means)
+> s3 <- survfit(fit3)
+> s4 <- survfit(fit4)
+> 
+> all.equal(s1$surv, s2$surv)
+[1] TRUE
+> all.equal(s1$surv, s3$surv)
+[1] TRUE
+> all.equal(s1$surv, s4$surv)
+[1] TRUE
+> 
+> # Still the same answer, fit multiple strata at once
+> #  Strata 1 has independent coefs of strata 2, so putting in
+> #    the other data should not affect it
+> attach(jasa1)
+> ll <- length(start)
+> ss <- rep(0:1, c(ll,ll))
+> tdata <- data.frame(start=rep(start,2), stop=rep(stop,2),
++ 		    event=rep(event,2), ss=ss, age=rep(age,2),
++ 		    age2 = (rep(age,2))^2 * ss)
+> fit <- coxph(Surv(start, stop, event) ~ age*strata(ss) + age2, tdata)
+> #  Above replaced these 2 lines, which kill Splus5 as of 8/98
+> #    Something with data frames, I expect.
+> #fit <- coxph(Surv(rep(start,2), rep(stop,2), rep(event,2)) ~
+> #			rep(age,2)*strata(ss) + I(rep(age,2)^2*ss) )
+> all.equal(fit$coef[1], fit3$coef)
+[1] TRUE
+> s5 <- survfit(fit, c(fit3$means, 0,0))
+> all.equal(s5$surv[1:(s5$strata[1])],  s3$surv)
+[1] TRUE
+> detach("jasa1")
+> 
+> rm(s1, s2, s3, s4, s5, tdata, ll, ss, data)
+> rm(fit1, fit2, fit3, fit4, fit, j.age)
+> rm(sfit.1, sfit.2, sfit.3, sfit.4, sfit.5, sfit.6)
+> 

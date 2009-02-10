@@ -1,4 +1,4 @@
-# SCCS @(#)coxph.getdata.s	4.3 09/08/94
+# $Id: coxph.getdata.S 11179 2009-01-07 12:20:13Z therneau $
 #
 # Reconstruct the Cox model data.  This is done in so many routines
 #  that I extracted it out.
@@ -7,8 +7,8 @@
 #   still allow users to type "strata" as an arg.
 #
 coxph.getdata <- function(fit, y=TRUE, x=TRUE, stratax=TRUE, offset=FALSE) {
-    ty <- fit$y
-    tx <- fit$x
+    ty <- fit[['y']]  #avoid grabbing this by accident due to partial matching
+    tx <- fit[['x']]  #  for x, fit$x will get fit$xlevels --> not good
     strat <- fit$strata
     Terms <- fit$terms
     if (is.null(attr(Terms, 'offset'))) offset <- FALSE
@@ -30,21 +30,26 @@ coxph.getdata <- function(fit, y=TRUE, x=TRUE, stratax=TRUE, offset=FALSE) {
 	if (offset) toff <- model.extract(m, 'offset')
 
 	# strata was saved in the fit if and only if x was
-	if (x && is.null(tx)) {
+	if ((x || stratax) && is.null(tx)) {
 	    dropx <- untangle.specials(Terms, 'cluster')$terms
 	    if (stratax) {
 		temp <- untangle.specials(Terms, 'strata', 1)
-		tx <- model.matrix(Terms[-c(dropx,temp$terms)], m)[,-1,drop=FALSE]
-		strat <- strata(m[temp$vars], shortlabel=TRUE)
+                dropx <- c(dropx, temp$terms)
+                #If there were multiple strata statements, glue them together
+		strat <- strata(m[temp$vars], shortlabel=T)
 		}
-	    else {
-		if (length(dropx)) tx <- model.matrix(Terms[-dropx], m)[,-1,drop=FALSE]
-		else               tx <- model.matrix(Terms, m)[,-1,drop=FALSE]
+	    if (x) {
+		if (length(dropx)) 
+                     tx <- model.matrix(Terms[-dropx], m,
+                                        contr=fit$contrasts)[,-1,drop=FALSE]
+		else tx <- model.matrix(Terms, m,
+                                        contr=fit$contrasts)[,-1,drop=FALSE]
 		}
 	    }
 	}
     else if (offset)
-       toff <- fit$linear.predictors -(c(tx %*% fit$coef) - sum(fit$means*fit$coef))
+       toff <- fit$linear.predictors -(c(tx %*% fit$coef) - 
+                                        sum(fit$means*fit$coef))
 
     temp <- NULL
     if (y) temp <- c(temp, "y=ty")

@@ -1,4 +1,4 @@
-# SCCS @(#)coxph.wtest.s	1.2 10/28/98
+# $Id: coxph.wtest.S 11059 2008-10-23 12:32:50Z therneau $
 #
 # A Wald test routine, used by the Cox model
 #  Why not just do  sum(b * solve(var, b))? -- because the solve
@@ -14,16 +14,15 @@ coxph.wtest <- function(var, b, toler.chol=1e-9) {
         ntest<- 1
         }
     
+    if (length(var)==0) { #special case added by Tom Lumley
+	if (nvar==0) return(list(test=numeric(0), df=0, solve=0))
+	else stop("Argument lengths do not match")
+	}
+
     if (length(var)==1) {
         if (nvar ==1) return(list(test=b*b/var, df=1, solve=b/var))
         else stop("Argument lengths do not match")
-    }
-
-    if (length(var)==0){
-        if (nvar==0) return(list(test=numeric(0),df=0,solve=0))
-        else  stop("Argument lengths do not match")
-    }
-
+        }
 
     if (!is.matrix(var) || (nrow(var) != ncol(var)))
             stop("First argument must be a square matrix")
@@ -34,8 +33,7 @@ coxph.wtest <- function(var, b, toler.chol=1e-9) {
                               as.double(var),
                               tests= as.double(b),
                               solve= double(nvar*ntest),
-	                      as.double(toler.chol),
-               PACKAGE="survival")
+	                      as.double(toler.chol))
     if (ntest==1) list(test=temp$tests[1], df=temp$df, solve=temp$solve)
     else          list(test=temp$tests[1:ntest], df=temp$df, 
                        solve=matrix(temp$solve, nvar, ntest))

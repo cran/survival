@@ -1,83 +1,81 @@
 \name{print.survfit}
 \alias{print.survfit}
 \title{
-Print a Short Summary of a Survival Curve
+  Print a Short Summary of a Survival Curve 
 }
 \description{
   Print number of observations, number of events, the restricted
-  mean survival and its standard error, and the median survival with confidence limits for the median.
+  mean survival and its  
+standard error, and the median survival with confidence limits for the  
+median. 
 }
 \usage{
-\method{print}{survfit}(x, scale=1,digits = max(options()$digits - 4,
-3), print.n=getOption("survfit.print.n"), show.rmean=getOption("survfit.print.mean"),...)
+\method{print}{survfit}(x, scale=1, digits = max(options()$digits - 4,3),
+    print.rmean=getOption("survfit.print.rmean"),
+    rmean = getOption('survfit.rmean'),...)
 }
 \arguments{
 \item{x}{
-the result of a call to the \code{survfit} function.
-}\item{print.n}{What to use for number of subjects (see below)}
-\item{digits}{Number of digits to print}
+the result of a call to the \code{survfit} function. 
+}
 \item{scale}{
-a numeric value to rescale the survival time, e.g.,
-if the input data to survfit were in days,
-\code{scale=365} would scale the printout to years.
-}\item{show.rmean}{Show the restricted mean survival?}\item{...}{other unused arguments}}
+a numeric value to rescale the survival time, e.g., 
+if the input data to survfit were in days, 
+\code{scale=365} would scale the printout to years. 
+}
+\item{digits}{Number of digits to print}
+\item{print.rmean,rmean}{Options for computation and display of the
+  restricted mean.}
+\item{\dots}{for future results}
+}
 \value{
-\code{x}, with the invisible flag set.
+x, with the invisible flag set to prevent printing. 
 }
 \section{Side Effects}{
-The number of observations (see Details), the number of events,  the median survival
+he number of observations, the number of events,  the median survival
 with its confidence interval, and optionally the
-restricted mean survival (\code{rmean}) and its standard error, are printed.  If there are multiple curves, there is one line of output for each.
+restricted mean survival (\code{rmean}) and its standard error, are printed.
+If there are multiple curves, there is one line of output for each. 
 }
 \details{
-The restricted mean (\code{rmean}) and its standard error \code{se(rmean)} are based on a truncated estimator.  If the
-last observation(s) is not a death, then the survival curve estimate does not
-go to zero and the mean survival time cannot be estimated. Instead, the
-quantity reported is the mean of survival restricted to the time before
-the last censoring. When the last censoring time is not random this
-quantity is occasionally of interest.
+The mean and its variance are based on a truncated estimator.  That is, if the 
+last observation(s) is not a death, then the survival curve estimate does not 
+go to zero and the mean is undefined.
+There are four possible approaches, which are selected by the
+\code{rmean} option.
+The first is to set the upper limit to a constant, e.g.,\code{rmean=365}.
+In this case the reported mean would be the expected number of days, out
+of the first 365, that would be experienced by each group.  This is
+useful if interest focuses on a fixed period.
+Other options are \code{"none"} (no estimate), \code{"common"} and
+\code{"individual"}.
+For the last of these, the mean is computed as the area under the curve,
+over the
+range from 0 to the maximum observed time for that curve.
+Since the end point is random, values for different curves are not
+comparable and the printed standard errors are an underestimate as
+they do not take into account this random variation.  This option is
+provided mainly for backwards compatability, as this estimate was the
+default (only) one in earlier releases of the code.
+The \code{"common"} option uses the maximum time for all curves in the
+object as a common upper limit for the auc calculation.
 
-Any randomness in the last censoring time is not taken into account in
-computing the standard error of the restricted mean.  The restricted
-mean is available mainly for compatibility with S, and is not shown by default.
 
-
-The median and its confidence interval are defined by drawing a horizontal
-line at 0.5 on the plot of the survival curve and its confidence bands.
-The intersection of the line with the lower CI band defines the lower limit
-for the median's interval, and similarly for the upper band.  If any of the
-intersections is not a point, then we use the smallest point of intersection,
-e.g., if the survival curve were exactly equal to 0.5 over an
-interval. 
-
-The "number of observations" is not well-defined for counting process
-data. Previous versions of this code used the number at risk at the
-first time point. This is misleading if many individuals enter late or
-change strata. The original S code for the current version uses the
-number of records, which is misleading when the counting process data
-actually represent a fixed cohort with time-dependent covariates.
-
-Four possibilities are provided, controlled by \code{print.n} or by
-\code{options(survfit.print.n)}: \code{"none"} prints \code{NA},
-\code{"records"} prints the number of records, \code{"start"} prints the
-number at the first time point and \code{"max"} prints the maximum
-number at risk. The initial default is \code{"start"}.
-
+The median and its confidence interval are defined by drawing a horizontal 
+line at 0.5 on the plot of the survival curve and its confidence bands. 
+The intersection of the line with the lower CI band defines the lower limit 
+for the median's interval, and similarly for the upper band.  If any of the 
+intersections is not a point, then we use the smallest point of intersection, 
+e.g., if the survival curve were exactly equal to 0.5 over an interval. 
 }
-
+\section{References}{
+Miller, Rupert G., Jr. (1981).  
+\emph{Survival Analysis.}
+New York:Wiley, p 71. 
+}
 \seealso{
-\code{\link{summary.survfit}}, \code{\link{survfit.object}}, \code{\link{survfit}}
+\code{\link{summary.survfit}}. 
 }
-\examples{
-##effect of print.n and show.rmean
-
-a<-coxph(Surv(start,stop,event)~age+strata(transplant),data=heart)
-b<-survfit(a)
-print(b,print.n="none")
-print(b,print.n="records")
-print(b,print.n="start")
-print(b,print.n="max")
-print(b,show.rmean=TRUE)
-}
-
 \keyword{survival}
+% docclass is function
+% Converted by Sd2Rd version 37351.

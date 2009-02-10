@@ -1,4 +1,4 @@
-# SCCS @(#)frailty.t.s	1.4 07/10/00
+# $Id: frailty.t.S 11203 2009-02-05 00:06:16Z therneau $
 # 
 # Defining function for t-distribution frailty fits
 #
@@ -7,12 +7,14 @@ frailty.t <- function(x, sparse=(nclass>5), theta, df, eps= 1e-5,  tdf=5,
     nclass <- length(unique(x))
     if (sparse){
 	x <-as.numeric(as.factor(x))
-	class(x) <- "coxph.penalty"
+	if (is.R()) class(x) <- "coxph.penalty"
+	else        oldClass(x) <- "coxph.penalty"
         }
     else{
 	x <- as.factor(x)
-	class(x) <- c("coxph.penalty",class(x))
-	attr(x,'contrasts') <- contr.treatment(nclass,contrasts=FALSE)
+	if (is.R()) class(x) <- c("coxph.penalty",class(x))
+	else        oldClass(x) <- "coxph.penalty"
+	attr(x,'contrasts') <- contr.treatment(nclass, contrasts=FALSE)
         }
 
     if (tdf <=2) stop("Cannot have df <3 for the t-frailty")
@@ -71,6 +73,12 @@ frailty.t <- function(x, sparse=(nclass>5), theta, df, eps= 1e-5,  tdf=5,
 	list(coef=c(NA, NA, NA, test, df, 1-pchisq(test, df2)),
 		 history=paste("Variance of random effect=", format(theta)))
 	}
+    # The final coxph object will contain a copy of printfun.  Stop it from
+    #   also containing huge unnecessary variables, e.g. 'x', known at this 
+    #   point in time.  Not an issue for pfun, which does not get saved.
+    # The reason for using the survival namespace instead of globalenv() is 
+    # that we call coxph.wtest, which may not be visible outside the name space
+    if (is.R()) environment(printfun) <- asNamespace('survival')
 
     if (method=='fixed') {
 	temp <- list(pfun=pfun, pparm=tdf,

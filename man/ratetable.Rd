@@ -28,13 +28,14 @@ ratetable(...)
 \examples{
 
 fit <- survfit(Surv(time, status) ~ sex, pbc,subset=1:312)
-if (require(date)){
-tdata <- data.frame(agedays=pbc$age*365.24, sex=pbc$sex +1,
-		    year= rep(mdy.date(1,1,1976), nrow(pbc)))
-tdata<-tdata[1:312,] ## only the randomised people, with no missing data
 
-efit <- survexp(~ sex+ratetable(sex=sex,age=agedays,year=year), data=tdata, ratetable=survexp.us, times=(0:24)*182)
+# The data set does not have entry date, use the midpoint of the study
+efit <- survexp(~ ratetable(sex=sex,age=age*365.35,year=as.Date('1979/1/1')) +
+            sex, data=pbc,  times=(0:24)*182)
+\dontrun{
+plot(fit, mark.time=F, xscale=365.25, xlab="Years post diagnosis",
+        ylab="Survival")
+lines(efit, col=2, xscale=365.25) # Add the expected survival line
 }
-
 }
 \keyword{survival}%-- one or more ...

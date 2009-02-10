@@ -1,3 +1,4 @@
-# SCCS @(#)labels.survreg.s	1.1 01/06/99
-#labels.survreg <- labels.lm
-labels.survreg<-function(object,...) attr(object$terms,"term.labels")
+# $Id: labels.survreg.S 11059 2008-10-23 12:32:50Z therneau $
+labels.survreg <- function(object, ...)
+	attr(object$terms, "term.labels")
+

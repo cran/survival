@@ -1,10 +1,9 @@
-# SCCS @(#)pspline.s	1.4 02/24/99
+# $Id: pspline.S 11207 2009-02-09 04:25:50Z therneau $
 #
 # the p-spline function for a Cox model
 #
 pspline <- function(x, df=4, theta, nterm=2.5*df, degree=3, eps=0.1, 
 		    method, ...) {
-    ##require(splines)
     if (!missing(theta)) {
 	method <- 'fixed'
 	if (theta <=0 || theta >=1) stop("Invalid value for theta")
@@ -17,7 +16,9 @@ pspline <- function(x, df=4, theta, nterm=2.5*df, degree=3, eps=0.1,
     else {
 	method <- 'df'
 	if (df <=1) stop ('Too few degrees of freedom')
-        if (df +1 > nterm) stop("`nterm' too small for df=",df)
+	# The below used to say "df+1 > nterm", but we need some scope for
+	#  the smoother parameter to avoid strange conditions
+        if (df > nterm) stop("`nterm' too small for df=",df)
     }
 
     
@@ -35,7 +36,6 @@ pspline <- function(x, df=4, theta, nterm=2.5*df, degree=3, eps=0.1,
 	newx[keepx,] <- temp
         }
     newx <- newx[,-1]              #redundant coefficient with lambda_0
-    class(newx) <- 'coxph.penalty'
     nvar <- 1 + ncol(newx)   #should be nterm + degree
     dmat <- diag(nvar)
     dmat <- apply(dmat, 2, diff, 1, 2) 
@@ -56,7 +56,7 @@ pspline <- function(x, df=4, theta, nterm=2.5*df, degree=3, eps=0.1,
 	    }
         }	
 
-    printfun <- function(coef, var, var2, df, history) {
+    printfun <- function(coef, var, var2, df, history, cbase) {
 	test1 <- coxph.wtest(var, coef)$test
 	# cbase contains the centers of the basis functions
 	#   do a weighted regression of these on the coefs to get a slope
@@ -80,10 +80,24 @@ pspline <- function(x, df=4, theta, nterm=2.5*df, degree=3, eps=0.1,
 	else  theta <- history$theta
 	list(coef=cmat, history=paste("Theta=", format(theta)))
 	}
-    # Line 2 below is a real sneaky thing, see notes.
-    ## We don't need to be sneaky. We have lexical scope :)
-    ## printfun[[6]] <- knots[2:nvar] + (rx[1] - knots[1])
-    cbase<-knots[2:nvar] + (rx[1] - knots[1])	       
+
+    if (is.R()) {
+	# The printfun needs to remember the spline's knots,
+	#  but I don't need (or want) to carry around the entire upteen 
+	#  variables defined here as an environment
+	# Remove cbase from the arg list, and make it the environment
+	formals(printfun) <- alist(coef=, var=, var2=, df=, history=)
+	tempenv <- new.env(parent=asNamespace('survival'))
+	assign('cbase',  knots[2:nvar] + (rx[1] -knots[1]), envir=tempenv)
+	environment(printfun) <- tempenv
+	}
+    else {
+	# Somewhat simpler in Splus, but because it depends on the 
+	#  undocumented manner in which functions are stored, it might
+	#  stop working one day
+	printfun[[6]] <- knots[2:nvar] + (rx[1] - knots[1])
+	}
+	
     if (method=='fixed') {
 	temp <- list(pfun=pfun,
 		     printfun=printfun,
@@ -119,5 +133,7 @@ pspline <- function(x, df=4, theta, nterm=2.5*df, degree=3, eps=0.1,
 	}
     
     attributes(newx) <- c(attributes(newx), temp)
+    if (is.R()) class(newx) <- 'coxph.penalty'
+    else        oldClass(newx) <- 'coxph.penalty'
     newx
     }

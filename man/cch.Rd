@@ -97,7 +97,7 @@ Therneau, TM and Li, H (1999). Computing the Cox model for case-cohort designs.
 Lifetime Data Analysis 5: 99--112.
 
 
-Borgan, \eqn{\O}{O}, Langholz, B, Samuelsen, SO, Goldstein, L and Pogoda, J (2000)
+Borgan, \eqn{O}{O}, Langholz, B, Samuelsen, SO, Goldstein, L and Pogoda, J (2000)
  Exposure stratified case-cohort designs. Lifetime Data Analysis 6, 39-58.
 
 }

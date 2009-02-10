@@ -1,25 +1,26 @@
 #
-# SCCS @(#)survreg.s	5.8 07/10/00
+# $Id: survreg.S 11227 2009-02-09 21:51:09Z therneau $
 #  The newest version of survreg, that accepts penalties and strata
 #
+if (!is.R()) setOldClass(c('survreg.penal', 'survreg'))
 
-survreg <- function(formula=formula(data), data=parent.frame(),
-	weights, subset, na.action, dist='weibull', 
-	init=NULL,  scale=0, control=survreg.control(), parms=NULL, 
-	model=FALSE, x=FALSE, y=TRUE, robust=FALSE, ...) {
+survreg <- function(formula, data, weights, subset, na.action,
+	dist='weibull', init=NULL,  scale=0, control, parms=NULL, 
+	model=FALSE, x=FALSE, y=TRUE, robust=FALSE, score=FALSE,  ...) {
 
-    call <- match.call()
-    m <- match.call(expand.dots=FALSE)
-    temp <- c("", "formula", "data", "weights", "subset", "na.action")
-    m <- m[ match(temp, names(m), nomatch=0)]
-    m[[1]] <- as.name("model.frame")
+    Call <- match.call()   # save a copy of the call
+    indx <- match(c("formula", "data", "weights", "subset", "na.action"),
+                  names(Call), nomatch=0) 
+    if (indx[1] ==0) stop("A formula argument is required")
+    temp <- Call[c(1,indx)]  # only keep the arguments we wanted
+    temp[[1]] <- as.name('model.frame')  # change the function called
+
+    if (is.R()) m <- eval(temp, parent.frame())
+    else        m <- eval(temp, sys.parent())
+
     special <- c("strata", "cluster")
     Terms <- if(missing(data)) terms(formula, special)
              else              terms(formula, special, data=data)
-    m$formula <- Terms
-    m <- eval(m, parent.frame())
-    ### I commented this out last time -- don't know why
-    ###Terms <- attr(m, 'terms')
 
     weights <- model.extract(m, 'weights')
     Y <- model.extract(m, "response")
@@ -49,10 +50,14 @@ survreg <- function(formula=formula(data), data=parent.frame(),
 	strata <- 0
 	}
 
-    if (length(dropx)) newTerms<-Terms[-dropx]
-    else               newTerms<-Terms
-    X<-model.matrix(newTerms,m)
-    
+    if (length(dropx)) {
+        newTerms <- Terms[-dropx]
+        # R (version 2.7.1) adds intercept=T anytime you drop something
+        if (is.R()) attr(newTerms, 'intercept') <- attr(Terms, 'intercept')
+        }
+    else               newTerms <- Terms
+    X <- model.matrix(newTerms, m)
+
     n <- nrow(X)
     nvar <- ncol(X)
 
@@ -60,33 +65,30 @@ survreg <- function(formula=formula(data), data=parent.frame(),
     if (!is.null(offset)) offset <- as.numeric(m[[offset]])
     else                  offset <- rep(0, n)
 
-    if (is.character(dist)) {
-        ## explicit partial matching: R will default to perfect matches
-        ## for [[]]  in the future.
-        idist<-charmatch(dist, names(survreg.distributions))
-        if (is.na(idist))
-            stop(paste("no match found for distribution: ", dist))
-        if (idist==0)
-            stop(paste(dist,"matches multiple distribution names"))
-	dlist <- survreg.distributions[[idist]]
-        dist <- names(survreg.distributions)[idist]
-    }
-    else if (is.list(dist)) dlist <- dist
-    else stop("Invalid distribution object")
-    if (is.null(dlist$dist)) {
-	if (is.character(dlist$name) && is.function(dlist$init) &&
-	    is.function(dlist$deviance)) {}
-	else stop("Invalid distribution object")
-	}
-    else {
-	if (!is.character(dlist$name) || is.null(dlist$dist) ||
-	    !is.function(dlist$trans) || !is.function(dlist$dtrans))
-		stop("Invalid distribution object")
-	}	
-
     type <- attr(Y, "type")
     if (type== 'counting') stop ("Invalid survival type")
     
+    # The user can either give a distribution name, in which the distribution
+    #   is found in the object survreg.distributions, or include a list object
+    #   of the same format as is found there.
+    if (is.character(dist)) {
+        # partial matching of names in [[ is on its way out in R, so
+        #   first use match.arg, e.g. turn 'exp' into 'exponential'
+        dist <- match.arg(dist, names(survreg.distributions))
+	dlist <- survreg.distributions[[dist]]
+	if (is.null(dlist)) stop(paste(dist, ": distribution not found"))
+	}
+    else if (is.list(dist)) dlist <- dist
+    else stop("Invalid distribution object")
+
+    #
+    #   Make sure it is legal
+    #
+    if (!survregDtest(dlist)) stop("Invalid distribution object")
+
+    # If the distribution is a transformation of another, perform
+    #   said transform.
+    #  
     logcorrect <- 0   #correction to the loglik due to transformations
     if (!is.null(dlist$trans)) {
 	tranfun <- dlist$trans
@@ -113,21 +115,47 @@ survreg <- function(formula=formula(data), data=parent.frame(),
     else itrans <- dlist$itrans
 
     if (!is.null(dlist$scale)) {
-	if (!missing(scale)) warning(paste(dlist$name, 
-			   "has a fixed scale, user specified value ignored"))
-	scale <- dlist$scale
-	}
-    if (!is.null(dlist$dist)){
-        if (is.atomic(dlist$dist))
-            dlist <- survreg.distributions[[dlist$dist]]
-        else
-            dlist<-dlist$dist #<TSL>
-    }
-    if (missing(control)) control <- survreg.control(...)
+        if (!missing(scale)) warning(paste(dlist$name, 
+                           "has a fixed scale, user specified value ignored"))
+        scale <- dlist$scale
+        }
 
-    if (scale < 0) stop("Invalid scale value")
-    if (scale >0 && nstrata >1) 
-	    stop("Cannot have multiple strata with a fixed scale")
+    if (!is.null(dlist$dist))
+        if (is.atomic(dlist$dist)) dlist <- survreg.distributions[[dlist$dist]]
+        else                       dlist <- dlist$dist
+    
+    # check for parameters
+    ptemp <- dlist$parms
+    if (is.null(ptemp)) {
+        if (!is.null(parms)) stop(paste(dlist$name, 
+                              "distribution has no optional parameters"))
+        }
+    else {
+        if (!is.numeric(ptemp)) 
+            stop("Default parameters must be a numeric vector")
+        if (!missing(parms)) {
+            temp <- unlist(parms)  # just in case they gave a list object
+            indx <- match(names(temp), names(ptemp))
+            if (any(is.na(indx))) stop("Invalid parameter names")
+            ptemp[names(ptemp)] <- temp
+            }
+        parms <- ptemp
+        }
+
+    # An idea originally from Brian R: if the user gave a list of
+    #  control values, use it, but if they did not give an explicit control
+    #  argument assume that they mistakenly wrote control parameters as a
+    #  part of the "..." or other arguments
+    if (missing(control)) control <- survreg.control(...)
+    else control <- do.call('survreg.control', control)
+
+    # The any() construction below is to catch a user that mistakenly
+    #  thinks that 'scale' can be used in a model with multiple strata, and
+    #  so provided a vector of scale values.
+    # (A 'perhaps should be be added someday' feature).
+    if (any(scale < 0)) stop("Invalid scale value")
+    if (any(scale >0) && nstrata >1) 
+	    stop("The scale argument is not valid with multiple strata")
 
     # Check for penalized terms
     pterms <- sapply(m, inherits, 'coxph.penalty')
@@ -143,15 +171,17 @@ survreg <- function(formula=formula(data), data=parent.frame(),
 	temp <- match((names(pterms))[pterms], attr(Terms, 'term.labels'))
 	ord <- attr(Terms, 'order')[temp]
 	if (any(ord>1)) stop ('Penalty terms cannot be in an interaction')
-	##pcols <- (attr(X, 'assign')[-1])[pterms]
-        assign<-attrassign(X,newTerms)
-        pcols<-assign[-1][pterms]
-  
+
+        
+        if (is.R()) assign <- attrassign(X, newTerms)
+        else        assign <- attr( X, 'assign')   
+        pcols <- (assign[-1])[pterms]  
+
         fit <- survpenal.fit(X, Y, weights, offset, init=init,
 				controlvals = control,
 			        dist= dlist, scale=scale,
 			        strata=strata, nstrat=nstrata,
-				pcols, pattr,assign, parms=parms)
+				pcols, pattr, parms=parms, assign)
 	}
     else fit <- survreg.fit(X, Y, weights, offset, 
 			    init=init, controlvals=control,
@@ -175,7 +205,7 @@ survreg <- function(formula=formula(data), data=parent.frame(),
 	fit$loglik <- fit$loglik + logcorrect
 	}
 
-    
+    if (!score) fit$score <- NULL   #do not return the score vector
     na.action <- attr(m, "na.action")
     if (length(na.action)) fit$na.action <- na.action
     fit$df.residual <- n - sum(fit$df)
@@ -183,22 +213,27 @@ survreg <- function(formula=formula(data), data=parent.frame(),
     fit$terms <- Terms
     fit$formula <- as.vector(attr(Terms, "formula"))
     fit$means <- apply(X,2, mean)
-    fit$call <- call
+    fit$call <- Call
     fit$dist <- dist
-    fit$df.residual <- n-sum(fit$df) ##used for anova.survreg
     if (model) fit$model <- m
     if (x)     fit$x <- X
     if (y)     fit$y <- Y
     if (length(parms)) fit$parms <- parms
-    if (any(pterms)) class(fit)<- c('survreg.penal', 'survreg')
-    else	     class(fit) <- 'survreg'
 
-    if (robust){
-        fit$naive.var<-fit$var
+    if (robust) {
+        fit$naive.var <- fit$var
         if (length(cluster))
-            fit$var<-crossprod(rowsum(resid(fit,"dfbeta"), cluster))
-        else
-            fit$var<-crossprod(rowsum(resid(fit,"dfbeta")))
-    }
+             fit$var <- crossprod(rowsum(resid(fit, 'dfbeta'), cluster))
+        else fit$var <- crossprod(rowsum(resid(fit, 'dfbeta')))
+        }
+
+    if (is.R()) {
+        if (any(pterms)) class(fit) <- c('survreg.penal', 'survreg')
+        else	         class(fit) <- 'survreg'
+        }
+    else {
+        if (any(pterms)) oldClass(fit) <- 'survreg.penal'
+        else	     oldClass(fit) <- 'survreg'
+        }
     fit
-}
+    }

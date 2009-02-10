@@ -1,4 +1,4 @@
-#SCCS @(#)summary.coxph.penal.s	1.2 01/14/99
+# $Id $
 summary.coxph.penal <-
  function(object, conf.int = 0.95, scale = 1, terms=FALSE, maxlabel=25,
 			digits = max(options()$digits - 4, 3),...) {

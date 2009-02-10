@@ -1,20 +1,10 @@
-#SCCS @(#)plot.survfit.s	4.19 07/09/00
+# $Id: plot.survfit.S 11059 2008-10-23 12:32:50Z therneau $
 plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 			mark=3,col=1,lty=1, lwd=1, cex=1, log=FALSE,
 			xscale=1, yscale=1, 
 			firstx=0, firsty=1,
 			xmax, ymin=0,
-			fun,
-			xlab="", ylab="", xaxs='S', bty=NULL,legend.text=NULL,
-                        legend.pos=0,legend.bty="n",main=NULL,...) {
-
-    mintime <- min(x$time)
-    firstx <- min(firstx,mintime)
- 
-    if (!is.null(x$new.start))
-	    firstx <- x$new.start
-    
-    firstx <- firstx/xscale
+			fun, xlab="", ylab="", xaxs='S', ...) {
 
     if (is.logical(log)) {
 	logy <- log
@@ -28,11 +18,25 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 	logax  <- log
         }
 
-    if (!inherits(x, 'survfit') || inherits(x,'survexp'))
+    if (missing(firstx)) {
+	if (!is.null(x$start.time)) 
+	     firstx <- x$start.time
+	else {
+            if (logx || (!missing(fun) && is.character(fun) && fun=='cloglog'))
+                firstx <- min(x$time[x$time>0])
+            else      firstx <- min(0, x$time)
+            }
+	}
+    firstx <- firstx/xscale
+
+    # The special x axis style only applies when firstx is not given
+    if (missing(xaxs) && firstx!=0) xaxs<- par('xaxs')  # use the default
+
+    if (!inherits(x, 'survfit'))
 	    stop("First arg must be the result of survfit")
 
     if (missing(conf.int)) {
-	if (is.null(x$strata.all) && !is.matrix(x$surv)) conf.int <-TRUE
+	if (is.null(x$strata) && !is.matrix(x$surv)) conf.int <-TRUE
 	else conf.int <- FALSE
         }
 
@@ -40,10 +44,9 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 	nstrat <- 1
 	stemp <- rep(1, length(x$time))
         }
-     else {
+    else {
 	nstrat <- length(x$strata)
-	stemp <- rep(1:nstrat,x$ntimes.strata)
-	##stemp <- rep(1:nstrat,x$strata.all)
+	stemp <- rep(1:nstrat, x$strata)
         }
 
     ssurv <- x$surv
@@ -179,7 +182,8 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
     # Draw the basic box
     #
     plot(tempx, tempy*yscale, type='n', log=logax,
-	                  xlab=xlab, ylab=ylab, xaxs=xaxs,main=main, bty=bty,...)
+	                  xlab=xlab, ylab=ylab, xaxs=xaxs,...)
+
     if(yscale != 1) {
 	if (logy) par(usr =par("usr") -c(0, 0, log10(yscale), log10(yscale))) 
 	else par(usr =par("usr")/c(1, 1, yscale, yscale))   
@@ -220,7 +224,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 	xx <- c(firstx, stime[who])
 	nn <- length(xx)
 	if (x$type == 'counting') {
-	    deaths <- c(-1, x$exit.censored[who])
+	    deaths <- c(-1, x$n.censor[who])
 	    zero.one <- 1
 	    }
 	else if (x$type == 'right') {
@@ -240,7 +244,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 		    points(mark.time[indx<nn], yy[indx[indx<nn]],
 			   pch=mark[i],col=col[i],cex=cex)
 		    }
-		else if (mark.time==TRUE && any(deaths==zero.one)) {
+		else if (mark.time && any(deaths==zero.one)) {
 		    points(xx[deaths==zero.one], 
 			   yy[deaths==zero.one],
 			   pch=mark[i],col=col[i],cex=cex)
@@ -265,12 +269,12 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 
 	    if (is.numeric(mark.time)) {
 		indx <- mark.time
-		for (k in seq(along.with=mark.time))
+		for (k in seq(along=mark.time))
 		    indx[k] <- sum(mark.time[k] > xx)
 		points(mark.time[indx<nn], yy[indx[indx<nn]],
 		       pch=mark[i],col=col[i],cex=cex)
 	        }
-	    else if (mark.time && any(deaths==zero.one)) {
+	    else if (mark.time==TRUE && any(deaths==zero.one)) {
 		points(xx[deaths==zero.one], 
 		       yy[deaths==zero.one],
 		       pch=mark[i],col=col[i],cex=cex)
@@ -279,7 +283,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 	    xend <- c(xend,max(xx))
 	    yend <- c(yend,min(yy))
 
-	    if (conf.int && !is.null(supper)) {
+	    if (conf.int==TRUE && !is.null(supper)) {
 		if (ncurve==1) lty[i] <- lty[i] +1
 		yy <- c(firsty, supper[who])
 		lines(dostep(xx,yy), lty=lty[i], col=col[i], lwd=lwd[i])
@@ -289,24 +293,8 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 	    }
         }
 
-    ##legend
-    if (!is.null(legend.text)){
-        xc <- par("cex") * xinch(par("cin")[1], warn.log = FALSE)
-        if (is.list(legend.pos)) legend.pos<-unlist(legend.pos)
-        if (length(legend.pos)==2){
-            llx<-legend.pos[1]
-            lly<-legend.pos[2]
-        }
-        else if (legend.pos==1){
-            lly<-yscale*0.95
-            llx<-max(tempx)-max(strwidth(legend.text))-6*xc
-        }
-        else if (legend.pos==0){
-            llx<-0.95*min(tempx)+0.05*max(tempx)
-            lly<-ymin+(2+length(legend.text))*max(strheight(legend.text))
-        }
-        legend(llx,lly,legend=legend.text,lty=lty,bty=legend.bty,col=col,...)
-    }
+
+
     invisible(list(x=xend, y=yend))
     }
 

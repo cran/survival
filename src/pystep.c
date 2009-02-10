@@ -1,6 +1,7 @@
-/*  SCCS @(#)pystep.c	5.2 10/27/98
+/*  $Id: pystep.c 11080 2008-10-24 03:47:51Z therneau $ */
+/*
 ** Returns the amount of time that will be spent in the current "cell",
-**  aint with the index of the cell (treating a multi-way array as linear).
+**  along with the index of the cell (treating a multi-way array as linear).
 ** This is a basic calculation in all of the person-years work.
 **
 ** Input
@@ -29,7 +30,7 @@
 #include "survproto.h"
 
 double pystep(int nc,        int  *index,  int  *index2,   double *wt, 
-	      double *data,  int *fac,    int *dims,     double **cuts, 
+	      double *data,  Sint *fac,    Sint *dims,     double **cuts, 
 	      double step,   int  edge)
     {
     int i,j;
@@ -53,10 +54,10 @@ double pystep(int nc,        int  *index,  int  *index2,   double *wt,
 
 	    if (j==0) {  /* less than first cut */
 		temp = cuts[i][j] - data[i];  /* time to next cutpoint */
-		if (edge==0 && temp > shortfall){
+		if (edge==0 && temp > shortfall) {
 		    if (temp > step) shortfall = step;
 		    else             shortfall = temp;
-		}
+		    }
 		if (temp < maxtime)  maxtime = temp;
 		}
 	    else if (j==dtemp){  /*bigger than last cutpoint */

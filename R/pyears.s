@@ -1,14 +1,15 @@
-#SCCS  @(#)pyears.s	5.8 12/30/01
-pyears <- function(formula=formula(data), data=sys.parent(),
+# $Id: pyears.S 11191 2009-01-26 04:39:23Z therneau $
+pyears <- function(formula, data,
 	weights, subset, na.action,
 	ratetable=survexp.us, scale=365.25,  expect=c('event', 'pyears'),
-	model=FALSE, x=FALSE, y=FALSE) {
+	model=FALSE, x=FALSE, y=FALSE, data.frame=FALSE) {
 
     expect <- match.arg(expect)
     call <- match.call()
     m <- match.call(expand.dots=FALSE)
-    m$ratetable <- m$model <- m$x <- m$y <- m$scale<- m$expect <- NULL
-
+    m <- m[c(1, match(c('formula', 'data', 'weights', 'subset', 'na.action'),
+		      names(m), nomatch=0))]
+    
     Terms <- if(missing(data)) terms(formula, 'ratetable')
 	     else              terms(formula, 'ratetable',data=data)
 
@@ -47,6 +48,20 @@ pyears <- function(formula=formula(data), data=sys.parent(),
 	if (ncol(Y)==2 && any(Y[,2] <= Y[,1]))
 	    stop("stop time must be > start time")
 	}
+    else {
+        stype <- attr(Y, 'type')
+        if (stype == 'right') {
+            if (any(Y[,1] <0)) stop("Negative survival time")
+            nzero <- sum(Y[,1]==0 & Y[,2] ==1)
+            if (nzero >0) 
+                warning(paste(nzero, 
+                         "observations with an event and 0 follow-up time,",
+                       "any rate calculations are statistically questionable"))
+            }
+        else if (stype != 'counting')
+            stop("Only right-censored and counting process survival types are supported")
+        }
+    
     n <- nrow(Y)
     if (is.null(n) || n==0) stop("Data set has 0 observations")
 
@@ -87,7 +102,7 @@ pyears <- function(formula=formula(data), data=sys.parent(),
 		outdname[[i]] <- attr(temp, 'labels')
 		}
 	    else {
-		temp2 <- factor(temp)
+		temp2 <- as.factor(temp)
 		X[,i] <- temp2
 		temp3 <- levels(temp2)
 		odims[i] <- length(temp3)
@@ -103,25 +118,67 @@ pyears <- function(formula=formula(data), data=sys.parent(),
     if (length(rate)) {  #include expected
 	atts <- attributes(ratetable)
 	cuts <- atts$cutpoints
-	rfac <- atts$factor
-	us.special <- (rfac >1)
+        if (is.null(atts$type)) {
+            #old stlye table
+            rfac <- atts$factor
+            us.special <- (rfac >1)
+            }
+        else {
+            rfac <- 1*(atts$type ==1)
+            us.special <- (atts$type==3)
+            }
 	if (any(us.special)) {  #special handling for US pop tables
-	    if (sum(us.special) >1)
-		stop("Two columns marked for special handling as a US rate table")
-	    #slide entry date so that it appears that they were born on Jan 1
+	    # Now, the 'entry' date on a US rate table is the number of days 
+	    #  since 1/1/1960, and the user data has been aligned to the
+	    #  same system by match.ratetable and marked as "year".
+            # US rate tables are odd: the entry for age (year=1970, age=55)
+            #  contains the daily rate for anyone who turns 55 in that year,
+            #  from their birthday forward for 365 days.  So if your birthday
+            #  is on Oct 2, the 1970 table applies from 2Oct 1970 to 1Oct 1971.
+            # The underlying C code wants to make the 1970 rate table apply
+            #  from 1Jan 1970 to 31Dec 1970.  The easiest way to finess this is
+            #  to fudge everyone's enter-the-study date.  If you were born
+            #  in March but entered in April, make it look like you entered in
+            #  Febuary; that way you get the first 11 months at the entry 
+            #  year's rates, etc. 
+            # The birth date is entry date - age in days (based on 1/1/1960).
+	    # I don't much care which date functions I use to do the arithmetic
+            #  below.  Unfortunately R and Splus don't share one.  My "date"
+            #  class is simple, but is also one of the earlier date class
+            #  attempts, has less features than others, and will one day fade
+            #  away; so I don't want to depend on it alone.
+            #
 	    cols <- match(c("age", "year"), atts$dimid)
-	    if (any(is.na(cols))) stop("Ratetable does not have expected shape")
-            temp <- date.mdy(R[, cols[2]] - R[, cols[1]])
-            R[, cols[2]] <- R[, cols[2]] - mdy.date(temp$month,
-                temp$day, 1960)
-	    # Doctor up "cutpoints"
-	    temp <- (1:length(rfac))[us.special]
-	    nyear <- length(cuts[[temp]])
-	    nint <- rfac[temp]       #intervals to interpolate over
-	    cuts[[temp]] <- round(approx(nint*(1:nyear), cuts[[temp]],
-					    nint:(nint*nyear))$y - .0001)
-	    }
+      	    if (any(is.na(cols))) 
+                 stop("Ratetable does not have expected shape")
+            if (exists("as.Date")) {  # true for modern version of R
+                bdate <- as.Date('1960/1/1') + (R[,cols[2]] - R[,cols[1]])
+                byear <- format(bdate, "%Y")
+                offset <- julian(bdate, origin=paste(byear, '01/01', sep='/'))
+                }
+            else if (exists('month.day.year')) { # Splus, usually
+                bdate <- R[,cols[2]] - R[,cols[1]]
+                byear <- month.day.year(bdate)$year
+                offset <- bdate - julian(1,1,byear)
+                }
+            else if (exists('date.mdy')) { # Therneau's date class is available
+                bdate <- as.date(R[,cols[2]] - R[,cols[1]])
+                byear <- date.mdy(bdate)$year
+                offset <- bdate - mdy.date(1,1,byear)
+                }
+            else stop("Can't find an appropriate date class\n") 
+            R[,cols[2]] <- R[,cols[2]] - offset
 
+            # Doctor up "cutpoints" - only needed for old style rate tables
+            #  for which the C code does interpolation on the fly
+            if (any(rfac >1)) {
+                temp <-  which(us.special)
+                nyear <- length(cuts[[temp]])
+                nint <- rfac[temp]       #intervals to interpolate over
+                cuts[[temp]] <- round(approx(nint*(1:nyear), cuts[[temp]],
+					nint:(nint*nyear))$y - .0001)
+                }
+	    }
 	temp <- .C("pyears1",
 			as.integer(n),
 			as.integer(ncol(Y)),
@@ -144,7 +201,7 @@ pyears <- function(formula=formula(data), data=sys.parent(),
 			pn    =double(osize),
 			pcount=double(if(is.Surv(Y)) osize else 1),
 			pexpect=double(osize),
-			offtable=double(1), PACKAGE="survival")[18:22]
+			offtable=double(1))[18:22]
 	}
     else {
 	temp <- .C('pyears2',
@@ -161,10 +218,39 @@ pyears <- function(formula=formula(data), data=sys.parent(),
 			pyears=double(osize),
 			pn    =double(osize),
 			pcount=double(if(is.Surv(Y)) osize else 1),
-			offtable=double(1), PACKAGE="survival") [11:14]
+			offtable=double(1)) [11:14]
 	}
 
-    if (prod(odims) ==1) {  #don't make it an array
+    if (data.frame) {
+        # Create a data frame as the output, rather than a set of
+        #  rate tables
+        keep <- (temp$pyears >0)  # what rows to keep in the output
+        names(outdname) <- ovars
+        if (length(outdname) ==1) {
+            # if there is only one variable, the call to "do.call" loses
+            #  the variable name, since expand.grid returns a factor
+            df <- data.frame((outdname[[1]])[keep], 
+                             pyears= temp$pyears[keep]/scale,
+                             n = temp$pn[keep])
+            names(df) <- c(names(outdname), 'pyears', 'n')
+            }
+        else {
+            df <- cbind(do.call("expand.grid", outdname)[keep,],
+                             pyears= temp$pyears[keep]/scale,
+                             n = temp$pn[keep])
+            }
+        row.names(df) <- 1:nrow(df)
+        if (length(rate)) df$expected <- temp$pexpect[keep]
+        if (expect=='pyears') df$expected <- df$expected/scale
+        if (is.Surv(Y)) df$event <- temp$pcount[keep]
+
+        out <- list(call=call,
+                    data= df, offtable=temp$offtable/scale)  
+        if (length(rate) && !is.null(rtemp$summ))
+            out$summary <- rtemp$summ
+        }
+
+    else if (prod(odims) ==1) {  #don't make it an array
 	out <- list(call=call, pyears=temp$pyears/scale, n=temp$pn,
 		    offtable=temp$offtable/scale)
 	if (length(rate)) {

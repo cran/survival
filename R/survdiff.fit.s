@@ -1,4 +1,4 @@
-#SCCS @(#)survdiff.fit.s	1.1 01/07/96
+# $Id: survdiff.fit.S 11059 2008-10-23 12:32:50Z therneau $
 survdiff.fit <- function(y, x, strat, rho=0) {
     #
     # This routine is almost always called from survdiff
@@ -32,8 +32,7 @@ survdiff.fit <- function(y, x, strat, rho=0) {
 		   observed = double(ngroup*nstrat),
 		   expected = double(ngroup*nstrat),
 		   var.e    = double(ngroup * ngroup),
-		   double(ngroup), double(n),
-             PACKAGE="survival")
+		   double(ngroup), double(n))
 
     if (nstrat==1)  list(expected = xx$expected,
 			 observed = xx$observed,

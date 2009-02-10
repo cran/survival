@@ -1,14 +1,15 @@
-# SCCS @(#)survfit.coxph.s	5.6 07/09/00
+# $Id: survfit.coxph.S 11250 2009-03-19 13:44:59Z tlumley $
+#
+if (!is.R()) setOldClass(c('survfit.cox', 'survfit'))
 
 survfit.coxph <-
-  function(object, newdata, se.fit=TRUE, conf.int=.95, individual=FALSE,
+  function(formula, newdata, se.fit=TRUE, conf.int=.95, individual=FALSE,
 	    type, vartype,
-	    conf.type=c('log', 'log-log', 'plain', 'none'),
-	    call = match.call()) {
+	    conf.type=c('log', 'log-log', 'plain', 'none'),...) {
 
-    if(!is.null((object$call)$weights))
-	stop("Survfit cannot (yet) compute the result for a weighted model")
-    call <- match.call()
+    Call <- match.call()
+    Call[[1]] <- as.name('survfit')  #nicer output for the user
+    object <- formula     #'formula' because it has to match survfit
     Terms <- terms(object)
     strat <- attr(Terms, "specials")$strata
     cluster<-attr(Terms, "specials")$cluster
@@ -22,7 +23,7 @@ survfit.coxph <-
     score <- exp(object$linear.predictors)
     
     temp <- c('aalen', 'kalbfleisch-prentice', 'efron',
-	           'tsiatis', 'breslow', 'kaplan-meier', 'fleming-harringon',
+	           'tsiatis', 'breslow', 'kaplan-meier', 'fleming-harrington',
 	           'greenwood', 'exact')
     temp2 <- c(2,1,3,2,2,1,3,1,1)
     if (missing(type)) type <- object$method
@@ -37,11 +38,10 @@ survfit.coxph <-
     # Recreate a copy of the data
     #  (The coxph.getdata routine never returns cluster() terms).
     data <- coxph.getdata(object, y=TRUE, x=se.fit,
-			           stratax=(length(strat)))
+			           stratax=(length(strat)>0))
     y <- data$y
     ny <- ncol(y)
     if (nrow(y) != n) stop ("Mismatched lengths: logic error")
-    if (length(strat)) strata.all <- table(data$strata)
 
     # Get the sort index for the data, and add a column to y if
     #  necessary to make it of the "counting process" type  (I only
@@ -93,9 +93,9 @@ survfit.coxph <-
 	    }
 	}
     if (stype==1 && method != vartype)
-	    stop("The type and vartype args must agree for individual=T")
+	    stop("The type and vartype args must agree for individual=TRUE")
     if (stype==1 && method==1)
-	    stop("Only Aalen and F-H estimates available for individual=T")
+	    stop("Only Aalen and F-H estimates available for individual=TRUE")
 
     #
     # Get the second, "new" data set.  By default the new curve is
@@ -105,16 +105,25 @@ survfit.coxph <-
     #  
     offset2 <- 0   #offset variable for the new data set
     if (!missing(newdata)) {
-	m2 <- model.newframe(Terms, newdata, response=(stype==1))
-	if (!inherits(m2, 'data.frame'))  {
-	    x2 <- as.matrix(m2)
+        if (stype !=1 && (is.matrix(newdata) || 
+                          (is.numeric(newdata) & length(newdata)==nvar))){
+            # Other functions force newdata to be a data frame,
+            #  I also allow it to be a vector or matrix, but only if a) it
+            #  has exactly the right number of columns, and b) we don't need y
+            if (is.matrix(newdata)) x2 <- newdata
+            else x2 <- matrix(newdata, nrow=1)
 	    if (ncol(x2) != nvar) stop ("Wrong # of variables in new data")
 	    n2 <- nrow(x2)
-	    if (stype==1) stop("Program error #3")
-	    }
-
-	else  {
-	    x2 <- model.matrix(delete.response(Terms), m2)[,-1,drop=FALSE]
+            }
+        else {
+            #	m2 <- model.newframe(Terms, newdata, response=(stype==1))
+            if (stype==1) 
+                 m2 <- model.frame(Terms, newdata, xlev=object$xlevels)
+            else m2 <- model.frame(delete.response(Terms), newdata, 
+                               xlev=object$xlevels)
+	
+	    x2 <- model.matrix(delete.response(Terms), m2,
+                               contr=object$contrasts)[,-1,drop=FALSE]
 	    n2 <- nrow(x2)
 	    offset2 <- model.extract(m2, 'offset')
 	    if (is.null(offset2)) offset2 <- 0
@@ -162,9 +171,9 @@ survfit.coxph <-
 			     as.double(y2),
 			     as.double(x2),
 			     as.double(newrisk),
-			     as.integer(strata2), PACKAGE="survival" )
+			     as.integer(strata2))
 	ntime <- 1:surv$nsurv
-	temp <- (matrix(surv$y, ncol=3))[ntime,]
+	temp <- (matrix(surv$y, ncol=3))[ntime,,drop=FALSE]
 	temp <- list(n=n, time = temp[,1],
 		     n.risk= temp[,2],
 		     n.event=temp[,3],
@@ -178,6 +187,7 @@ survfit.coxph <-
 			      y = y[ord,],
 			      as.double(score[ord]),
 			      strata = as.integer(newstrat),
+                              wt = as.double(weights),
 			      surv = double(ndead*n2),
 			      varhaz = double(ndead*n2),
 			      as.double(x),
@@ -186,9 +196,10 @@ survfit.coxph <-
 			      double(3*nvar),
 			      as.integer(n2),
 			      as.double(x2),
-			      as.double(newrisk), PACKAGE="survival")
+			      as.double(newrisk))
 	nsurv <- surv$nsurv[1]
 	ntime <- 1:nsurv
+
 	if (n2>1) {
 	    tsurv <- matrix(surv$surv[1:(nsurv*n2)], ncol=n2)
 	    tvar  <- matrix(surv$varhaz[1:(nsurv*n2)], ncol=n2)
@@ -199,21 +210,21 @@ survfit.coxph <-
 	    tvar  <- surv$varhaz[ntime]
 	    }
 	if (surv$strata[1] <=1)
-	    temp <- list(n=n,time=surv$y[ntime,1],
-		     n.risk=surv$y[ntime,2],
-		     n.event=surv$y[ntime,3],
-		     surv=tsurv,
+	    temp <- list(n=n, 
+                         time=surv$y[ntime,1],
+                         n.risk=surv$y[ntime,2],
+                         n.event=surv$y[ntime,3],
+                         surv=tsurv,
 			type=type)
 	else {
 	    temp <- surv$strata[1:(1+surv$strata[1])]
 	    tstrat <- diff(c(0, temp[-1])) #n in each strata
 	    names(tstrat) <- levels(data$strata)
-	    temp <- list(n=n, time=surv$y[ntime,1],
+	    temp <- list(n=table(data$strata), time=surv$y[ntime,1],
 		     n.risk=surv$y[ntime,2],
 		     n.event=surv$y[ntime,3],
 		     surv=tsurv,
-		     strata= tstrat, ntimes.strata=tstrat,
-			strata.all=strata.all,
+		     strata= tstrat, 
 			type=type)
 	    }
 	if (se.fit) temp$std.err <- sqrt(tvar)
@@ -228,8 +239,10 @@ survfit.coxph <-
 	}
     if (conf.type=='log') {
 	xx <- ifelse(temp$surv==0,1,temp$surv)  #avoid some "log(0)" messages
-	temp1 <- ifelse(temp$surv==0, 0*temp$std.err, exp(log(xx) + zval* temp$std.err))
-	temp2 <- ifelse(temp$surv==0, 0*temp$std.err, exp(log(xx) - zval* temp$std.err))
+	temp1 <- ifelse(temp$surv==0, 0*temp$std.err, 
+                        exp(log(xx) + zval* temp$std.err))
+	temp2 <- ifelse(temp$surv==0, 0*temp$std.err, 
+                        exp(log(xx) - zval* temp$std.err))
 	temp <- c(temp, list(upper=pmin(temp1,1), lower=temp2,
 			conf.type='log', conf.int=conf.int))
 	}
@@ -244,8 +257,9 @@ survfit.coxph <-
 			conf.type='log-log', conf.int=conf.int))
 	}
 
-    temp$call <- call
-    class(temp) <- c('survfit.cox', 'survfit')
+    temp$call <- Call
+    if (is.R()) class(temp) <- c('survfit.cox', 'survfit')
+    else        oldClass(temp) <- 'survfit.cox'
     temp
     }
 

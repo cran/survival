@@ -1,4 +1,4 @@
-#  SCCS  @(#)survreg.old.s	1.4 02/21/99
+# $Id: survreg.old.S 11059 2008-10-23 12:32:50Z therneau $
 # Map the argument list of the old survreg to the new one
 #
 survreg.old <- function(formula, data=sys.frame(sys.parent()), ...,

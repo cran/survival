@@ -1,4 +1,4 @@
-# SCCS @(#)cox.zph.s	5.2 09/25/98
+# $Id: cox.zph.S 11218 2009-02-09 12:09:29Z therneau $
 #  Test proportional hazards
 #
 cox.zph <- function(fit, transform='km', global=TRUE) {
@@ -14,8 +14,9 @@ cox.zph <- function(fit, transform='km', global=TRUE) {
     if (nvar==1) times <- as.numeric(names(sresid))
     else         times <- as.numeric(dimnames(sresid)[[1]])
 
-    if (missing(transform) && attr(fit$y, 'type') != 'right')
-	    transform <- 'identity'
+    # Next line is no longer necessary: survfit.km can handle (start,stop] data
+    # if (missing(transform) && attr(fit$y, 'type') != 'right')
+    #      transform <- 'identity'
     if (is.character(transform)) {
 	tname <- transform
 	ttimes <- switch(transform,
@@ -23,7 +24,7 @@ cox.zph <- function(fit, transform='km', global=TRUE) {
 			   'rank'    = rank(times),
 			   'log'     = log(times),
 			   'km' = {
-				temp <- survfit.km(factor(rep(1,nrow(fit$y))),
+				temp <- survfitKM(factor(rep(1,nrow(fit$y))),
 						    fit$y, se.fit=FALSE)
 				# A nuisance to do left cont KM
 				t1 <- temp$surv[temp$n.event>0]
@@ -37,6 +38,7 @@ cox.zph <- function(fit, transform='km', global=TRUE) {
 	}
     else {
 	tname <- deparse(substitute(transform))
+        if (length(tname) >1) tname <- 'user'
 	ttimes <- transform(times)
 	}
     xx <- ttimes - mean(ttimes)
@@ -56,9 +58,12 @@ cox.zph <- function(fit, transform='km', global=TRUE) {
     else dimnames(Z.ph) <- list(varnames, c("rho", "chisq", "p"))
 
     dimnames(r2) <- list(times, names(fit$coefficients))
-    temp <-list(table=Z.ph, x=ttimes, y=r2 + outer(rep(1,ndead), fit$coefficients),
-    var=fit$var, call=call, transform=tname)
-    class(temp) <- "cox.zph"
+    temp <-list(table=Z.ph, x=ttimes, 
+                y=r2 + outer(rep(1,ndead), fit$coefficients),
+                var=fit$var, call=call, transform=tname)
+
+    if (is.R()) class(temp) <- "cox.zph"
+    else oldClass(temp) <- "cox.zph"
     temp
     }
 

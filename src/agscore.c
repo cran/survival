@@ -1,4 +1,4 @@
-/*  SCCS @(#)agscore.c	5.2 10/27/98*/
+/*  $Id: agscore.c 11080 2008-10-24 03:47:51Z therneau $ */
 /*
 ** Do the score residuals
 **
@@ -23,9 +23,9 @@
 #include "survS.h"
 #include "survproto.h"
 
-void agscore(int   *nx,       int   *nvarx,      double *y,
-	     double *covar2,   int   *strata,     double *score,
-	     double *weights,  int   *method,     double *resid2, double *a)
+void agscore(Sint   *nx,       Sint   *nvarx,      double *y,
+	     double *covar2,   Sint   *strata,     double *score,
+	     double *weights,  Sint   *method,     double *resid2, double *a)
     {
     int i,k;
     int n, nvar;
@@ -161,7 +161,7 @@ void agscore(int   *nx,       int   *nvarx,      double *y,
 			}
 		    if (strata[k]==1) break;
 		    }
-		for (; stop[person]==time; person++)
+		for ( ; stop[person]==time; person++)
 		    if (strata[person]==1) break;
 		}
 	    }

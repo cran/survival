@@ -1,0 +1,85 @@
+
+R version 2.7.1 (2008-06-23)
+Copyright (C) 2008 The R Foundation for Statistical Computing
+ISBN 3-900051-07-0
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> options(na.action=na.exclude) # preserve missings
+> options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
+> library(survival)
+Loading required package: splines
+> 
+> #
+> # Generate each of the messages from is.ratetable
+> #
+> {if (is.R()) mdy.date <- function(m, d, y) {
++     y <- ifelse(y<100, y+1900, y)
++     as.Date(paste(m,d,y, sep='/'), "%m/%d/%Y")
++     }
++ else mdy.date <- function(m,d,y) {
++     y <- ifelse(y<100, y+1900, y)
++     timeDate(paste(y, m, d, sep='/'), in.format="%Y/%m/%d")
++     }
++  }
+> 
+> temp <- runif(21*2*4)
+> 
+> # Good
+> attributes(temp) <- list(dim=c(21,2,4),
++     dimnames=list(c(as.character(75:95)), c("male","female"),
++                   c(as.character(2000:2003))),
++     dimid=c("age","sex","year"),
++     type=c(2,1,4),
++     cutpoints=list(c(75:95), NULL, mdy.date(1,1,2000) +c(0:3)*366.25),
++     class='ratetable')
+> is.ratetable(temp)
+[1] TRUE
+> 
+> # Factor problem + cutpoints length
+> attributes(temp) <- list(dim=c(21,2,4),
++     dimnames=list(c(as.character(75:95)), c("male","female"),
++                   c(as.character(2000:2003))),
++     dimid=c("age","sex","year"),
++     type=c(1,1,2),
++     cutpoints=list(c(75:95), NULL, mdy.date(1,1,2000) +c(0:4)*366.25),
++     class='ratetable')
+> is.ratetable(temp, verbose=T)
+[1] "type[ 1 ] is 1; cutpoint should be null"
+[2] "wrong length for cutpoints 3"           
+>  
+>                     
+> # missing dimid attribute + unsorted cutpoint
+> attributes(temp) <- list(dim=c(21,2,4),
++     dimnames=list(c(as.character(75:95)), c("male","female"),
++                   c(as.character(2000:2003))),
++     type=c(2,1,3),
++     cutpoints=list(c(75:95), NULL, mdy.date(1,1,2000) +c(4:1)*366.25),
++     class='ratetable')
+> is.ratetable(temp, verbose=T)
+[1] "missing attribute: dimid"           "wrong length for dimid"            
+[3] "unsorted cutpoints for dimension 3"
+> 
+> # wrong length for dimid and type, illegal type
+> attributes(temp) <- list(dim=c(21,2,4),
++     dimnames=list(c(as.character(75:95)), c("male","female"),
++                   c(as.character(2000:2003))),
++     dimid=c("age","sex","year", "zed"),
++     type=c(2,1,3,6),
++     cutpoints=list(c(75:95), NULL, mdy.date(1,1,2000) +c(0:3)*366.25),
++     class='ratetable')
+> is.ratetable(temp, verbose=T)
+[1] "wrong length for dimid"              
+[2] "type attribute must be 1, 2, 3, or 4"
+[3] "wrong length for type attribute"     
+> 

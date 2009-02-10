@@ -1,33 +1,62 @@
-# SCCS @(#)ratetable.s	5.2 09/25/98
+# $Id: ratetable.S 11183 2009-01-21 13:33:40Z therneau $
 #
-# This is a 'specials' function for pyears
-#   it is a stripped down version of as.matrix(data.frame(...))
-# There is no function to create a ratetable.
-# This function has a class, only so that data frame subscripting will work
+# This source file has two distinct parts in it.  The first is the
+#  ratetable(), which is used inside pyears and survexp only to allow
+#  users to match the names of variables in their data set to the names
+#  of the dimensions in a ratetable.  It returns a matrix with one
+#  column for each argument; usually that argument will be a vector but
+#  may also be a single constant.  The result has a class "ratetable2",
+#  whose only purpose is to allow na.action functions to work properly.
 #
+# The second part of the file are the methods for actual rate tables, like
+#  the table of US survival rates by age and sex (survexp.us).  Rate tables
+#  have the "ratetable" class.  However, since each one is rather unique, 
+#  there is no function to create a rate table.  Each consists of a multi-way
+#  array of event rates along with a set of attributes. 
+#
+
+# The ideal for this function would be
+#   ratetable <- function(...) data.frame(...)
+# Then missing, subsets, etc would all be fine, yet the variables would still
+#   be special in the terms result so I could find them.  But -- the only
+#   multi-column objects that model.frame will accept are matrices. So I
+#   make a data frame (both factors and numerics) that looks like a matrix.
+# 
 ratetable <- function(...) {
     args <- list(...)
     nargs <- length(args)
     ll <- sapply(args, length)
-    n <- max(ll)
+    n <- max(ll)  # We assume this is the dimension of the user's data frame
     levlist <- vector("list", nargs)
+    isDate <- rep(FALSE, nargs)
     x <- matrix(0,n,nargs)
     dimnames(x) <- list(1:n, names(args))
     for (i in 1:nargs) {
-	if (ll[i] ==n) {
-	    if (!is.numeric(args[[i]])) args[[i]] <- factor(args[[i]])
-	    if (is.factor(args[[i]])) {
-		levlist[[i]] <- levels(args[[i]])
-		x[,i] <- c(args[[i]])
-		}
-	    else x[,i] <- args[[i]]
-	    }
-	else if (ll[i] ==1) levlist[i] <- args[i]
-	else stop("All arguments to ratetable() must be the same length")
+        if (ll[i] ==1) args[[i]] <- rep(args[[i]], n)
+        else if (ll[i] != n) 
+            stop(paste("Aguments do not all have the same length (arg ",
+			i, ")", sep=''))
+
+	# In Splus cut and tcut produce class 'category'
+        if (inherits(args[[i]], 'cateogory') || is.character(args[[i]]))
+                args[[i]] <- as.factor(args[[i]])
+        if (is.factor(args[[i]])) {
+            levlist[[i]] <- levels(args[[i]])
+            x[,i] <- as.numeric(args[[i]]) # the vector of levels
+            }
+        else {
+            temp <- ratetableDate(args[[i]]) 
+            if (is.null(temp)) x[,i] <- as.numeric(args[[i]])
+            else {
+                x[,i] <- temp
+                isDate[i] <- TRUE
+                }
+            }
 	}
-    attr(x, "constants") <- (ll==1) & (n>1)
+    attr(x, "isDate") <- isDate
     attr(x, "levlist")   <- levlist
-    class(x)  <- "ratetable2"
+    if (is.R()) class(x) <- 'ratetable2'
+    else        oldClass(x)  <- "ratetable2"
     x
     }
 
@@ -44,16 +73,16 @@ is.na.ratetable2 <- function(x) {
     aa <- attributes(x)
     attributes(x) <- aa[c("dim", "dimnames")]
     y <- x[rows,,drop=FALSE]
-    attr(y,'constants') <- aa$constants
+    attr(y,'isDate') <- aa$isDate
     attr(y,'levlist')   <- aa$levlist
-    class(y) <- 'ratetable2'
+    if (is.R()) class(y) <- 'ratetable2'
+    else        oldClass(y) <- 'ratetable2'
     y
     }
 
 #
 # Functions to manipulate rate tables
 #
-
 "[.ratetable" <- function(x, ..., drop=TRUE) {
     aa <- attributes(x)
     attributes(x) <- aa[c("dim", "dimnames")]
@@ -80,7 +109,8 @@ is.na.ratetable2 <- function(x) {
 				   dimid = aa$dimid[!dropped],
 				   factor = aa$factor[!dropped],
 				   cutpoints =aa$cutpoints[!dropped])
-	    class(y) <- 'ratetable'
+	    if (is.R()) class(y) <- 'ratetable'
+	    else        oldClass(y) <- 'ratetable'
 	    y
 	    }
 	}
@@ -109,10 +139,4 @@ Ops.ratetable <- function(e1, e2) {
 as.matrix.ratetable <- function(x, ...) {
     attributes(x) <- attributes(x)[c("dim", "dimnames")]
     x
-    }
-
-print.ratetable <- function(x, ...)  {
-    cat ("Rate table with dimension(s):", attr(x, 'dimid'), "\n")
-    attributes(x) <- attributes(x)[c("dim", "dimnames")]
-    NextMethod()
     }

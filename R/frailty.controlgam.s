@@ -1,4 +1,4 @@
-# SCCS @(#)frailty.controlgam.s	1.1 10/28/98
+# $Id: frailty.controlgam.S 10788 2008-09-18 00:48:23Z therneau $
 #
 # The control function for a single Gamma frailty term.
 #

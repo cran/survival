@@ -1,26 +1,32 @@
-#SCCS  @(#)coxph.s	5.12 06/12/00
-# Version with general penalized likelihoods
+# $Id: coxph.S 11200 2009-02-04 04:06:14Z therneau $
+if (!is.R())  setOldClass(c('coxph.penal', 'coxph'))
 
-coxph <- function(formula=formula(data), data=parent.frame(),
-	weights, subset, na.action, init,
-	control, method= c("efron", "breslow", "exact"),
+coxph <- function(formula, data, weights, subset, na.action,
+	init, control, method= c("efron", "breslow", "exact"),
 	singular.ok =TRUE, robust=FALSE,
 	model=FALSE, x=FALSE, y=TRUE, ...) {
 
     method <- match.arg(method)
-    call <- match.call()
-    m <- match.call(expand.dots=FALSE)
-    temp <- c("", "formula", "data", "weights", "subset", "na.action")
-    m <- m[ match(temp, names(m), nomatch=0)]
+    Call <- match.call()
+
+    # create a call to model.frame() that contains the formula (required)
+    #  and any other of the relevant optional arguments
+    # then evaluate it in the proper frame
+    indx <- match(c("formula", "data", "weights", "subset", "na.action"),
+                  names(Call), nomatch=0) 
+    if (indx[1] ==0) stop("A formula argument is required")
+    temp <- Call[c(1,indx)]  # only keep the arguments we wanted
+    temp[[1]] <- as.name('model.frame')  # change the function called
+
+    if (is.R()) m <- eval(temp, parent.frame())
+    else        m <- eval(temp, sys.parent())
+
+    if (nrow(m) ==0) stop("No (non-missing) observations")
+
     special <- c("strata", "cluster")
     Terms <- if(missing(data)) terms(formula, special)
 	     else              terms(formula, special, data=data)
-    m$formula <- Terms
-    m[[1]] <- as.name("model.frame")
-    m <- eval(m, parent.frame())
-    if (NROW(m)==0)
-        stop("No (non-missing) observations")
-    
+
     if (missing(control)) control <- coxph.control(...)
     Y <- model.extract(m, "response")
     if (!inherits(Y, "Surv")) stop("Response must be a survival object")
@@ -58,18 +64,39 @@ coxph <- function(formula=formula(data), data=parent.frame(),
 	strats <- as.numeric(strata.keep)
 	}
 
-    ##if (length(dropx)) X <- model.matrix(Terms[-dropx], m)[,-1,drop=F]
-    ##else               X <- model.matrix(Terms, m)[,-1,drop=F]
-    ### this is inefficient, but subscripting loses the assign attribute
-    if (length(dropx))
-        newTerms<-Terms[-dropx]
-    else
-        newTerms<-Terms
-    X<-model.matrix(newTerms,m)
-    assign<-lapply(attrassign(X,newTerms)[-1],function(x) x-1)
-    X<-X[,-1,drop=FALSE]
-    
-    
+    if (length(dropx)) {
+	# I need to keep the intercept in the model when creating the
+	#   model matrix (so factors generate correct columns), then
+	#   remove it.
+	# But subscripting removes the assign attribute (in R), so grab that
+	#   off first into newTerms
+	newTerms <- Terms[-dropx]
+	X <- model.matrix(newTerms, m)
+	}
+    else {
+	newTerms <- Terms
+	X <- model.matrix(Terms, m)
+	}
+
+    if (is.R()) {
+	 assign <- lapply(attrassign(X, newTerms)[-1], function(x) x-1)
+         xlevels <- .getXlevels(newTerms, m)
+         }
+    else {
+        assign <- lapply(attr(X, 'assign')[-1], function(x) x -1)
+        xvars <- as.character(attr(newTerms, 'variables'))
+        xvars <- xvars[-attr(newTerms, 'response')]
+        if (length(xvars) >0) {
+                xlevels <- lapply(m[xvars], levels)
+                xlevels <- xlevels[!unlist(lapply(xlevels, is.null))]
+                if(length(xlevels) == 0)
+                        xlevels <- NULL
+                }
+        else xlevels <- NULL
+        }
+        
+    X <- X[,-1, drop=F]  #remove the intercept column
+
     type <- attr(Y, "type")
     if (type!='right' && type!='counting')
 	stop(paste("Cox model doesn't support \"", type,
@@ -90,9 +117,8 @@ coxph <- function(formula=formula(data), data=parent.frame(),
 	temp <- match((names(pterms))[pterms], attr(Terms, 'term.labels'))
 	ord <- attr(Terms, 'order')[temp]
 	if (any(ord>1)) stop ('Penalty terms cannot be in an interaction')
-	##pcols <- (attr(X, 'assign')[-1])[pterms]  
-        pcols<-assign[pterms]
-        
+	pcols <- assign[pterms]  
+  
 	#penalized are hard sometimes	
 	if (control$eps.miss)   control$eps <- 1e-7
 	if (control$iter.miss)  control$iter.max <- 20  
@@ -116,7 +142,8 @@ coxph <- function(formula=formula(data), data=parent.frame(),
 
     if (is.character(fit)) {
 	fit <- list(fail=fit)
-	class(fit) <- 'coxph'
+	if (is.R()) class(fit) <- 'coxph'
+	else oldClass(fit) <- 'coxph'
 	}
     else {
 	if (!is.null(fit$coefficients) && any(is.na(fit$coefficients))) {
@@ -127,10 +154,10 @@ coxph <- function(formula=formula(data), data=parent.frame(),
 	   else             stop(msg)
 	   }
 	fit$n <- nrow(Y)
-	class(fit) <- fit$method
 	fit$terms <- Terms
-	##fit$assign <- attr(X, 'assign')
-        fit$assign<-assign
+	fit$assign <- assign
+        if (is.R()) class(fit) <- fit$method	
+        else       oldClass(fit) <-  fit$method[1]
 	if (robust) {
 	    fit$naive.var <- fit$var
 	    fit$method    <- method
@@ -159,30 +186,31 @@ coxph <- function(formula=formula(data), data=parent.frame(),
 	    fit$rscore <- coxph.wtest(t(temp0)%*%temp0, u, control$toler.chol)$test
 	    }
 	#Wald test
-	if (length(fit$coefficients) && is.null(fit$wald.test)) {
+	if (length(fit$coefficients) && is.null(fit$wald.test)) {  
 	    #not for intercept only models, or if test is already done
 	    nabeta <- !is.na(fit$coefficients)
+	    # The init vector might be longer than the betas, for a sparse term
 	    if (is.null(init)) temp <- fit$coefficients[nabeta]
-	    else temp <- (fit$coefficients - init)[nabeta]
+	    else temp <- (fit$coefficients - 
+			  init[1:length(fit$coefficients)])[nabeta]
 	    fit$wald.test <-  coxph.wtest(fit$var[nabeta,nabeta], temp,
 					  control$toler.chol)$test
 	    }
 	na.action <- attr(m, "na.action")
 	if (length(na.action)) fit$na.action <- na.action
 	if (model) fit$model <- m
-        ## else { ## we might want model=T and X=T
-        if (x)  {
-            fit$x <- X
-            if (length(strats)) fit$strata <- strata.keep
-        }
-        if (y)     fit$y <- Y
-        ##    }
-    }
+	if (x)  {
+	    fit$x <- X
+	    if (length(strats)) fit$strata <- strata.keep
+	    }
+	if (y)     fit$y <- Y
+	}	
     if (!is.null(weights) && any(weights!=1)) fit$weights <- weights
-    
-    ##fit$formula <- as.vector(attr(Terms, "formula"))
-    fit$formula<-formula(Terms) ## get the environments right
-    fit$call <- call
+
+    fit$formula <- formula(Terms)
+    if (length(xlevels) >0) fit$xlevels <- xlevels
+    fit$contrasts <- attr(X, 'contrasts')
+    fit$call <- Call
     fit$method <- method
     fit
     }

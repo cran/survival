@@ -1,4 +1,4 @@
-# SCCS @(#)anova.survreglist.s	1.1 01/18/99
+# $Id: anova.survreglist.S 11230 2009-02-09 23:37:55Z therneau $
 anova.survreglist <- function(object, ..., test = c("Chisq", "none")) {
     diff.term <- function(term.labels, i)
 	    {
@@ -30,6 +30,7 @@ anova.survreglist <- function(object, ..., test = c("Chisq", "none")) {
 	    stop("The first model has a different response from the rest")
     forms <- forms[, subs]
     object <- object[subs]
+
     ## older survival objects might have  df.resid: recent ones have df.residual
     dfres <- sapply(object, "[[", "df.resid", exact=FALSE)
     m2loglik <- -2 * sapply(object, "[[", "loglik")[2,  ]
@@ -48,8 +49,10 @@ anova.survreglist <- function(object, ..., test = c("Chisq", "none")) {
 		      Test = effects, 
 		      Df = c(NA, ddf), 
 		      Deviance = c(NA, dm2loglik), check.names = FALSE)
-    ##aod <- as.anova(aod, heading)
-    aod<-structure(aod,heading=heading,class=c("anova","data.frame"))
+    if (is.R())
+	    aod<-structure(aod,heading=heading,class=c("anova","data.frame"))
+    else aod <- as.anova(aod, heading)
+
     if(test != "none") {
 	n <- length(object[[1]]$residuals)
 	o <- order(dfres)

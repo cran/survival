@@ -1,4 +1,5 @@
-/*  SCCS @(#)coxscore.c	5.2 10/27/98
+/* $Id: coxscore.c 11080 2008-10-24 03:47:51Z therneau $
+/*
 ** Compute the score residuals for a Cox model
 **
 ** Input
@@ -25,9 +26,9 @@
 #include "survS.h"
 #include "survproto.h"
 
-void coxscore(int   *nx,      int   *nvarx,    double *y, 
-	      double *covar2,  int   *strata,   double *score, 
-	      double *weights, int   *method,   double *resid2,
+void coxscore(Sint   *nx,      Sint   *nvarx,    double *y, 
+	      double *covar2,  Sint   *strata,   double *score, 
+	      double *weights, Sint   *method,   double *resid2,
 	      double *scratch)
     {
     int i,j, k;
@@ -37,7 +38,7 @@ void coxscore(int   *nx,      int   *nvarx,    double *y,
     int dd;
     double *time, *status;
     double *a, *a2;
-    double denom=0, e_denom;/*-Wall*/
+    double denom=0, e_denom;
     double risk;
     double **covar;
     double **resid;

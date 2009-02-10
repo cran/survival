@@ -1,10 +1,10 @@
-# SCCS @(#)coxph.control.s	5.6 06/12/00
+# $Id: coxph.control.S 11234 2009-02-10 21:08:40Z therneau $
 #
 # Gather all of the control parameters for coxph into one spot
 #
-coxph.control <- function(eps=1e-9, 
+coxph.control <- function(eps=1e-8, 
                           toler.chol = .Machine$double.eps ^ .75, 
-			  iter.max=20,
+			  iter.max=15,
 			  toler.inf= sqrt(eps), outer.max=10 ) {
     if (iter.max <0) stop("Invalid value for iterations")
     if (eps <=0) stop ("Invalid convergence criteria")

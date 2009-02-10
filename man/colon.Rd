@@ -18,14 +18,14 @@ obstruct:\tab obstruction of colon by tumour\cr
 perfor:\tab perforation of colon\cr
 adhere:\tab adherence to nearby organs\cr
 nodes:\tab number of lymph nodes with detectable cancer\cr
+time:\tab days until event or censoring\cr
 status:\tab censoring status\cr
 differ:\tab differentiation of tumour (1=well, 2=moderate, 3=poor)\cr
 extent:\tab Extent of local spread (1=submucosa, 2=muscle, 3=serosa,
 4=contiguous structures)\cr
 surg:\tab time from surgery to registration (0=short, 1=long)\cr
 node4:\tab more than 4 positive lymph nodes\cr
-time:\tab days until death\cr
-etype:\tab 1=recurrence,2=death\cr
+etype:\tab event type: 1=recurrence,2=death\cr
 }}
 
 \source{Danyu Lin}

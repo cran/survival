@@ -1,4 +1,4 @@
-#SCCS  @(#)print.survreg.s	4.10 11/30/98
+# $Id: print.survreg.S 10788 2008-09-18 00:48:23Z therneau $
 print.survreg <- function(x, ...)
 {
     if(!is.null(cl <- x$call)) {
@@ -9,7 +9,7 @@ print.survreg <- function(x, ...)
 	cat(" Survreg failed.", x$fail, "\n")
 	return(invisible(x))
 	}
-    coef <- x$coefficients
+    coef <- x$coef
     if(any(nas <- is.na(coef))) {
 	if(is.null(names(coef))) names(coef) <- paste("b", 1:length(coef), sep = "")
         cat("\nCoefficients: (", sum(nas), 
@@ -27,7 +27,7 @@ print.survreg <- function(x, ...)
 	}
 
 
-    nobs <- length(x$linear.predictors)
+    nobs <- length(x$linear)
     chi <- 2*diff(x$loglik)
     df  <- sum(x$df) - x$idf   # The sum is for penalized models
     cat("\nLoglik(model)=", format(round(x$loglik[2],1)),

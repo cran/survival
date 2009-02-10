@@ -1,4 +1,5 @@
-/*  SCCS @(#)chinv2.c	5.3 07/15/99
+/* $Id: chinv2.c 11080 2008-10-24 03:47:51Z therneau $
+/*
 ** matrix inversion, given the FDF' cholesky decomposition
 **
 ** input  **matrix, which contains the chol decomp of an n by n

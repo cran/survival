@@ -1,4 +1,4 @@
-#  SCCS   @(#)coxpenal.df.s	1.2 02/21/99
+#  $Id: coxpenal.df.S 10788 2008-09-18 00:48:23Z therneau $
 #
 # degrees of freedom computation, based on Bob Gray's paper
 #

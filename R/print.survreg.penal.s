@@ -1,4 +1,4 @@
-# SCCS @(#)print.survreg.penal.s	1.1 11/25/98
+# $Id: print.survreg.penal.S 11059 2008-10-23 12:32:50Z therneau $
 print.survreg.penal <-  function(x, terms=FALSE, maxlabel=25,
 			       digits=max(options()$digits - 4, 3), ...) {
     if (!inherits(x, 'survreg.penal')) stop("Invalid object")

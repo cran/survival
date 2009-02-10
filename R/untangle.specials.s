@@ -1,6 +1,11 @@
-#SCCS @(#)untangle.specials.s	4.3 08/30/98
+# $Id: untangle.specials.S 11059 2008-10-23 12:32:50Z therneau $
+#
+# This function takes a terms object, and extracts some aspects
+#  of it into a "nice" list.  It is simple an operation that
+#  I do again and again in the modeling routines, so it was
+#  made into a separate function
+#
 untangle.specials <- function(tt, special, order=1) {
-
     spc <- attr(tt, 'specials')[[special]]
     if (length(spc)==0)
 	return(list(vars=character(0), terms=numeric(0)))

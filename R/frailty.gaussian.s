@@ -1,4 +1,4 @@
-# SCCS @(#)frailty.gaussian.s	1.5 05/30/00
+# $Id: frailty.gaussian.S 11203 2009-02-05 00:06:16Z therneau $
 # 
 # Defining function for gaussian frailty fits
 #
@@ -27,12 +27,22 @@ frailty.gaussian <- function(x, sparse=(nclass >5), theta, df,
 
     if (sparse){
 	x <-as.numeric(as.factor(x))
-	class(x) <- "coxph.penalty"
+	if (is.R()) class(x) <- "coxph.penalty"
+	else        oldClass(x) <- "coxph.penalty"
 	}
     else{
 	x <- as.factor(x)
-	class(x) <- c("coxph.penalty",class(x))
-	attr(x,'contrasts') <- contr.treatment(nclass,contrasts=FALSE)
+	if (is.R()) {
+            class(x) <- c("coxph.penalty", class(x))
+            attr(x, 'contrasts') <- contr.treatment(nclass, contrasts=FALSE)
+            }
+	else {
+            oldClass(x) <- "coxph.penalty"
+            # Splus allows us to pass a function as the contrast, R doesn't
+            # For large values of nclass the function is smaller
+            #  (But for really large ones you'ld use sparse=T.)
+            attr(x,'contrasts') <- function(n,...) contr.treatment(n,FALSE)
+            }
         }
     if (!missing(theta) & !missing(df)) 
 	    stop("Cannot give both a df and theta argument")
@@ -62,6 +72,10 @@ frailty.gaussian <- function(x, sparse=(nclass >5), theta, df,
 	list(coef=c(NA, NA, NA, test, df, 1-pchisq(test, df2)),
 		 history=paste("Variance of random effect=", format(theta)))
 	}
+    # The final coxph object will contain a copy of printfun.  Stop it from
+    #   also containing huge unnecessary variables, e.g. 'x', known at this 
+    #   point in time.  Not an issue for pfun, which does not get saved.
+    if (is.R()) environment(printfun)<- asNamespace('survival')
 
    if (method=='reml') {
 	temp <- list(pfun=pfun, 

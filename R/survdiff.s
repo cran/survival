@@ -1,4 +1,4 @@
-#SCCS 08/30/98 @(#)survdiff.s	5.1
+# $Id: survdiff.S 11059 2008-10-23 12:32:50Z therneau $
 survdiff <- function(formula, data, subset, na.action, rho=0) {
     call <- match.call()
     m <- match.call(expand.dots=FALSE)
@@ -8,7 +8,9 @@ survdiff <- function(formula, data, subset, na.action, rho=0) {
 	     else              terms(formula, 'strata', data=data)
     m$formula <- Terms
     m[[1]] <- as.name("model.frame")
-    m <- eval(m, parent.frame())
+    if (is.R()) m <- eval(m, parent.frame())
+    else        m <- eval(m, sys.parent())
+
     y <- model.extract(m, "response")
     if (!inherits(y, "Surv")) stop("Response must be a survival object")
     if (attr(y, 'type') != 'right') stop("Right censored data only")
@@ -19,10 +21,12 @@ survdiff <- function(formula, data, subset, na.action, rho=0) {
     if (!is.null(offset)) {
 	#one sample test
 	offset <- as.numeric(m[[offset]])
-	if (length(attr(Terms,"factors"))>0) stop("Cannot have both an offset and groups")
+	if (length(attr(Terms,"factors"))>0) 
+		stop("Cannot have both an offset and groups")
 	if (any(offset <0 | offset >1))
 	    stop("The offset must be a survival probability")
-	expected <- sum(1-offset)
+
+	expected <- sum(-log(offset))  #sum of expected events
 	observed <- sum(y[,ny])
 	if (rho!=0) {
 	    num <- sum(1/rho - ((1/rho + y[,ny])*offset^rho))
@@ -78,6 +82,8 @@ survdiff <- function(formula, data, subset, na.action, rho=0) {
     na.action <- attr(m, "na.action")
     if (length(na.action)) rval$na.action <- na.action
     rval$call <- call
-    class(rval) <- 'survdiff'
+
+    if (is.R()) class(rval) <- 'survdiff'
+    else        oldClass(rval) <- 'survdiff'
     rval
     }

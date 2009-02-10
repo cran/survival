@@ -1,4 +1,4 @@
-# SCCS @(#)anova.survreg.s	1.1 01/18/99
+# $Id: anova.survreg.S 11230 2009-02-09 23:37:55Z therneau $
 anova.survreg <- function(object, ..., test = c("Chisq", "none")) {
     test <- match.arg(test)
     margs <- function(...)
@@ -27,7 +27,7 @@ anova.survreg <- function(object, ..., test = c("Chisq", "none")) {
 	    loglik[iterm] <- -2 * fit$loglik[2]
 	    df.res[iterm] <- fit$df.residual
 	    }
-	dev <- c(NA,  -diff(loglik))
+	dev <- c(NA,  - diff(loglik))
         df <- c(NA,  -diff(df.res)) 
 	}
     else {
@@ -41,7 +41,8 @@ anova.survreg <- function(object, ..., test = c("Chisq", "none")) {
 		 paste("Response: ", as.character(formula(object))[2], 
 		       "\n", sep = ""),
                  if (nrow(fit$var) == length(fit$coefficients))
-        paste("Scale fixed at", format(object$scale, digits = getOption("digits")),"\n")
+        paste("Scale fixed at", format(object$scale, 
+				       digits = getOption("digits")),"\n")
                  else "Scale estimated\n",
 		 "Terms added sequentially (first to last)")
     aod <- data.frame(Df = df, Deviance = dev, "Resid. Df" = df.res, 
@@ -51,5 +52,5 @@ anova.survreg <- function(object, ..., test = c("Chisq", "none")) {
     class(aod) <- c("anova", "data.frame")
     if(test == "none")
 	    return(aod)
-    else stat.anova(aod, test, scale=1,n = nrow(y))
+    else stat.anova(aod, test, scale=1 ,n= nrow(y))
     }

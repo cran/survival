@@ -1,4 +1,4 @@
-# SCCS @(#)frailty.s	1.2 01/14/99
+# $Id: frailty.S 10788 2008-09-18 00:48:23Z therneau $
 # 
 # Parent function for frailty, calls the actuall working functions
 #

@@ -1,4 +1,4 @@
-# SCCS @(#)print.summary.survreg.s	4.14 02/11/99
+# $Id: print.summary.survreg.S 11059 2008-10-23 12:32:50Z therneau $
 print.summary.survreg <- function(x, digits = max(options()$digits - 4, 3),
 				  ...) {
     correl <- x$correlation

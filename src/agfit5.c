@@ -1,5 +1,5 @@
-/* SCCS   */
-/* A reentrant version of the agfit program, for random effects modeling
+/* $Id*/
+/* A reentrant version of the agfit program, for penalized effects modeling
 **   with reasonable efficiency (I hope).  The important arrays are saved
 **   from call to call so as to speed up the process.  The x-matrix itself
 **   is the most important of these.
@@ -79,34 +79,34 @@
 #include "survproto.h"
 
 static double **covar, **cmat, **cmat2;
-/* static int *end; -Wall*/
 static double *a, *oldbeta, *a2;
 static double *offset, *weights;
 static int    *event, *frail;
 static double *score, *start, *stop;
 static int    *sort1, *sort2;
 static double *tmean;
-static int    ptype, pdiag/*, nstrat*/;
+static int    ptype, pdiag;
 static double *ipen, *upen, logpen;
-static int   *zflag;
+static Sint   *zflag;
 
 static double **cmatrix(double *, int, int);
 
-void agfit5_a(int *nusedx, int *nvarx, double *yy, 
+void agfit5_a(Sint *nusedx, Sint *nvarx, double *yy, 
 	       double *covar2, double *offset2,
 	       double *weights2, 
-	       int   *strata,  int   *sort,
+	       Sint   *strata,  Sint   *sort,
 	       double *means, double *beta, double *u, 
 	       double *loglik, 
-	       int *methodx, int *ptype2, int *pdiag2,
-	      int *nfrail,  int *frail2,
-	      void *fexpr1,void *fexpr2, void *rho
-)
-{
+	       Sint *methodx, Sint *ptype2, Sint *pdiag2,
+	       Sint *nfrail,  Sint *frail2,
+               void *fexpr1, void *fexpr2, void *rho) {
+
+    S_EVALUATOR
+
     int i,j,k, person;
     int     nused, nvar;
     int    nf, nvar2;
-    int  deaths, itemp/*, endp*/;
+    int  deaths, itemp;
     int  istrat, indx2, p, ksave;  
 
     double  denom, zbeta, risk;
@@ -167,8 +167,8 @@ void agfit5_a(int *nusedx, int *nvarx, double *yy,
     if (pdiag==0)  upen = Calloc(2*i, double);
     else           upen = Calloc(i+j, double);
     ipen = upen + i;
-    if (ptype>1)  zflag = Calloc(nvar, int);
-    else          zflag = Calloc(2, int);
+    if (ptype>1)  zflag = Calloc(nvar, Sint);
+    else          zflag = Calloc(2, Sint);
 
     if (nf>0) {
 	frail = Calloc(nused, int);
@@ -287,7 +287,7 @@ void agfit5_a(int *nusedx, int *nvarx, double *yy,
     */
     if (ptype==2 || ptype==3) {
 	/* there are non-sparse terms */
-	cox_callback(2, beta, upen, ipen, &logpen, zflag,nvar,fexpr2,rho);
+	cox_callback(2, beta, upen, ipen, &logpen, zflag, nvar, fexpr2, rho);
 	*loglik += logpen;
         }
     }
@@ -298,15 +298,15 @@ void agfit5_a(int *nusedx, int *nvarx, double *yy,
 ** This call is used for iteration
 */
 
-void agfit5_b(int *maxiter, int *nusedx, int *nvarx, 
-	       int *strata, double *beta, double *u,
+void agfit5_b(Sint *maxiter, Sint *nusedx, Sint *nvarx, 
+	       Sint *strata, double *beta, double *u,
 	       double *imat2,  double *jmat2, double *loglik, 
-	       int *flag,  double *eps, double *tolerch, int *methodx, 
-	       int *nfrail, double *fbeta, double *fdiag,
-	      /* R callback information */
-	      void *fexpr1, void *fexpr2, void *rho
-)
+	       Sint *flag,  double *eps, double *tolerch, Sint *methodx, 
+	       Sint *nfrail, double *fbeta, double *fdiag,
+               void *fexpr1, void *fexpr2, void *rho)
 {
+S_EVALUATOR
+
     int i,j,k, person;
     int ii;
     int     iter;
@@ -314,12 +314,12 @@ void agfit5_b(int *maxiter, int *nusedx, int *nvarx,
     int    nf, nvar2;
     int    fgrp;
     int    halving;
-    int    itemp,/* endp,*/ deaths;
+    int    itemp, deaths;
     int  istrat, indx2, p, ksave;  
 
     double  denom, zbeta, risk;
     double  temp, temp2;
-    double  newlk=0; /*-Wall*/
+    double  newlk =0;
     double  d2, efron_wt;
     double  meanwt, time;
     double  method;
@@ -360,6 +360,36 @@ void agfit5_b(int *maxiter, int *nusedx, int *nvarx,
 	    for (i=0; i<nvar; i++)
 		zbeta += beta[i]*covar[i][person];
 	    score[person] = zbeta;
+	    if (zbeta > 20 && *maxiter >1) {
+		/*
+		** If the above happens, then 
+		**   1. There is a real chance for catastrophic cancellation
+		**       in the computation of "denom", which leads to
+		**       numeric failure via log(neg number) -> inf loglik
+		**   2. A risk score for one person of exp(20) > 400 million
+		**       is either an infinite beta, in which case any
+		**       reasonable coefficient will do, or a big overreach
+		**       in the Newton-Raphson step.
+		** In either case, a good solution is step halving.  However,
+		**   if the user asked for exactly 1 iteration, we should
+		**   just return what they asked.
+		** 
+		** Why 20?  Most machines have about 16 digits of precision,
+		**   and this preserves approx 7 digits in the subtraction
+		**   when a high risk score person leaves the risk set.
+		**   (Because of centering, the average risk score is about 0).
+		**   Second, if eps is small and beta is infinite, we rarely
+		**   get a value above 16.  So a 20 is usually a NR overshoot.
+		** A data set with zbeta=54 on iter 1 led to this fix, the
+		**   true final solution had max values of 4.47.    
+		*/
+		halving=1;
+		for (i=0; i<nvar; i++)
+		    beta[i] = (oldbeta[i+nf] + beta[i]) /2; 
+		for (i=0; i<nf; i++)
+		    fbeta[i] = (oldbeta[i] + fbeta[i])/2;
+		person = -1;  /* force the loop to start over */
+		}
 	    }
   
         istrat=0;
@@ -500,7 +530,7 @@ void agfit5_b(int *maxiter, int *nusedx, int *nvarx,
 	*/
 	if (ptype==1 || ptype==3) {
 	    /* there are sparse terms */
-	    cox_callback(1, fbeta, upen, ipen, &logpen, zflag,nf,fexpr1,rho); 
+	    cox_callback(1, fbeta, upen, ipen, &logpen, zflag, nf, fexpr1,rho); 
 	    if (zflag[0] ==1) {  /* force terms to zero */
 		for (i=0; i<nf; i++) {
 		    u[i]=0;
@@ -519,7 +549,7 @@ void agfit5_b(int *maxiter, int *nusedx, int *nvarx,
 
 	if (ptype==2 || ptype==3) {
 	    /* there are non-sparse terms */
-	    cox_callback(2, beta, upen, ipen, &logpen, zflag,nvar,fexpr2,rho);
+	    cox_callback(2, beta, upen, ipen, &logpen, zflag, nvar, fexpr2, rho);
 	    newlk += logpen;
 	    if (pdiag==0) {
 		for (i=0; i<nvar; i++) {
@@ -547,7 +577,7 @@ void agfit5_b(int *maxiter, int *nusedx, int *nvarx,
 	**   update the betas and test for convergence
 	*/
 	*flag = cholesky3(jmat, nvar2, nf, fdiag, *tolerch);
-	if (fabs(1-(*loglik/newlk))<=*eps ) { /* all done */
+	if (fabs(1-(*loglik/newlk))<=*eps && halving==0) { /* all done */
 	    *loglik = newlk;
 	    for (i=0; i<nvar; i++) {
 		for (j=0; j<nvar2; j++)  imat[i][j] = jmat[i][j];
@@ -563,7 +593,6 @@ void agfit5_b(int *maxiter, int *nusedx, int *nvarx,
 		    }
 		}
 
-	    if (halving==1) *flag= 1000; /*didn't converge after all */
 	    *maxiter = iter;
 	    return;
 	    }
@@ -584,7 +613,7 @@ void agfit5_b(int *maxiter, int *nusedx, int *nvarx,
 
 	    j=0;
 	    for (i=0; i<nvar; i++) {
-		oldbeta[i] = beta[i];
+		oldbeta[i+nf] = beta[i];
 		beta[i] += u[i+nf];
 		}
 	    for (i=0; i<nf; i++) {
@@ -615,6 +644,8 @@ void agfit5_b(int *maxiter, int *nusedx, int *nvarx,
 
 static double **cmatrix(double *data, int ncol, int nrow)
     {
+S_EVALUATOR
+
     int i,j;
     double **pointer;
     double *temp;
@@ -637,13 +668,17 @@ static double **cmatrix(double *data, int ncol, int nrow)
 	}
 
 static void cmatrix_free(double **data) {
+S_EVALUATOR
+
     Free(*data);
     Free(data);
     }
 
 
-void agfit5_c(int *nusedx, int *nvar, int *strata,
-	      int *methodx, double *expect) {
+void agfit5_c(Sint *nusedx, Sint *nvar, Sint *strata,
+	      Sint *methodx, double *expect) {
+S_EVALUATOR
+
     int i, j, k, ksave;
     int p, istrat, indx2;
     double denom, e_denom;

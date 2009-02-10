@@ -19,7 +19,7 @@
 *** the calling environment to find it.
 **/
 
-void cox_callback (which, coef, first, second, penalty, flag,p,fexpr,rho)
+void cox_callback (which, coef, first, second, penalty, flag, p, fexpr,rho)
 int which;
 double *coef, *first, *second;
 double *penalty;

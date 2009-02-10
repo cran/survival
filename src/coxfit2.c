@@ -1,4 +1,4 @@
-/*  SCCS @(#)coxfit2.c	5.1 08/30/98*/
+/*  $Id: coxfit2.c 11080 2008-10-24 03:47:51Z therneau $ */
 /*
 ** here is a cox regression program, written in c
 **     uses Efron's approximation for ties
@@ -53,11 +53,11 @@
 #include "survS.h"
 #include "survproto.h"
 
-void coxfit2(int   *maxiter,   int   *nusedx,    int   *nvarx, 
-	     double *time,      int   *status,    double *covar2, 
-	     double *offset,	double *weights,   int   *strata,
+void coxfit2(Sint   *maxiter,   Sint   *nusedx,    Sint   *nvarx, 
+	     double *time,      Sint   *status,    double *covar2, 
+	     double *offset,	double *weights,   Sint   *strata,
 	     double *means,     double *beta,      double *u, 
-	     double *imat2,     double loglik[2],  int   *flag, 
+	     double *imat2,     double loglik[2],  Sint   *flag, 
 	     double *work,	double *eps,       double *tol_chol,
 	     double *sctest)
 {
@@ -69,10 +69,10 @@ void coxfit2(int   *maxiter,   int   *nusedx,    int   *nvarx,
     double *mark, *wtave;
     double *a, *newbeta;
     double *a2, **cmat2;
-    double  denom=0/*-Wall*/, zbeta, risk; 
+    double  denom=0, zbeta, risk;
     double  temp, temp2;
     double  ndead;
-    double  newlk=0;/*-Wall*/
+    double  newlk=0;
     double  d2, efron_wt;
     int     halving;    /*are we doing step halving at the moment? */
     double     method;
@@ -207,7 +207,6 @@ void coxfit2(int   *maxiter,   int   *nusedx,    int   *nvarx,
     /* am I done?
     **   update the betas and test for convergence
     */
-
     for (i=0; i<nvar; i++) /*use 'a' as a temp to save u0, for the score test*/
 	a[i] = u[i];
 
@@ -244,8 +243,12 @@ void coxfit2(int   *maxiter,   int   *nusedx,    int   *nvarx,
 		imat[i][j] =0;
 	    }
 
+	/*
+	** The data is sorted from smallest time to largest
+	** Start at the largest time, accumulating the risk set 1 by 1
+	*/
 	for (person=nused-1; person>=0; person--) {
-	    if (strata[person] == 1) {
+	    if (strata[person] == 1) { /* rezero temps for each strata */
 		efron_wt =0;
 		denom = 0;
 		for (i=0; i<nvar; i++) {
@@ -309,19 +312,18 @@ void coxfit2(int   *maxiter,   int   *nusedx,    int   *nvarx,
 	*/
 	*flag = cholesky2(imat, nvar, *tol_chol);
 
-	if (fabs(1-(loglik[1]/newlk))<=*eps ) { /* all done */
+	if (fabs(1-(loglik[1]/newlk))<=*eps && halving==0) { /* all done */
 	    loglik[1] = newlk;
 	    chinv2(imat, nvar);     /* invert the information matrix */
 	    for (i=1; i<nvar; i++)
 		for (j=0; j<i; j++)  imat[i][j] = imat[j][i];
 	    for (i=0; i<nvar; i++)
 		beta[i] = newbeta[i];
-	    if (halving==1) *flag= 1000; /*didn't converge after all */
 	    *maxiter = iter;
 	    return;
 	    }
 
-	if (iter==*maxiter) break;  /*skip the step halving and etc */
+	if (iter==*maxiter) break;  /*skip the step halving calc*/
 
 	if (newlk < loglik[1])   {    /*it is not converging ! */
 		halving =1;

@@ -1,4 +1,4 @@
-# SCCS @(#)tcut.s	5.3 11/03/98
+# $Id: tcut.S 11059 2008-10-23 12:32:50Z therneau $
 tcut <-  function (x, breaks, labels, scale=1){
     # avoid some problems with dates
     x <- as.numeric(x)
@@ -30,15 +30,16 @@ tcut <-  function (x, breaks, labels, scale=1){
 	}
 
     temp <- structure(x*scale, cutpoints=breaks*scale, labels=labels)
-    class(temp) <- 'tcut'
+    if (is.R()) class(temp) <- 'tcut'
+    else        oldClass(temp) <- 'tcut'
     temp
     }
 
 "[.tcut" <- function(x, ..., drop=FALSE) {
     atts <- attributes(x)
-    class(x) <- NULL
-    x <- x[..1]
+    x <- unclass(x)[..1]
     attributes(x) <- atts
-    class(x) <- 'tcut'
+    if (is.R()) class(x) <- 'tcut'
+    else        oldClass(x) <- 'tcut'
     x
     }

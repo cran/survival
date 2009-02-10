@@ -1,4 +1,4 @@
-# SCCS @(#)summary.ratetable.s	1.1 11/03/98
+# $Id: summary.ratetable.S 11059 2008-10-23 12:32:50Z therneau $
 #
 # Print out information about a rate table: it's dimensions and keywords
 #

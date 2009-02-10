@@ -1,4 +1,4 @@
-# SCCS @(#)residuals.survreg.s	4.12 02/06/99
+# $Id: residuals.survreg.S 11204 2009-02-06 13:14:06Z therneau $
 # 
 #  Residuals for survreg objects
 residuals.survreg <- function(object, type=c('response', 'deviance',
@@ -11,9 +11,12 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
     if(!inherits(Terms, "terms"))
 	    stop("invalid terms component of  object")
 
-    cluster<-untangle.specials(Terms,"cluster")$terms
-    if (length(cluster))
-        Terms<-Terms[-cluster]
+    # If there was a cluster directive in the model statment then remove
+    #  it.  It does not correspond to a coefficient, and would just confuse
+    #  things later in the code.
+    cluster <- untangle.specials(Terms,"cluster")$terms
+    if (length(cluster) >0 )
+        Terms <- Terms[-cluster]
 
     strata <- attr(Terms, 'specials')$strata
     coef <- object$coefficients
@@ -35,7 +38,7 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
 
     # grab what I need
     if (need.strata || (need.y && is.null(object$y)) || 
-	               (need.x && is.null(object$x)) ) {
+	               (need.x && is.null(object[['x']])) ) {
 	# I need the model frame
 	if (is.null(object$model)) m <- model.frame(object)
 	else m <- object$model
@@ -59,8 +62,9 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
 	}
 
     if (need.x){
-	x <- object$x
-	if (is.null(x)) x <- model.matrix(Terms2, m)
+	x <- object[['x']]  #don't accidentally get object$xlevels
+	if (is.null(x)) x <- model.matrix(Terms2, m,
+                                          contr=object$contrasts)
 	}
 	
     if (need.y) {
@@ -201,7 +205,7 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
     # Collapse if desired
     if (!missing(collapse)) {
 	if (length(collapse) !=n) stop("Wrong length for 'collapse'")
-	rr <- rowsum(rr, collapse)
+	rr <- drop(rowsum(rr, collapse))
 	}
 
     rr

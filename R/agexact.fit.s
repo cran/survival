@@ -1,4 +1,4 @@
-#SCCS @(#)agexact.fit.s	4.20 06/24/99
+# $Id: agexact.fit.S 10788 2008-09-18 00:48:23Z therneau $
 agexact.fit <- function(x, y, strata, offset, init, control,
 			  weights, method, rownames)
     {
@@ -60,7 +60,8 @@ agexact.fit <- function(x, y, strata, offset, init, control,
 		   integer(2*n),
 		   as.double(control$eps),
 		   as.double(control$toler.chol),
-		   sctest=double(1),PACKAGE="survival" )
+		   sctest=double(1),
+                   PACKAGE = "survival")
 
     var <- matrix(agfit$imat,nvar,nvar)
     coef <- agfit$coef
@@ -92,7 +93,8 @@ agexact.fit <- function(x, y, strata, offset, init, control,
 		   score,
 		   rep(1.0, n),
 		   newstrat,
-		   resid=double(n),PACKAGE="survival")
+		   resid=double(n),
+                   PACKAGE = 'survival')
     resid <- double(n)
     resid[sorted] <- agres$resid
     names(resid) <- rownames

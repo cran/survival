@@ -1,4 +1,4 @@
-# SCCS @(#)predict.coxph.penal.s	5.3 11/25/98
+# $Id: predict.coxph.penal.S 11204 2009-02-06 13:14:06Z therneau $
 predict.coxph.penal <- function(object,  newdata, 
 				type=c("lp", "risk", "expected", "terms"),
 				se.fit=FALSE, terms=names(object$assign), 
@@ -10,7 +10,8 @@ predict.coxph.penal <- function(object,  newdata,
     pterms <- object$pterms
     # If there are no sparse terms
     if (!any(pterms==2) || type=='expected' || 
-	(missing(newdata) && se.fit==FALSE && type!='terms')) NextMethod('predict',object,...)
+	(missing(newdata) && se.fit==FALSE && type!='terms')) 
+	    NextMethod('predict',object,...)
     else {
 	# treat the sparse term as an offset term
 	#  It gets picked up in the linear predictor, so all I need to
@@ -26,7 +27,7 @@ predict.coxph.penal <- function(object,  newdata,
 
 	if (missing(newdata) && (se.fit || type=='terms')) {
 	    # I need the X matrix
-	    x <- object$x
+	    x <- object[['x']]  # object$x might grab object$xlevels
 	    if (is.null(x)) {
 		temp <- coxph.getdata(object, y=TRUE, x=TRUE, strata=TRUE)
 		if (is.null(object$y)) object$y <- temp$y
@@ -49,13 +50,16 @@ predict.coxph.penal <- function(object,  newdata,
 	    if (type=='risk') pred <- exp(pred)
 	    }
 	else {
+	    # temporarily remove the sparse term, call NextMethod,
+	    #  and then put it back
 	    temp <- attr(object$terms, 'term.labels')
 	    object$terms <- object$terms[-match(sparsename, temp)]
             temp<-match(sparsename,terms)
             oldTerms<-terms
             if (!is.na(temp)) terms<-terms[-temp]
 	    pred <- NextMethod('predict',object,terms=terms,...)
-            terms<-oldTerms
+            terms<- oldTerms
+	  
 	    if (se.fit) {
 		se <- pred$se.fit
 		pred <- pred$fit
@@ -100,8 +104,8 @@ predict.coxph.penal <- function(object,  newdata,
 	if (!missing(collapse)) {
 	    if (length(collapse) != n) 
 		    stop("Collapse vector is the wrong length")
-	    pred <- rowsum(pred, collapse)
-	    if (se.fit) se <- sqrt(rowsum(se^2, collapse))
+	    pred <- drop(rowsum(pred, collapse))
+	    if (se.fit) se <- sqrt(drop(rowsum(se^2, collapse)))
 	    }
 
 	if (se.fit) list(fit=pred, se.fit=se)

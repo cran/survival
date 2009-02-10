@@ -1,4 +1,4 @@
-/*  SCCS @(#)pyears1.c	5.4 12/30/01
+/* $Id: pyears1.c 11192 2009-01-26 04:40:23Z therneau $ */
 /*
 **  Person-years calculations, in its most general
 **
@@ -47,15 +47,16 @@
 #include "survproto.h"
 
 /* names that begin with "s" will be re-declared in the main body */
-void pyears1(int   *sn,      int   *sny,      int   *sdoevent, 
+void pyears1(Sint   *sn,      Sint   *sny,      Sint   *sdoevent, 
 	     double *sy,      double *weight,       
-             int   *sedim,   int   *efac, 
-	     int   *edims,   double *secut,    double *expect, 
-	     double *sedata,  int   *sodim,    int   *ofac, 
-	     int   *odims,   double *socut,    int   *smethod, 
+             Sint   *sedim,   Sint   *efac, 
+	     Sint   *edims,   double *secut,    double *expect, 
+	     double *sedata,  Sint   *sodim,    Sint   *ofac, 
+	     Sint   *odims,   double *socut,    Sint   *smethod, 
 	     double *sodata,  double *pyears,   double *pn, 
 	     double *pcount,  double *pexpect,  double *offtable)
     {
+S_EVALUATOR
     int i,j;
     int     n,
 	    ny,
@@ -84,6 +85,7 @@ void pyears1(int   *sn,      int   *sny,      int   *sdoevent,
     int     dostart;
     double  hazard, cumhaz;
     double  temp, lambda;
+    double  eps;   /* protection against accumulated round off */
 
     n = *sn;
     ny= *sny;
@@ -104,23 +106,46 @@ void pyears1(int   *sn,      int   *sny,      int   *sdoevent,
     edata = dmatrix(sedata, n, edim);
     odata = dmatrix(sodata, n, odim);
     i=edim + odim;
-    data  = (double *) R_alloc(i, sizeof(double));
+    data  = (double *) ALLOC(i, sizeof(double));
     data2 = data + odim;
     /*
     ** ecut and ocut will be ragged arrays
     */
-    ecut = (double **)R_alloc(edim, sizeof(double *));
+    ecut = (double **)ALLOC(edim, sizeof(double *));
     for (i=0; i<edim; i++) {
 	ecut[i] = secut;
 	if (efac[i]==0)     secut += edims[i];
 	else if(efac[i] >1) secut += 1 + (efac[i]-1)*edims[i];
 	}
 
-    ocut = (double **)R_alloc(odim, sizeof(double *));
+    ocut = (double **)ALLOC(odim, sizeof(double *));
     for (i=0; i<odim; i++) {
 	ocut[i] = socut;
 	if (ofac[i]==0) socut += odims[i] +1;
 	}
+
+    /*
+    ** Set the round off error to min(time[time>0]) * 1e-8
+    **   The events are counted in the last cell to which person years are
+    **   added in the while() loop below.  We don't want to "spill over" into
+    **   a next (incorrect) cell due to accumulated round off, in the case
+    **   that a subjects fu time exactly matches one of the cell boundaries.
+    */
+    eps =0; /* guard against the rare case that all(time==0) */
+    for (i=0; i<n; i++) {
+	if (dostart==1) timeleft = stop[i] - start[i];
+	else timeleft= stop[i];
+	if (timeleft >0) {
+	    eps = timeleft;
+	    break;
+	    }
+	}
+    for (; i<n; i++) {
+	if (dostart==1) timeleft = stop[i] - start[i];
+	else timeleft= stop[i];
+	if (timeleft >0 && timeleft < eps) eps = timeleft;
+	}
+    eps *= 1e-8;
 
     *offtable =0;
     for (i=0; i<n; i++) {
@@ -142,7 +167,12 @@ void pyears1(int   *sn,      int   *sny,      int   *sdoevent,
 	/*
 	** add up p-yrs
 	*/
-	while (timeleft >0) {
+	if (timeleft <=eps && doevent) {
+	    /* we have to call pystep at least once to set the indices */
+	    pystep(odim, &index, &indx2, &lwt, data, ofac, odims, ocut, 1, 0);
+	    }
+
+	while (timeleft > eps) {
 	    thiscell = pystep(odim, &index, &indx2, &lwt, data, ofac, odims,
 				     ocut, timeleft, 0);
 	    if (index >=0) {

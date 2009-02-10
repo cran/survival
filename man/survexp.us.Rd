@@ -1,5 +1,4 @@
 \name{ratetables}
-\alias{ratetables}
 \alias{survexp.us}
 \alias{survexp.usr}
 \alias{survexp.az}

@@ -1,4 +1,4 @@
-# SCCS @(#)ridge.s	1.1 12/22/98
+# $Id: ridge.S 10788 2008-09-18 00:48:23Z therneau $
 ridge <- function(..., theta, df=nvar/2, eps=.1, scale=TRUE) {
     x <- cbind(...)
     nvar <- ncol(x)

@@ -1,0 +1,172 @@
+
+R version 2.7.1 (2008-06-23)
+Copyright (C) 2008 The R Foundation for Statistical Computing
+ISBN 3-900051-07-0
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> options(na.action=na.exclude) # preserve missings
+> options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
+> library(survival)
+Loading required package: splines
+> 
+> #
+> # The Stanford data from 1980 is used in Escobar and Meeker
+> #	t5 = T5 mismatch score
+> #  Their case numbers correspond to a data set sorted by age
+> #
+> aeq <- function(x,y, ...) all.equal(as.vector(x), as.vector(y), ...)
+> 
+> stanford2$t5 <- ifelse(stanford2$t5 <0, NA, stanford2$t5)
+> stanford2 <- stanford2[order(stanford2$age, stanford2$time),]
+> stanford2$time <- ifelse(stanford2$time==0, .5, stanford2$time)
+> 
+> cage <- stanford2$age - mean(stanford2$age)
+> fit1 <- survreg(Surv(time, status) ~ cage + I(cage^2), stanford2,
++ 		dist='lognormal')
+> fit1
+Call:
+survreg(formula = Surv(time, status) ~ cage + I(cage^2), data = stanford2, 
+    dist = "lognormal")
+
+Coefficients:
+ (Intercept)         cage    I(cage^2) 
+ 6.717591081 -0.061908619 -0.003504315 
+
+Scale= 2.362872 
+
+Loglik(model)= -863.6   Loglik(intercept only)= -868.8
+	Chisq= 10.5 on 2 degrees of freedom, p= 0.0053 
+n= 184 
+> ldcase <- resid(fit1, type='ldcase')
+> ldresp <- resid(fit1, type='ldresp')
+> print(ldresp)
+         139          159          181          119           74          120 
+1.379202e-01 1.452449e-01 2.628088e-02 7.320182e-02 7.624325e-02 3.994793e-02 
+          99          108          179           43          134          160 
+6.328460e-02 6.128977e-02 9.685668e-03 4.767550e-02 2.980553e-02 1.036051e-01 
+         177          153          136          133          176           66 
+8.990601e-03 2.114950e-02 2.557694e-02 1.591463e-01 8.618405e-03 3.389342e-02 
+         157          114           46           65          184           88 
+1.141319e-02 1.990887e-02 2.044977e-02 2.480540e-02 1.085737e-05 5.474389e-02 
+         182          180          163           84           90           68 
+1.786494e-03 2.574818e-03 7.654075e-03 2.024457e-02 8.561193e-02 3.894985e-02 
+          48          174          151          125           73          105 
+7.007563e-02 3.767424e-03 8.314677e-03 1.248554e-02 1.954896e-02 1.831982e-02 
+         117           96           39           38          106           14 
+1.739299e-02 1.789440e-02 2.406180e-02 2.364315e-02 4.717184e-02 2.051895e-02 
+         123          135          111           83          143           69 
+4.763900e-02 1.663805e-02 1.367017e-02 3.204509e-02 1.857902e-02 2.058865e-02 
+          27          113          167          156          141           30 
+3.896724e-02 3.775024e-02 5.091513e-03 1.528402e-02 8.682136e-03 1.746134e-02 
+         144          158           79          102           77           36 
+2.593291e-02 6.620379e-03 1.375918e-02 1.547851e-02 1.786268e-02 2.330671e-02 
+         183          122          162          121           87            2 
+3.720939e-05 1.696469e-02 5.954816e-03 1.233287e-02 1.655940e-02 1.089489e-01 
+          64          150           85           71           19           21 
+6.015390e-02 7.469432e-03 1.666501e-02 1.893415e-02 2.645489e-02 1.843298e-01 
+         175          169          148          138           98          104 
+1.789942e-02 4.379957e-03 7.619698e-03 9.332609e-03 1.428798e-02 1.445962e-02 
+         103           12           89            3          100           55 
+1.449500e-02 3.404298e-02 3.358405e-02 3.113308e-02 1.412657e-02 1.179741e-02 
+         142           63          168           72          137           10 
+8.641594e-03 1.426955e-02 4.554043e-03 1.094162e-02 9.645966e-03 1.226564e-02 
+         124           17           94           82          170          149 
+1.222512e-02 1.088510e-02 1.493684e-02 1.844221e-02 3.988063e-02 3.038321e-02 
+          42          128           67          109           75           26 
+2.127744e-02 1.439502e-02 1.285836e-02 8.944979e-03 1.997791e-02 2.757124e-02 
+          97           58          178          140           32          126 
+2.549339e-02 2.356049e-02 2.057505e-03 1.269584e-02 1.103392e-02 1.253031e-02 
+          51          101           29           33          164           60 
+1.430228e-02 1.637415e-02 2.201027e-02 1.118993e-02 6.417566e-03 8.492275e-03 
+         152          145          112           76           47          118 
+8.651522e-03 9.608673e-03 1.609215e-02 2.168279e-02 2.622512e-02 2.274275e-02 
+           5          129           31           35           40          130 
+1.184996e-02 9.391147e-03 8.772106e-03 8.526052e-03 9.451658e-03 1.295998e-02 
+          28           56           91           44           23           37 
+1.285986e-02 1.536640e-02 2.031499e-02 2.807956e-02 1.965943e-02 1.733256e-02 
+          70          132            9           81           59          127 
+9.129009e-03 9.121716e-03 9.083024e-03 1.025238e-02 1.032186e-02 1.183693e-02 
+         131           80           20           25          165           24 
+1.403298e-02 2.363944e-02 2.181249e-02 2.723391e-02 2.043510e-02 2.019541e-02 
+         172          146           86          107           95          116 
+1.152649e-02 1.265907e-02 1.538526e-02 2.107503e-02 2.298470e-02 2.128394e-02 
+          41           61          155          166          154            4 
+1.791007e-02 1.763098e-02 1.345059e-02 1.285115e-02 1.218090e-02 1.470506e-02 
+          92           93           62           34           15          173 
+2.599207e-02 3.098462e-02 3.037745e-02 2.166521e-02 1.478524e-02 7.517967e-03 
+         171           52          110           50           45           53 
+8.681586e-03 1.679632e-02 2.540017e-02 3.470668e-02 3.229506e-02 3.017736e-02 
+          54          147          115           16            1            6 
+2.416303e-02 1.870027e-02 2.172488e-02 1.164271e-01 4.257797e-02 2.459122e-02 
+           7           57           78          161           11            8 
+3.585527e-02 3.587688e-02 2.865161e-02 2.603297e-02 5.640968e-02 4.338250e-02 
+          49           13           22           18 
+3.425475e-02 6.262791e-02 1.029315e-01 1.442429e-01 
+> # The ldcase and ldresp should be compared to table 1 in Escobar and 
+> #  Meeker, Biometrics 1992, p519; the colum they label as (1/2) A_{ii}
+> 
+> plot1 <- function() {
++     # make their figure 1, 2, and 6
++     plot(stanford2$age, stanford2$time, log='y', xlab="Age", ylab="Days",
++ 	 ylim=c(.01, 10^6))
++     temp <- predict(fit1, type='response', se.fit=T) 
++     matlines(stanford2$age, cbind(temp$fit, temp$fit-1.96*temp$se.fit,
++ 				            temp$fit+1.96*temp$se.fit),
++ 	     lty=c(1,2,2))
++     # these are the wrong CI lines, he plotted std dev, I plotted std err
++     # here are the right ones
++     #  Using uncentered age gives different coefs, but makes prediction over an
++     #    extended range somewhat simpler 
++     refit <- survreg(Surv(time,status)~ age + age^2, stanford2,
++ 		     dist='lognormal')
++     plot(stanford2$age, stanford2$time, log='y', xlab="Age", ylab="Days",
++ 	 ylim=c(.01, 10^6), xlim=c(0,75))
++     temp2 <- predict(refit, list(age=1:75), type='quantile', p=c(.05, .5, .95))
++     matlines(1:75, temp2, lty=c(1,2,2), col=2)
++ 
++     n <- length(ldcase)
++     plot(1:n, ldcase, xlab="Case Number", ylab="(1/2) A")
++     title (main="Case weight pertubations")
++     plot(1:n, ldresp, xlab="Case Number", ylab="(1/2) A")
++     title(main="Response pertubations")
++     }
+> 
+> postscript('meekerplot.ps')
+> plot1()
+> dev.off()
+null device 
+          1 
+> #
+> # Stanford predictions in other ways
+> #
+> fit2 <- survreg(Surv(time, status) ~ poly(age,2), stanford2,
++ 		dist='lognormal')
+> 
+> p1 <- predict(fit1, type='response')
+> p2 <- predict(fit2, type='response')
+> aeq(p1, p2)
+[1] TRUE
+> 
+> p3 <- predict(fit2, type='terms', se=T)
+> p4 <- predict(fit2, type='lp', se=T)
+> p5 <- predict(fit1, type='lp', se=T)
+> # aeq(p3$fit + attr(p3$fit, 'constant'), p4$fit)  #R is missing the attribute
+> aeq(p4$fit, p5$fit)
+[1] TRUE
+> aeq(p3$se.fit, p4$se.fit)  #this one should be false
+[1] "Mean relative difference: 0.758395"
+> aeq(p4$se.fit, p5$se.fit)  #this one true
+[1] TRUE
+> 
+> 

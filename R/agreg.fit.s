@@ -1,4 +1,4 @@
-# SCCS @(#)agreg.fit.s	4.22 06/12/00
+# $Id: agreg.fit.S 11059 2008-10-23 12:32:50Z therneau $
 agreg.fit <- function(x, y, strata, offset, init, control,
 			weights, method, rownames)
     {
@@ -7,7 +7,7 @@ agreg.fit <- function(x, y, strata, offset, init, control,
     start <- y[,1]
     stopp <- y[,2]
     event <- y[,3]
-    if(all(event==0)) stop("Can't fit a Cox model with zero failures")
+    if (all(event==0)) stop("Can't fit a Cox model with 0 failures")
 
     # Sort the data (or rather, get a list of sorted indices)
     #  For both stop and start times, the indices go from last to first
@@ -25,7 +25,7 @@ agreg.fit <- function(x, y, strata, offset, init, control,
     if (missing(weights)|| is.null(weights))weights<- rep(1.0, n)
     else if (any(weights<=0)) stop("Invalid weights, must be >0")
 
-    if (is.null(nvar)) {
+    if (is.null(nvar) || nvar==0) {
 	# A special case: Null model.  Just return obvious stuff
         #  To keep the C code to a small set, we call the usual routines, but
 	#  with a dummy X matrix and 0 iterations
@@ -64,7 +64,8 @@ agreg.fit <- function(x, y, strata, offset, init, control,
 		double(2*nvar*nvar +nvar*3 + n),
 		as.double(control$eps),
 		as.double(control$toler.chol),
-		sctest=as.double(method=='efron'),PACKAGE="survival" )
+		sctest=as.double(method=='efron'),
+                PACKAGE = 'survival')
 
     var <- matrix(agfit$imat,nvar,nvar)
     coef <- agfit$coef
@@ -100,7 +101,8 @@ agreg.fit <- function(x, y, strata, offset, init, control,
 		score,
 		as.double(weights),
 		resid=double(n),
-		double(2*sum(event)),PACKAGE="survival")
+		double(2*sum(event)),
+                PACKAGE= 'survival')
     resid <- agres$resid
 
     if (nullmodel) {

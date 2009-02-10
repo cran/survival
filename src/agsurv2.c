@@ -1,4 +1,4 @@
-/*  SCCS @(#)agsurv2.c	5.4 11/04/98*/
+/*  $Id: agsurv2.c 11080 2008-10-24 03:47:51Z therneau $*/
 /*
 ** Fit the survival curve, the special case of an Anderson-Gill style data
 **   This program differs from survfit in several key ways:
@@ -16,7 +16,7 @@
 **             (the calling routine knows that xmat is only needed for the
 **              correct second term of the se)
 **    y - 3 column matrix containing strart, stop, event
-**    score[n] - vector of weights
+**    score[n] - vector of rscores
 **    strata[n] - ==1 at the last obs of each strata
 **    xmat   = data matrix that generated the Cox fit
 **    varcov   = variance matrix of the coefs
@@ -26,7 +26,7 @@
 **
 **    ncurve  = # of curves to produce
 **    newx(nvar, ncurve) =  new subject x matrix
-**    newrisk(ncurve)  = weights for the new subjects
+**    newrisk(ncurve)  = rscores for the new subjects
 **
 ** Output
 **    surv  - the survival - of length ncurve*nsurv
@@ -42,14 +42,15 @@
 **
 **  Input must be sorted by (event before censor) within stop time within strata,
 */
+#include <stdio.h>
 #include <math.h>
 #include "survS.h"
 #include "survproto.h"
 
-void agsurv2(int   *sn,      int   *snvar,    double *y, 
-	     double *score,   int   *strata,   double *surv, 
+void agsurv2(Sint   *sn,      Sint   *snvar,    double *y, 
+	     double *score,   Sint   *strata,   double *wt, double *surv, 
 	     double *varh,    double *xmat,     double *varcov, 
-	     int   *snsurv,  double *d,        int   *sncurve,
+	     Sint   *snsurv,  double *d,        Sint   *sncurve,
              double *newx,    double *newrisk)
 {
     int i,j,k,l;
@@ -57,8 +58,8 @@ void agsurv2(int   *sn,      int   *snvar,    double *y,
     double *start, *stop, *event;
     int n, nvar;
     int nsurv, type, vartype;
-    int kk=0, psave; /*-Wall*/
-    int deaths;
+    int kk=0, psave;
+    double deaths;
     double *a, *a2;
     int ncurve;
     double **covar,
@@ -70,7 +71,7 @@ void agsurv2(int   *sn,      int   *snvar,    double *y,
 	nsave,
 	person;
     double time,
-	weight=0, /*-Wall*/
+	   rscore =0,
 	   e_denom,
 	   denom;
     double crisk,
@@ -97,7 +98,6 @@ void agsurv2(int   *sn,      int   *snvar,    double *y,
     covar2 = dmatrix(newx, ncurve, nvar);
     nsurv =0;
     nstrat =0;
-
     for (column=0; column<ncurve; column++) {
 	crisk = newrisk[column];
 	hazard  =0;
@@ -123,17 +123,17 @@ void agsurv2(int   *sn,      int   *snvar,    double *y,
 		for (k=person; k<n; k++) {
 		    if (start[k] < time) {
 			nrisk++;
-			weight = score[k]/crisk;
-			denom += weight;
+			rscore = wt[k] *score[k]/crisk;
+			denom += rscore;
 			for (i=0; i<nvar; i++) {
-			    a[i] += weight*(covar[i][k]- covar2[i][column]);
+			    a[i] += rscore*(covar[i][k]- covar2[i][column]);
 			    }
 			 }
 		    if (stop[k]==time && event[k]==1) {
-			deaths++;
-			e_denom += weight;
+			deaths += wt[k];
+			e_denom += rscore;
 			for (i=0; i<nvar; i++) {
-			    a2[i] += weight*(covar[i][k]- covar2[i][column]);
+			    a2[i] += rscore*(covar[i][k]- covar2[i][column]);
 			    }
 			}
 		    if (strata[k]==1) break;
@@ -150,20 +150,20 @@ void agsurv2(int   *sn,      int   *snvar,    double *y,
 			downwt = temp/deaths;
 			if (type==3) {
 			    d2 = (denom - downwt*e_denom);
-			    hazard += 1/d2;
+			    hazard += wt[k]/d2;
 			    }
-			else  hazard += 1/denom;
+			else  hazard += wt[k]/denom;
 			
 			if (vartype==3) {
 			    d2 = (denom - downwt*e_denom);
-			    varhaz += 1/(d2*d2);
+			    varhaz += wt[k]/(d2*d2);
 			    for (i=0; i<nvar; i++)
-				d[i] += (a[i]- downwt*a2[i])/ (d2*d2);
+				d[i] += wt[k]*(a[i]- downwt*a2[i])/ (d2*d2);
 			    }
 			else {
-			    if (vartype==2) varhaz += 1/(denom*denom);
+			    if (vartype==2) varhaz += wt[k]/(denom*denom);
 			    for (i=0; i<nvar; i++)
-				d[i] += a[i]/(denom*denom);
+				d[i] += wt[k]* a[i]/(denom*denom);
 			    }
 			temp++;
 			}
@@ -178,10 +178,12 @@ void agsurv2(int   *sn,      int   *snvar,    double *y,
 		    }
 		if (type==1) {
 		    /*
-		    ** kalbfleisch estimator is harder;
+		    ** kalbfleisch estimator is harder
+		    **   (But still using score/crisk as a "new" score).
 		    */
 		    if (deaths ==1) {
-			km *= pow(1- score[kk]/(crisk*denom), crisk/score[kk]);
+			km *= pow(1- wt[kk]*score[kk]/(crisk*denom), 
+				     crisk/score[kk]);
 			}
 		    else {           /*find the zero of an equation */
 			guess = .5;
@@ -191,7 +193,7 @@ void agsurv2(int   *sn,      int   *snvar,    double *y,
 			    for (k=psave; k<person; k++) {
 				if (event[k] ==1) {
 				    temp = score[k]/crisk;
-				    sumt +=  temp/(1-pow(guess, temp));
+				    sumt +=  wt[k]*temp/(1-pow(guess, temp));
 				    }
 				}
 			    if (sumt < denom)  guess += inc;

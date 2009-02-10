@@ -1,4 +1,4 @@
-/*  SCCS @(#)agmart.c	5.2 10/27/98*/
+/* $Id: agmart.c 11080 2008-10-24 03:47:51Z therneau $
 /*
 ** Compute the martingale residual for a counting process model
 **
@@ -23,8 +23,8 @@
 #include "survS.h"
 #include "survproto.h"
 
-void agmart(int   *n,     int   *method,  double *start,   double *stop, 
-	    int   *event, double *score,   double *wt,      int   *strata, 
+void agmart(Sint   *n,     Sint   *method,  double *start,   double *stop, 
+	    Sint   *event, double *score,   double *wt,      Sint   *strata, 
 	    double *resid)
     {
     int i,k;

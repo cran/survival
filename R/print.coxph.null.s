@@ -1,4 +1,4 @@
-#SCCS 12/29/97 @(#)print.coxph.null.s	4.7
+# $Id: print.coxph.null.S 11059 2008-10-23 12:32:50Z therneau $
 print.coxph.null <-
  function(x, digits=max(options()$digits - 4, 3), ...)
     {

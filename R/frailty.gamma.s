@@ -1,4 +1,4 @@
-# SCCS @(#)frailty.gamma.s	1.4 06/10/00
+#  $Id: frailty.gamma.S 11203 2009-02-05 00:06:16Z therneau $
 # 
 # Defining function for gamma frailty fits
 #
@@ -8,10 +8,10 @@ frailty.gamma <- function(x, sparse=(nclass >5), theta, df, eps= 1e-5,
     if (sparse)	x <-as.numeric(as.factor(x))
     else{
 	x <- as.factor(x)
-	##attr(x,'contrasts') <- function(n,...) contr.treatment(n,F)
-        attr(x,"contrasts")<-contr.treatment(nclass,contrasts=FALSE)
-        }
-    class(x) <- c("coxph.penalty",class(x))
+	attr(x,'contrasts') <- contr.treatment(nclass, contrasts=FALSE)
+                }
+    if (is.R()) class(x) <- c("coxph.penalty",class(x))
+    else        oldClass(x) <- "coxph.penalty"
 
     # Check for consistency of the arguments
     if (missing(method)) {
@@ -59,6 +59,12 @@ frailty.gamma <- function(x, sparse=(nclass >5), theta, df, eps= 1e-5,
 	                       "  I-likelihood =", 
 		         format(round(clog,1), digits=10)))
 	}
+    # The final coxph object will contain a copy of printfun.  Stop it from
+    #   also containing huge unnecessary variables, e.g. 'x', known at this 
+    #   point in time.  Not an issue for pfun, which does not get saved.
+    # Setting to globalenv() won't work since coxph.wtest is not visible 
+    #   outside the survival library's name space.
+    if (is.R()) environment(printfun) <- asNamespace('survival')
 
     if (method=='fixed') {
 	temp <- list(pfun=pfun,

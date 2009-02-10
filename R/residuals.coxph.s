@@ -1,22 +1,22 @@
-#  SCCS @(#)residuals.coxph.s	5.4 09/07/00
+#  $Id: residuals.coxph.S 11204 2009-02-06 13:14:06Z therneau $
 residuals.coxph <-
   function(object, type=c("martingale", "deviance", "score", "schoenfeld",
 			  "dfbeta", "dfbetas", "scaledsch","partial"),
-	    collapse=FALSE, weighted=FALSE,...)
+	    collapse=FALSE, weighted=FALSE, ...)
     {
     type <- match.arg(type)
     otype <- type
     if (type=='dfbeta' || type=='dfbetas') {
 	type <- 'score'
 	if (missing(weighted))
-            weighted <- TRUE  # different default
+            weighted <- TRUE  # different default for this case
 	}
     if (type=='scaledsch') type<-'schoenfeld'
 
     n <- length(object$residuals)
     rr <- object$residuals
     y <- object$y
-    x <- object$x
+    x <- object[['x']]  # avoid matching object$xlevels
     vv <- object$naive.var
     if (is.null(vv)) vv <- object$var
     weights <- object$weights
@@ -26,11 +26,8 @@ residuals.coxph <-
     if (method=='exact' && (type=='score' || type=='schoenfeld'))
 	stop(paste(type, 'residuals are not available for the exact method'))
 
-    if (type == 'martingale')
+    if (type == 'martingale' || type == 'partial')
         rr <- object$residuals
-    else if (type=="partial"){ ## add terms component later, after naresid()
-        rr<-object$residuals
-    }
     else {
 	# I need Y, and perhaps the X matrix (and strata)
 	Terms <- object$terms
@@ -83,7 +80,7 @@ residuals.coxph <-
 			    as.double(score * weights[ord]),
 			    as.integer(newstrat),
 			    as.integer(method=='efron'),
-			    double(3*nvar),PACKAGE="survival")
+			    double(3*nvar) )
 
 	deaths <- y[,3]==1
 
@@ -100,8 +97,7 @@ residuals.coxph <-
 	    ndead <- sum(deaths)
 	    coef <- ifelse(is.na(object$coefficients), 0, object$coefficients)
 	    if (nvar==1) rr <- rr*vv *ndead + coef
-	    else         rr <- rr %*%vv * ndead +
-						outer(rep(1,nrow(rr)),coef)
+	    else         rr <- rr %*%vv * ndead + outer(rep(1,nrow(rr)),coef)
 	    }
 	return(rr)
 	}
@@ -117,7 +113,7 @@ residuals.coxph <-
 				as.double(weights[ord]),
 				as.integer(method=='efron'),
 				resid= double(n*nvar),
-				double(2*nvar),PACKAGE="survival")$resid
+				double(2*nvar))$resid
 	    }
 	else {
 	    resid<- .C("agscore",
@@ -130,12 +126,13 @@ residuals.coxph <-
 				as.double(weights[ord]),
 				as.integer(method=='efron'),
 				resid=double(n*nvar),
-				double(nvar*6),PACKAGE="survival")$resid
+				double(nvar*6))$resid
 	    }
 	if (nvar >1) {
 	    rr <- matrix(0, n, nvar)
 	    rr[ord,] <- matrix(resid, ncol=nvar)
-	    dimnames(rr) <- list(names(object$residuals), names(object$coefficients))
+	    dimnames(rr) <- list(names(object$residuals), 
+				 names(object$coefficients))
 	    }
 	else rr[ord] <- resid
 
@@ -148,12 +145,12 @@ residuals.coxph <-
 	    else                rr <- rr * sqrt(vv)
 	    }
 	}
-
+    
     #
     # Multiply up by case weights (which will be 1 for unweighted)
     #
     if (weighted) rr <- rr * weights
-
+    
     #Expand out the missing values in the result
     if (!is.null(object$na.action)) {
 	rr <- naresid(object$na.action, rr)
@@ -161,14 +158,19 @@ residuals.coxph <-
 	else               n <- length(rr)
 	if (type=='deviance') status <- naresid(object$na.action, status)
 	}
-    if (type=="partial") ## predict already uses naresid()
-      rr<-rr+predict(object,type="terms")
+    
+    if (type=="partial"){
+	# This needs to be done after the naresid expansion, since the
+	#   predict function will have done naresid expansion, so that
+	#   the lengths match
+        rr <- rr + predict(object,type="terms")
+        }
 
     # Collapse if desired
     if (!missing(collapse)) {
 	if (length(collapse) !=n) stop("Wrong length for 'collapse'")
-	rr <- rowsum(rr, collapse)
-  	if (type=='deviance') status <- rowsum(status, collapse)
+	rr <- drop(rowsum(rr, collapse))
+  	if (type=='deviance') status <- drop(rowsum(status, collapse))
 	}
 
     # Deviance residuals are computed after collapsing occurs
@@ -177,3 +179,4 @@ residuals.coxph <-
 			      ifelse(status==0, 0, status*log(status-rr))))
     else rr
     }
+    

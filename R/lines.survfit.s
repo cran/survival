@@ -1,8 +1,29 @@
-# SCCS @(#)lines.survfit.s	4.16  01/14/99
+# $Id: lines.survfit.S 11207 2009-02-09 04:25:50Z therneau $
 lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 			  mark.time =TRUE, xscale=1, 
 			  firstx=0, firsty=1, xmax, fun,
 			  conf.int=FALSE, ...) {
+
+    if (missing(firstx)) {
+	if (!is.null(x$start.time)) 
+	     firstx <- x$start.time
+	else {
+            # Make intellegent guess at firstx/firsty (as best we can)
+            # 1. If this is a survexp object, don't extend the plot
+            #   back to the left at all
+            if (inherits(x, 'survexp')) {
+                firstx <- x$time[1]
+                firsty <- x$surv[1]
+                }
+            else {
+                # We'll use 0/1, unless this is log scale
+                if (par('xaxt')== 'l' ||
+                    (!missing(fun) && is.character(fun) && fun=='cloglog')) 
+                    firstx <- min(x$time)
+                }
+            }
+	}
+    firstx <- firstx/xscale
 
     if (inherits(x, 'survexp')) {
 	if (missing(type)) type <- 'l'
@@ -15,40 +36,21 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
     if (is.character(conf.int)) {
 	if (conf.int=='only') {
 	    conf.int <- TRUE
-	    plot.surv<- TRUE
+	    plot.surv<- FALSE
 	    }
 	else stop("Unrecognized option for conf.int")
 	}
-    else plot.surv <- TRUE
+    else plot.surv <- TRUE  #plot the central curve, not just CI
 
     if (is.numeric(mark.time)) mark.time<- sort(unique(mark.time[mark.time>0]))
-
-    if (is.matrix(x$surv)) {
-	ncol.per.strat <- ncol(x$surv)
-	ncurve <- ncol(x$surv)
-	coffset <- nrow(x$surv)*(1:ncurve -1)     #within matrix offset
-        }
-    else {
-	ncol.per.strat <- 1
-	ncurve <- 1
-	coffset <- 0
-        }
 
     if (is.null(x$strata)) {
 	nstrat <- 1
 	stemp <- rep(1, length(x$time))
 	}
-    else if (inherits(x,"survexp")){
-        ##has correct x$strata, doesn't have x$ntimes.strata
-        nstrat <- length(x$strata)
-	ncurve <- ncurve * nstrat
-	stemp <- rep(1:nstrat, x$strata)
-    } else {
-        ##output of [.survfit can have wrong x$strata, cf ?survfit
-        ##need to use x$ntimes.strata
+    else {
 	nstrat <- length(x$strata)
-	ncurve <- ncurve * nstrat
-	stemp <- rep(1:nstrat, x$ntimes.strata)
+	stemp <- rep(1:nstrat, x$strata)
 	}
 
     ssurv <- x$surv
@@ -107,18 +109,31 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 	}
 	stime <- stime/xscale
     	
+    if (is.matrix(ssurv)) {
+	ncol.per.strat <- ncol(ssurv)
+	ncurve <- ncol(ssurv)
+	coffset <- nrow(ssurv)*(1:ncurve -1)     #within matrix offset
+        }
+    else {
+	ncol.per.strat <- 1
+	ncurve <- 1
+	coffset <- 0
+        }
+
+    if (!is.null(x$strata)) ncurve <- ncurve * nstrat
+
     if (!missing(fun)) {
 	if (is.character(fun)) {
 	    tfun <- switch(fun,
-                           'log' = function(x) x,
-                           'event'=function(x) 1-x,
-                           'cumhaz'=function(x) -log(x),
-                           'cloglog'=function(x) log(-log(x)),
-                           'pct' = function(x) x*100,
-                           'logpct'= function(x) 100*x,
-                           stop("Unrecognized function argument")
-                           )
-        }
+		            'log' = function(x) x,
+			    'event'=function(x) 1-x,
+			    'cumhaz'=function(x) -log(x),
+			    'cloglog'=function(x) log(-log(x)),
+			    'pct' = function(x) x*100,
+			    'logpct'= function(x) 100*x,
+			    stop("Unrecognized function argument")
+			    )
+	    }
 	else if (is.function(fun)) tfun <- fun
 	else stop("Invalid 'fun' argument")
 	
@@ -135,10 +150,10 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 
     strata <- table(stemp)
     soffset<- ncol.per.strat * c(0, cumsum(strata))
-    mark <- rep(mark, length.out=ncurve)
-    col  <- rep(col , length.out=ncurve)
-    lty  <- rep(lty , length.out=ncurve)
-    lwd  <- rep(lwd , length.out=ncurve)
+    mark <- rep(mark, length=ncurve)
+    col  <- rep(col , length=ncurve)
+    lty  <- rep(lty , length=ncurve)
+    lwd  <- rep(lwd , length=ncurve)
     time <- rep(stime, ncol.per.strat)
 
 
@@ -170,20 +185,20 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
     for (i in 1:nstrat) {
       for (j in 1:ncol.per.strat) {
 	k <- k +1  
-	who <- seq(soffset[i]+ coffset[j]+1, length.out=strata[i])
+	who <- seq(soffset[i]+ coffset[j]+1, length=strata[i])  
 	if (is.finite(firstx) && is.finite(firsty)) {
 	    xx <- c(firstx, time[who])
 	    yy <- c(firsty, ssurv[who])
 	    yyu<- c(firsty, supper[who])
 	    yyl<- c(firsty, slower[who])
-	    deaths <- c(-1, x$n.event[who])
+	    deaths <- c(-1, x$n.event[seq(soffset[i]+1, length=strata[i])])
 	    }
 	else {
 	    xx <- time[who]
 	    yy <- ssurv[who]
 	    yyu<- supper[who]
 	    yyl<- slower[who]
-	    deaths <- x$n.event[who]
+	    deaths <- x$n.event[seq(soffset[i]+1, length=strata[i])]
 	    }
 	nn <- length(xx)
 
@@ -201,15 +216,17 @@ lines.survfit <- function(x, type='s', mark=3, col=1, lty=1, lwd=1,
 		      lty=lty[k], lwd=lwd[k], ...)
 	    if (is.numeric(mark.time)) {
 		indx <- mark.time
-		for (k in seq(along.with=mark.time))
-			indx[k] <- sum(mark.time[k] > xx)
+		for (kk in seq(along=mark.time))
+			indx[kk] <- sum(mark.time[kk] > xx)
 		points(mark.time[indx<nn], yy[indx[indx<nn]],
 		       pch=mark[k],col=col[k], ...)
 		}
 	    else if (mark.time==TRUE) {
-		if ( any(deaths==0))
-			points(xx[deaths==0], yy[deaths==0],
-				   pch=mark[k],col=col[k], ...)
+		if ( any(deaths==0)) {
+		    indx <- (deaths==0 & xx>firstx)
+		    points(xx[indx], yy[indx],
+			   pch=mark[k],col=col[k], ...)
+		    }
 		}
 	    }
 	}

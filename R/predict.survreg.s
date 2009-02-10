@@ -1,25 +1,23 @@
-# SCCS @(#)predict.survreg.s	4.11 02/06/99
+# $Id: predict.survreg.S 11250 2009-03-19 13:44:59Z tlumley $
 predict.survreg <-
     function(object, newdata, type=c('response', "link", 'lp', 'linear',
 				     'terms', 'quantile','uquantile'),
 				se.fit=FALSE,  terms=NULL,
-	                        p=c(.1, .9),...)
-    {
-#
-# What do I need to do predictions ?
-#   
-#  linear predictor: exists
-#           +se    : X matrix
-#          newdata : new X matrix
-#
-#  response -- same as lp, +transform, from distribution
-#  
-#  p --  density function from distribution
-#          scale(s) -- if multiple I need the strata
-#          +se : variance matrix
-#	   newdata: new X
-#
-    ripley<-FALSE ##obsolete undocumented option
+	                        p=c(.1, .9),...) {
+    #
+    # What do I need to do predictions ?
+    #   
+    #  linear predictor: exists
+    #           +se    : X matrix
+    #          newdata : new X matrix
+    #
+    #  response -- same as lp, +transform, from distribution
+    #  
+    #  p --  density function from distribution
+    #          scale(s) -- if multiple I need the strata
+    #          +se : variance matrix
+    #	   newdata: new X
+
     type <-match.arg(type)
     if (type=='link') type<- 'lp'  #true until their are link functions
     if (type=='linear') type<- 'lp'
@@ -34,7 +32,7 @@ predict.survreg <-
     intercept <- attr(Terms, "intercept")
     nvar <- length(object$coefficients)
     vv <- object$var[1:nvar, 1:nvar]
-    fixedscale <- (nvar == ncol(object$var)) || ripley
+    fixedscale <- (nvar == ncol(object$var))
 
     if (missing(newdata) && (type=='terms' || se.fit)) need.x <- TRUE
     else  need.x <- FALSE
@@ -54,8 +52,9 @@ predict.survreg <-
 	nstrata <- max(strata)
 	    
 	if (missing(newdata) && need.x){
-	    x <- object$x
-	    if (is.null(x)) x <- model.matrix(Terms[-dropx], m)
+	    x <- object[['x']] 
+	    if (is.null(x)) x <- model.matrix(Terms[-dropx], m,
+                                              contr=object$contrasts)
 	    }
 
 	else if (!missing(newdata)) {
@@ -63,7 +62,8 @@ predict.survreg <-
 	    if (length(temp$vars)==1) newstrat <- newframe[[temp$vars]]
 	    else newstrat <- strata(newframe[,temp$vars], shortlabel=TRUE)
 	    strata <- match(newstrat, levels(strata.keep))
-	    x <- model.matrix(Terms[-dropx], newframe)
+	    x <- model.matrix(Terms[-dropx], newframe,
+                              contr=object$contrasts)
 	    offset <- model.extract(newframe, 'offset')
 	    }
 	}
@@ -73,16 +73,18 @@ predict.survreg <-
 	if (length(temp$terms)) Terms <- Terms[-temp$terms]
 	strata <- rep(1,n); nstrata<- 1
 	if (missing(newdata) && need.x) {
-	    x <- object$x
+	    x <- object[['x']]  # don't accidentally get object$xlevels
 	    if (is.null(x)) {
 		if (is.null(object$model)) 
-			x <- model.matrix(Terms, model.frame(object))
-		else    x <- model.matrix(Terms, object$model)
+			x <- model.matrix(Terms, model.frame(object),
+                                          contr=object$contrasts)
+		else    x <- model.matrix(Terms, object$model,
+                                          contr=object$contrasts)
 		}
 	    }
 
 	else if (!missing(newdata)) {
-	    x <- model.matrix(Terms, newdata)
+	    x <- model.matrix(Terms, newdata, contr=object$contrasts)
 	    offset <- 0
 	    strata <- rep(1, nrow(x))
 	    }
@@ -98,8 +100,8 @@ predict.survreg <-
     if (is.character(object$dist)) dd <- survreg.distributions[[object$dist]]
     else dd <- object$dist
     if (is.null(dd$itrans)) {
-	itrans <- function(x) x
-        dtrans <- function (x) 1 ## bug fix from TMT, 2002-17-6
+	itrans <- function(x) x  # identity transformation
+        dtrans <- function (x) 1 # derivative of the transformation
 	}
     else {
 	itrans <- dd$itrans
@@ -180,37 +182,59 @@ predict.survreg <-
 	}
 
     else {  #terms
-	asgn <- attrassign(x,Terms)
-        hasintercept<-attr(Terms,"intercept")>0
-        if (hasintercept)
-          asgn$"(Intercept)"<-NULL
-        nterms<-length(asgn)
-        pred<-matrix(ncol=nterms,nrow=NROW(x))
-        dimnames(pred)<-list(rownames(x),names(asgn))
-        if (se.fit){
-          se<-matrix(ncol=nterms,nrow=NROW(x))
-          dimnames(se)<-list(rownames(x),names(asgn))
-          R<-object$var
-          ip <- real(NROW(x))
+	if (is.R()) {
+	    # In S we can use Build.terms, in R we have to do it ourselves
+	    asgn <- attrassign(x,Terms)
+	    hasintercept<-attr(Terms,"intercept")>0
+	    if (hasintercept)
+		    asgn$"(Intercept)"<-NULL
+	    nterms<-length(asgn)
+	    pred<-matrix(ncol=nterms,nrow=NROW(x))
+	    dimnames(pred)<-list(rownames(x),names(asgn))
+	    if (se.fit){
+		se<-matrix(ncol=nterms,nrow=NROW(x))
+		dimnames(se)<-list(rownames(x),names(asgn))
+		R<-object$var
+		ip <- real(NROW(x))
+		}
+	    for (i in 1:nterms){
+		ii<-asgn[[i]]
+		pred[,i]<-x[,ii,drop=FALSE]%*%(coef[ii])
+		if (se.fit){
+		    for(j in (1:NROW(x))){
+			xi<-x[j,ii,drop=FALSE]*(coef[ii])
+			vci<-R[ii,ii]
+			se[j,i]<-sqrt(sum(xi%*% vci %*%t( xi)))
+			}
+		    }
+		}
+	    if (!is.null(terms)){
+		pred<-pred[,terms,drop=FALSE]
+		if (se.fit)
+			se<-se[,terms,drop=FALSE]
+		}
+	    if (hasintercept)
+		    const <- coef(object)['(Intercept']
+		else    const <- 0
+	    }
+
+	else {
+	    # Splus: use Build.terms to do the work
+	    asgn <- attr(x, 'assign')
+	    attr(x, 'constant') <- object$means
+	    terms <- match.arg(Terms, labels.lm(object))
+	    asgn <- asgn[terms]
+
+	    if (se.fit) {
+		temp <- Build.terms(x, coef, vv, asgn, FALSE)
+		pred <- temp$fit
+		se   <- temp$se.fit
+		}
+	    else pred<- Build.terms(x, coef, NULL, asgn, FALSE)
+	    const<- attr(pred, 'constant')
+	    }
         }
-        for (i in 1:nterms){
-          ii<-asgn[[i]]
-          pred[,i]<-x[,ii,drop=FALSE]%*%(coef[ii])
-          if (se.fit){
-            for(j in (1:NROW(x))){
-              xi<-x[j,ii,drop=FALSE]*(coef[ii])
-              vci<-R[ii,ii]
-              se[j,i]<-sqrt(sum(xi%*% vci %*%t( xi)))
-            }
-          }
-        }
-        if (!is.null(terms)){
-          pred<-pred[,terms,drop=FALSE]
-          if (se.fit)
-            se<-se[,terms,drop=FALSE]
-        }
-      }
-    if (type=='terms') attr(pred, 'constant') <- if (hasintercept) coef(object)["(Intercept)"] else 0
+
     #Expand out the missing values in the result
     # But only if operating on the original dataset
     if (missing(newdata) && !is.null(object$na.action)) {

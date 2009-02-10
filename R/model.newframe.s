@@ -1,4 +1,5 @@
-#SCCS 04/14/92 @(#)model.newframe.s	4.3
+# $Id: model.newframe.S 11059 2008-10-23 12:32:50Z therneau $
+#
 # This function is called if you want to get a new data frame,
 #   usually for prediction.  It's main problem is to "glue" any
 #   transform specific information back onto the formula, so that
@@ -9,14 +10,14 @@
 #   of their output.
 # If you know this isn't so, then safe=T uses a method that is much longer,
 #   but is guaranteed to work, see predict.gam
-
-
-bareterms<-function(formula){
-    if(length(formula)>2) formula<-delete.response(formula)
-    v<-all.vars(formula)
-    terms(formula(paste("~",paste(v,collapse="+"))))
-}
-
+#
+# 2007 note: This routine was written to try to deal with things like
+#  ns(), i.e., the well known issues that cause grief for gam models.  I
+#  never got very far on it, and the code hasn't had realistic attention
+#  in over 10 years.  In the meantime, the R community has attacked the
+#  problem in other useful ways.  This routine should be abandoned, and
+#  have coxph instead plug into those ideas.
+#
 model.newframe <- function(object, newdata, safe=FALSE, response=FALSE, ...) {
     if (inherits(object, 'terms'))  Terms <- object
     else {
@@ -28,13 +29,15 @@ model.newframe <- function(object, newdata, safe=FALSE, response=FALSE, ...) {
 
     # First, is newdata just a list of numbers?
     if (is.numeric(newdata)) {
-	nvar <- length(attr(Terms,"term.labels")) + length(offset)
-	if (length(newdata)>1  || newdata!=floor(newdata)  || newdata<0){ #It's not just a frame number
+	if (is.R()) nvar <- length(Terms) + length(offset)
+	else        nvar <- length(attr(Terms,"term.labels")) + length(offset)
+	if (length(newdata)>1  || newdata!=floor(newdata)  || newdata<0){ 
+	    #It's not just a frame number
 	    if (is.matrix(newdata) && ncol(newdata) == nvar)
 		   return(newdata)
 	    else if (length(newdata) == nvar)
 		   return(matrix(newdata,1,nvar))
-	    else stop("Argument \"newdata\" cannot be coerced to an appropriate model matrix")
+	    else stop("Argument 'newdata' cannot be coerced to an appropriate model matrix")
 	    }
 	}
 
@@ -49,12 +52,15 @@ model.newframe <- function(object, newdata, safe=FALSE, response=FALSE, ...) {
 	#Do a safe call, by building up a brand new model frame
 	Call <- object$call
 	Call[[1]] <- as.name("model.frame")
-	Call$formula <- bareterms(formula(object))
-   #might need to tack on the response here!
+	if (is.R()) Call$formula <- bareterms(formula(object))
+	else        Call$formula <- terms.inner(formula(object))
+   
+	#might need to tack on the response here!
 	if (response) stop("Not implemented yet for safe=TRUE, response=TRUE")
+
 	Call$na.action <- function(x)  x
-	Call <- Call[match(c("", "formula", "data", "subset", "na.action"),
-	    names(Call), 0)]
+	Call <- Call[c(1,match(c("formula", "data", "subset", "na.action"),
+	    names(Call), 0))]
 	data <- eval(Call)
 	attr(data, "terms") <- NULL
 	Call$subset <- NULL

@@ -9,7 +9,6 @@
 \alias{match.ratetable}
 \alias{as.matrix.ratetable}
 \alias{model.newframe}
-\alias{as.data.frame.difftime}
 \alias{coxpenal.df}
 \alias{coxpenal.fit}
 \alias{coxph.fit}
@@ -20,7 +19,7 @@
 \description{Internal survival functions}
 \usage{
 survreg.fit(x, y, weights, offset, init, controlvals, dist, scale = 0,
-    nstrat = 1, strata, parms = NULL)
+    nstrat = 1, strata, parms = NULL,assign)
 survpenal.fit(x, y, weights, offset, init, controlvals, dist, scale = 0,
     nstrat = 1, strata, pcols, pattr, assign, parms = NULL)
 survdiff.fit(y, x, strat, rho = 0)
@@ -30,7 +29,6 @@ match.ratetable(R, ratetable)
 is.na.ratetable2(x)
 is.na.coxph.penalty(x)
 model.newframe(object, newdata, safe = FALSE, response = FALSE, ...)
-\method{as.data.frame}{difftime}(x, row.names = NULL, optional = FALSE,...)
 coxpenal.df(hmat, hinv, fdiag, assign.list, ptype, nvar, pen1,
     pen2, sparse)
 coxpenal.fit(x, y, strata, offset, init, control, weights, method,
@@ -43,6 +41,7 @@ agreg.fit(x, y, strata, offset, init, control, weights, method,
 agexact.fit(x, y, strata, offset, init, control, weights, method,
     rownames) 
 }
-\details{These are not to be called by the user}
+\details{The arguments to these routines are not guarranteed to stay the
+same from release to release -- call them at your own risk!}
 \keyword{survival}
 \keyword{internal}

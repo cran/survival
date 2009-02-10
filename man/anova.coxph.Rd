@@ -1,12 +1,12 @@
 \name{anova.coxph}
 \alias{anova.coxph}
 \alias{anova.coxphlist}
-\title{Analysis of Deviance for Cox model.}
+\title{Analysis of Deviance for a Cox model.}
 \usage{
 \method{anova}{coxph}(object, \dots,  test = NULL)
 }
 \description{
-  Compute an analysis of deviance table for one Cox model fit.
+  Compute an analysis of deviance table for one or more Cox model fits.
 }
 \arguments{
   \item{object}{An object of class \code{coxph}}
@@ -32,7 +32,8 @@
   comparing the reduction in deviance for the row to the residuals.
     Mallows' \eqn{C_p}{Cp} statistic is the residual
     deviance plus twice the  residual degrees of freedom, which is closely
-  related to AIC. Don't use \code{test=F}, it doesn't make sense.
+  related to AIC. Don't use \code{test=F}, it doesn't make sense for a
+  Cox model.
 }
 \value{
   An object of class \code{"anova"} inheriting from class \code{"data.frame"}.

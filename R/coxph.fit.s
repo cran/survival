@@ -1,15 +1,13 @@
-# SCCS  @(#)coxph.fit.s	5.8 06/24/99
+# $Id: coxph.fit.S 11059 2008-10-23 12:32:50Z therneau $
 coxph.fit <- function(x, y, strata, offset, init, control,
 			weights, method, rownames)
     {
     n <-  nrow(y)
-    if (is.matrix(x))
-        nvar <- ncol(x)
-    else
-        if (length(x)==0)
-            nvar <-0
-        else
-            nvar <-1
+    if (is.matrix(x)) nvar <- ncol(x)
+    else {
+	if (length(x)==0) nvar <-0
+	else nvar <-1
+	}
     time <- y[,1]
     status <- y[,2]
 
@@ -66,8 +64,7 @@ coxph.fit <- function(x, y, strata, offset, init, control,
 		   double(2*n + 2*nvar*nvar + 3*nvar),
 		   as.double(control$eps),
 		   as.double(control$toler.chol),
-		   sctest=as.double(method=="efron")
-                 ,PACKAGE="survival")
+		   sctest=as.double(method=="efron") )
 
     if (nullmodel) {
 	score <- exp(offset[sorted])
@@ -78,8 +75,7 @@ coxph.fit <- function(x, y, strata, offset, init, control,
 				newstrat,
 				as.double(score),
 				as.double(weights),
-				resid=double(n),
-                     PACKAGE="survival")
+				resid=double(n))
 	resid <- double(n)
 	resid[sorted] <- coxres$resid
 	names(resid) <- rownames
@@ -119,8 +115,7 @@ coxph.fit <- function(x, y, strata, offset, init, control,
 				newstrat,
 				as.double(score),
 				as.double(weights),
-				resid=double(n),
-                     PACKAGE="survival")
+				resid=double(n))
 	resid <- double(n)
 	resid[sorted] <- coxres$resid
 	names(resid) <- rownames

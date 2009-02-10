@@ -4,7 +4,6 @@
 \usage{
 ridge(..., theta, df=nvar/2, eps=0.1, scale=TRUE)
 }
-%- maybe also `usage' for other objects documented here.
 \arguments{
  \item{\dots}{predictors to be ridged }
  \item{theta}{penalty is \code{theta}/2 time sum of squared coefficients }

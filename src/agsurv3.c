@@ -1,4 +1,4 @@
-/*  SCCS @(#)agsurv3.c	5.4 02/09/00*/
+/*  SCCS $Id: agsurv3.c 11183 2009-01-21 13:33:40Z therneau $ */
 /*
 ** Create the cohort survival curve(s) for a set of subjects.
 **
@@ -59,7 +59,7 @@ static double   *y,
 		**used,
 		**tvar;
 static double   *strata,
-	        thetime, /* Some HP-UX don't like even static 'time' */
+                ttime,    /* Some HP compilers choke on "time" as a variable */
 		**imat,
 		*mean;
 static int      death,
@@ -69,13 +69,14 @@ static int      death,
 		n;
 static void    addup();
 
-void agsurv3(int   *sn,    int   *snvar,    int   *sncurve, 
-	     int   *snpt,  int   *sse,      double *score, 
+void agsurv3(Sint   *sn,    Sint   *snvar,    Sint   *sncurve, 
+	     Sint   *snpt,  Sint   *sse,      double *score, 
 	     double *sy,    double *r,        double *coef, 
-	     double *var,   double *cmean,    int   *scn, 
+	     double *var,   double *cmean,    Sint   *scn, 
 	     double *cy,    double *cx,       double *ssurv,
-	     double *varh,  double *sused,    int   *smethod)
+	     double *varh,  double *sused,    Sint   *smethod)
 {
+S_EVALUATOR
     register int i,j,k,l;
     double *start, *stop, *event;
     int cn;
@@ -93,13 +94,13 @@ void agsurv3(int   *sn,    int   *snvar,    int   *sncurve,
 	   denom;
     double inc,
 	   sumt,
-	   km=0;
+	   km =0;
     double temp,
 	   downwt,
 	   d2;
     double haz,
 	   varhaz;
-    double **oldx=0;
+    double **oldx =0;
 
 
     n = *sn;  nvar = *snvar;
@@ -121,6 +122,7 @@ void agsurv3(int   *sn,    int   *snvar,    int   *sncurve,
     */
     need = 2*n + se*nvar*(2+ n*(n+1)/2);
     nscore = (double *) ALLOC(need, sizeof(double));
+    for (i=0; i<need; i++) nscore[i] =0.0;  /* R doesn't zero the memory */
     isurv  = nscore + n;
     for (i=0; i<n; i++) isurv[i]=1;
     if (se==1) {
@@ -182,11 +184,11 @@ void agsurv3(int   *sn,    int   *snvar,    int   *sncurve,
 		a[i] =0;
 		a2[i]=0;
 		}
-	    thetime = stop[person];
+	    ttime = stop[person];
 	    nrisk =0;
 	    deaths=0;
 	    for (k=person; k<cn; k++) {
-		if (start[k] < thetime) {
+		if (start[k] < ttime) {
 		    nrisk++;
 		    weight = score[k];
 		    denom += weight;
@@ -194,7 +196,7 @@ void agsurv3(int   *sn,    int   *snvar,    int   *sncurve,
 			a[i] += weight*(oldx[i][k]);
 			}
 		     }
-		if (stop[k]==thetime && event[k]==1) {
+		if (stop[k]==ttime && event[k]==1) {
 		    kk=k;
 		    deaths++;
 		    e_denom += weight;
@@ -205,11 +207,11 @@ void agsurv3(int   *sn,    int   *snvar,    int   *sncurve,
 		}
 
 	    /*
-	    ** Now compute the increment in the hazard and variance at "thetime"
+	    ** Now compute the increment in the hazard and variance at "time"
 	    */
 	    if (method <3) for (i=0; i<nvar2; i++) mean[i] = a[i]/denom;
 	    if (method==1) {
-		for (psave=person; psave<cn && stop[psave]==thetime; psave++) 
+		for (psave=person; psave<cn && stop[psave]==ttime; psave++) 
 		/*
 		** kalbfleisch estimator requires iteration;
 		*/
@@ -243,11 +245,11 @@ void agsurv3(int   *sn,    int   *snvar,    int   *sncurve,
 
 	    else if (method==2) {
 		addup(itime, deaths/denom, deaths/(denom*denom));
-		for (; person<cn && stop[person]==thetime; person++);
+		for (; person<cn && stop[person]==ttime; person++);
 		}
 	    else {
 		temp =0;  haz=0; varhaz=0;
-		for (k=person; k<cn && stop[k]==thetime; k++) {
+		for (k=person; k<cn && stop[k]==ttime; k++) {
 		    if (event[k]==1) {
 			downwt = temp++/deaths;
 			d2 = (denom - downwt*e_denom);
@@ -260,7 +262,7 @@ void agsurv3(int   *sn,    int   *snvar,    int   *sncurve,
 		    person++;
 		    }
 		}
-	    start[itime] = thetime;
+	    start[itime] = ttime;
 	    stop[itime] = nrisk;
 	    event[itime]= deaths;
 	    itime++;
@@ -304,7 +306,7 @@ double haz, var;
 	totvar =0;
 	for (i=pstart; i<n && strata[i]==ic; i++) {
 	    nn++;
-	    if (y[i] >= thetime) {
+	    if (y[i] >= ttime) {
 		temp =  -haz*nscore[i];  /*increment to the individual hazard*/
 		if  (death==0) {
 		    wt += isurv[i];

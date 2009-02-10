@@ -1,5 +1,5 @@
-#SCCS  @(#)coxph.detail.s	4.11 07/20/98
-coxph.detail <-  function(object) {
+# $Id: coxph.detail.S 11190 2009-01-26 04:38:12Z therneau $
+coxph.detail <-  function(object, riskmat=FALSE) {
     method <- object$method
     if (method!='breslow' && method!='efron')
 	stop(paste("Detailed output is not available for the", method,
@@ -7,7 +7,7 @@ coxph.detail <-  function(object) {
     n <- length(object$residuals)
     rr <- object$residuals
     weights <- object$weights        #always present if there are weights
-    x <- object$x
+    x <- object[['x']]
     y <- object$y
     strat <- object$strata
     Terms <- object$terms
@@ -47,19 +47,27 @@ coxph.detail <-  function(object) {
     else                  weights <- weights[ord]
 
     ndeath <- sum(y[,3])
+    if (riskmat) {
+	rmat <- integer(ndeath*n)
+	}
+    else rmat <- as.integer(1)
+    
+    
     ff <- .C("coxdetail", as.integer(n),
 			  as.integer(nvar),
 			  ndeath= as.integer(ndeath),
 			  y = y,
 			  as.double(x),
-			  as.integer(newstrat),
-			  index =as.double(score),
+			  index = as.integer(newstrat),
+			  event2 =as.double(score),
 			  weights = as.double(weights),
-			  means= c(method=='efron', double(ndeath*nvar)),
+			  means= c(method=='efron', double(ndeath*nvar-1)),
 			  u = double(ndeath*nvar),
 			  i = double(ndeath*nvar*nvar),
+	                  rmat = rmat,
+	                  nrisk2 = double(ndeath),
 			  double(nvar*(3 + 2*nvar)),
-             PACKAGE="survival")
+                          PACKAGE = 'survival')
     keep <- 1:ff$ndeath
     vname<- dimnames(x)[[2]]
     time <- y[ff$index[keep],2]
@@ -67,6 +75,12 @@ coxph.detail <-  function(object) {
     means<- (matrix(ff$means,ndeath, nvar))[keep,]
     score<-  matrix(ff$u, ndeath, nvar)[keep,]
     var <- array(ff$i, c(nvar, nvar, ndeath))[,,keep]
+    if (riskmat) {
+	rmat <- matrix(0, n, ff$ndeath)
+	rmat[ord,] <- ff$rmat[1:(n*ff$ndeath)]  # in the order of orig data
+	dimnames(rmat) <- list(NULL, time)
+	}
+
     if (nvar>1) {
 	dimnames(means) <- list(time, vname)
 	dimnames(score) <- list(time, vname)
@@ -83,6 +97,11 @@ coxph.detail <-  function(object) {
 	 nrisk = ff$y[keep,2], hazard= ff$y[keep,3], score= score,  imat=var,
 	 varhaz=ff$weights[keep], y=y, x=x)
     if (length(strats)) temp$strata <- table((strat[ord])[ff$index[keep]])
-    if (!all(weights==1)) temp$weights <- weights
+    if (riskmat) temp$riskmat <- rmat
+    if (!all(weights==1)) {
+	temp$weights <- weights
+	temp$nevent.wt <- ff$event2[keep]
+	temp$nrisk.wt  <- ff$nrisk2[keep]
+	}
     temp
     }

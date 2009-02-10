@@ -1,8 +1,8 @@
-# SCCS @(#)survreg.distributions.s	4.7 02/06/99
+# $Id: survreg.distributions.S 11198 2009-02-02 05:01:22Z therneau $
 #
 # Create the survreg.distributions object
 #
-survreg.distributions <- local({list(
+survreg.distributions <- list(
 'extreme' = list(
     name = "Extreme value",
     variance = function(parm) pi^2/6,
@@ -130,9 +130,9 @@ loglogistic = list(
 t = list(
     name  = "Student-t",
     variance = function(df) df/(df-2),
-    parms = list(df=4),
+    parms = c(df=4),
     init  = function(x, weights, df) {
-	if (df <=2) stop ("Invalid degrees of freedom for the t-distribution")
+	if (df <=2) stop ("Degrees of freedom must be >=3")
 	mean <- sum(x*weights)/ sum(weights)
 	var  <- sum(weights*(x-mean)^2)/ sum(weights)
 	c(mean, var*(df-2)/df)
@@ -156,7 +156,8 @@ t = list(
 )
 
 
-})
+
+
 
 
 

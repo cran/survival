@@ -3,7 +3,10 @@
 \alias{aml}
 \alias{leukemia}
 \title{Acute Myelogenous Leukemia survival data}
-\description{Survival in patients with Acute Myelogenous Leukemia}
+\description{Survival in patients with Acute Myelogenous Leukemia.
+  The question at the time was whether the standard course of
+chemotherapy should be extended ('maintainance') for additional
+cycles.}
 \usage{
 aml
 leukemia

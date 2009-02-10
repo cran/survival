@@ -31,13 +31,3 @@ survreg.object 	 Parametric Survival Model Object
 survSplit	 Split data for creating time-dependent covariates.
 anova.survreg    ANOVA tables for survreg objects
 untangle.specials  Help process the 'specials' argument of the terms function. 
-
--------- date functions --------------
-as.date          Coerce Data to Dates
-date.ddmmmyy     Format a Julian date
-date.mdy         Convert from Julian Dates to Month, Day, and
-                         Year
-date.mmddyy      Format a Julian date
-date.mmddyyyy    Format a Julian date
-date.object      Date Objects
-mdy.date         Convert to Julian Dates

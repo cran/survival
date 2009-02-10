@@ -1,6 +1,6 @@
-#   SCCS @(#)frailty.controlaic.s	1.3 01/14/99
+#  $Id: frailty.controlaic.S 10788 2008-09-18 00:48:23Z therneau $
 # Control function to minimize the AIC
-#  the optional paramater "caic" chooses corrected aic (default=F)
+#  the optional paramater "caic" chooses corrected aic (default=FALSE)
 # n is the "effective" sample size
 #
 
@@ -28,10 +28,8 @@ frailty.controlaic <- function(parms, iter, old, n, df, loglik) {
 
     history <- rbind(old$history,c(old$theta, loglik, df, loglik-df, 
 				   loglik -dfc))
-    if (is.null(parms$trace))
-        trace <-FALSE
-    else
-        trace <- parms$trace
+    if (is.null(parms$trace)) trace <-FALSE
+    else trace <- parms$trace
     
     if (iter==2) {  #Third guess
 	theta <- mean(history[,1])

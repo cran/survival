@@ -1,0 +1,273 @@
+
+R version 2.7.1 (2008-06-23)
+Copyright (C) 2008 The R Foundation for Statistical Computing
+ISBN 3-900051-07-0
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> options(na.action=na.exclude) # preserve missings
+> options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
+> library(survival)
+Loading required package: splines
+> 
+> #
+> # Run a test that can be verified using other packages (we used SAS)
+> #
+> test1 <- data.frame(time=  c(9, 3,1,1,6,6,8),
++                     status=c(1,NA,1,0,1,1,0),
++                     x=     c(0, 2,1,1,1,0,0))
+> fit1w <- survreg(Surv(time, status) ~x, test1, dist='weibull')
+> fit1w
+Call:
+survreg(formula = Surv(time, status) ~ x, data = test1, dist = "weibull")
+
+Coefficients:
+(Intercept)           x 
+  2.2373335  -0.7442249 
+
+Scale= 0.4563163 
+
+Loglik(model)= -10.3   Loglik(intercept only)= -11.4
+	Chisq= 2.22 on 1 degrees of freedom, p= 0.14 
+n=6 (1 observation deleted due to missingness)
+> summary(fit1w)
+
+Call:
+survreg(formula = Surv(time, status) ~ x, data = test1, dist = "weibull")
+             Value Std. Error     z        p
+(Intercept)  2.237      0.330  6.78 1.18e-11
+x           -0.744      0.486 -1.53 1.26e-01
+Log(scale)  -0.785      0.433 -1.81 6.99e-02
+
+Scale= 0.456 
+
+Weibull distribution
+Loglik(model)= -10.3   Loglik(intercept only)= -11.4
+	Chisq= 2.22 on 1 degrees of freedom, p= 0.14 
+Number of Newton-Raphson Iterations: 8 
+n=6 (1 observation deleted due to missingness)
+
+> 
+> fit1e <- survreg(Surv(time, status) ~x, test1, dist='exponential')
+> fit1e
+Call:
+survreg(formula = Surv(time, status) ~ x, data = test1, dist = "exponential")
+
+Coefficients:
+(Intercept)           x 
+   2.442347   -1.056053 
+
+Scale fixed at 1 
+
+Loglik(model)= -11.7   Loglik(intercept only)= -12.2
+	Chisq= 1.07 on 1 degrees of freedom, p= 0.3 
+n=6 (1 observation deleted due to missingness)
+> summary(fit1e)
+
+Call:
+survreg(formula = Surv(time, status) ~ x, data = test1, dist = "exponential")
+            Value Std. Error     z        p
+(Intercept)  2.44      0.707  3.45 0.000552
+x           -1.06      1.000 -1.06 0.290944
+
+Scale fixed at 1 
+
+Exponential distribution
+Loglik(model)= -11.7   Loglik(intercept only)= -12.2
+	Chisq= 1.07 on 1 degrees of freedom, p= 0.3 
+Number of Newton-Raphson Iterations: 4 
+n=6 (1 observation deleted due to missingness)
+
+> 
+> fit1l <- survreg(Surv(time, status) ~x, test1, dist='loglogistic')
+> fit1l
+Call:
+survreg(formula = Surv(time, status) ~ x, data = test1, dist = "loglogistic")
+
+Coefficients:
+(Intercept)           x 
+   2.177208   -1.195672 
+
+Scale= 0.3847582 
+
+Loglik(model)= -10.7   Loglik(intercept only)= -12
+	Chisq= 2.7 on 1 degrees of freedom, p= 0.1 
+n=6 (1 observation deleted due to missingness)
+> summary(fit1l)
+
+Call:
+survreg(formula = Surv(time, status) ~ x, data = test1, dist = "loglogistic")
+             Value Std. Error     z        p
+(Intercept)  2.177      0.365  5.96 2.48e-09
+x           -1.196      0.711 -1.68 9.25e-02
+Log(scale)  -0.955      0.396 -2.41 1.58e-02
+
+Scale= 0.385 
+
+Log logistic distribution
+Loglik(model)= -10.7   Loglik(intercept only)= -12
+	Chisq= 2.7 on 1 degrees of freedom, p= 0.1 
+Number of Newton-Raphson Iterations: 4 
+n=6 (1 observation deleted due to missingness)
+
+> 
+> fit1g <- survreg(Surv(time, status) ~x, test1, dist='lognormal')
+> summary(fit1g)
+
+Call:
+survreg(formula = Surv(time, status) ~ x, data = test1, dist = "lognormal")
+             Value Std. Error     z        p
+(Intercept)  2.210      0.404  5.48 4.35e-08
+x           -1.268      0.585 -2.17 3.03e-02
+Log(scale)  -0.446      0.342 -1.30 1.93e-01
+
+Scale= 0.64 
+
+Log Normal distribution
+Loglik(model)= -10.5   Loglik(intercept only)= -12.1
+	Chisq= 3.26 on 1 degrees of freedom, p= 0.071 
+Number of Newton-Raphson Iterations: 5 
+n=6 (1 observation deleted due to missingness)
+
+> #
+> #  Do a test with the ovarian data
+> #
+> fitfw <- survreg(Surv(futime, fustat) ~ age + ecog.ps, ovarian,
++ 	dist='weibull')
+> fitfw
+Call:
+survreg(formula = Surv(futime, fustat) ~ age + ecog.ps, data = ovarian, 
+    dist = "weibull")
+
+Coefficients:
+(Intercept)         age     ecog.ps 
+12.28496723 -0.09702669  0.09977342 
+
+Scale= 0.6032744 
+
+Loglik(model)= -90   Loglik(intercept only)= -98
+	Chisq= 15.98 on 2 degrees of freedom, p= 0.00034 
+n= 26 
+> 
+> fitfl <- survreg(Surv(futime, fustat) ~ age + ecog.ps, ovarian,
++ 	dist='loglogistic')
+> fitfl
+Call:
+survreg(formula = Surv(futime, fustat) ~ age + ecog.ps, data = ovarian, 
+    dist = "loglogistic")
+
+Coefficients:
+(Intercept)         age     ecog.ps 
+11.50853384 -0.08876814  0.09033348 
+
+Scale= 0.4464064 
+
+Loglik(model)= -89.5   Loglik(intercept only)= -97.4
+	Chisq= 15.67 on 2 degrees of freedom, p= 4e-04 
+n= 26 
+> 
+> flem2 <- scan("data.fleming2", what=list(ltime=0, rtime=0))
+Read 26 records
+> flsurv<- Surv(flem2$ltime, flem2$rtime, type='interval2')
+> 
+> fitfw2 <- survreg(flsurv ~ age + ecog.ps, ovarian, dist='weibull')
+> summary(fitfw2)
+
+Call:
+survreg(formula = flsurv ~ age + ecog.ps, data = ovarian, dist = "weibull")
+              Value Std. Error      z        p
+(Intercept) 12.3870     1.5981  7.751 9.13e-15
+age         -0.0987     0.0253 -3.898 9.70e-05
+ecog.ps      0.1013     0.3773  0.269 7.88e-01
+Log(scale)  -0.4788     0.2582 -1.854 6.37e-02
+
+Scale= 0.62 
+
+Weibull distribution
+Loglik(model)= -50.2   Loglik(intercept only)= -58
+	Chisq= 15.62 on 2 degrees of freedom, p= 0.00041 
+Number of Newton-Raphson Iterations: 6 
+n= 26 
+
+> 
+> fitfl2 <- survreg(flsurv ~ age + ecog.ps, ovarian, dist='loglogistic')
+> summary(fitfl2)
+
+Call:
+survreg(formula = flsurv ~ age + ecog.ps, data = ovarian, dist = "loglogistic")
+              Value Std. Error      z        p
+(Intercept) 11.5250     1.5220  7.572 3.67e-14
+age         -0.0889     0.0239 -3.721 1.98e-04
+ecog.ps      0.0858     0.3626  0.237 8.13e-01
+Log(scale)  -0.8067     0.2706 -2.981 2.87e-03
+
+Scale= 0.446 
+
+Log logistic distribution
+Loglik(model)= -49.8   Loglik(intercept only)= -57.6
+	Chisq= 15.46 on 2 degrees of freedom, p= 0.00044 
+Number of Newton-Raphson Iterations: 5 
+n= 26 
+
+> 
+> fitfg2 <- survreg(flsurv ~ age + ecog.ps, ovarian, dist='lognormal')
+> summary(fitfg2)
+
+Call:
+survreg(formula = flsurv ~ age + ecog.ps, data = ovarian, dist = "lognormal")
+              Value Std. Error      z        p
+(Intercept) 11.1575     1.4301  7.802 6.10e-15
+age         -0.0856     0.0237 -3.614 3.02e-04
+ecog.ps      0.2081     0.3815  0.545 5.86e-01
+Log(scale)  -0.2334     0.2507 -0.931 3.52e-01
+
+Scale= 0.792 
+
+Log Normal distribution
+Loglik(model)= -50   Loglik(intercept only)= -57.5
+	Chisq= 15.03 on 2 degrees of freedom, p= 0.00055 
+Number of Newton-Raphson Iterations: 5 
+n= 26 
+
+> #
+> # Check out the survreg density and probability functions
+> #
+> 
+> # Gaussian
+> x <- -10:10
+> p <- seq(.1, .95, length=25)
+> all.equal(dsurvreg(x, 1, 5, 'gaussian'), dnorm(x, 1, 5))
+[1] TRUE
+> all.equal(psurvreg(x, 1, 5, 'gaussian'), pnorm(x, 1, 5))
+[1] TRUE
+> all.equal(qsurvreg(p, 1, 5, 'gaussian'), qnorm(p, 1, 5))
+[1] TRUE
+> 
+> # Lognormal
+> x <- 1:10
+> all.equal(dsurvreg(x, 1, 5, 'lognormal'), dlnorm(x, 1, 5))
+[1] TRUE
+> all.equal(psurvreg(x, 1, 5, 'lognormal'), plnorm(x, 1, 5))
+[1] TRUE
+> all.equal(qsurvreg(p, 1, 5, 'lognormal'), qlnorm(p, 1, 5))
+[1] TRUE
+> 
+> # Weibull
+> lambda <- exp(-2)
+> rho    <- 1/3
+> temp <- (lambda*x)^rho
+> all.equal(psurvreg(x, 2, 3), 1- exp(-temp))
+[1] TRUE
+> all.equal(dsurvreg(x, 2, 3), lambda*rho*(lambda*x)^(rho-1)*exp(-temp))
+[1] TRUE
+> 

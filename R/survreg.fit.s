@@ -1,10 +1,11 @@
 # 
-#  SCCS @(#)survreg.fit.s	5.10 07/10/00
+#  $Id: survreg.fit.S 11236 2009-02-14 11:46:53Z therneau $
+#  Do the actual fit of a survreg model.  This routine is for the case
+#   of no penalized terms (splines, etc).
 #
 survreg.fit<- function(x, y, weights, offset, init, controlvals, dist, 
-		       scale=0, nstrat=1, strata, parms=NULL) {
+		       scale=0, nstrat=1, strata, parms=NULL, assign) {
 
-    controlvals<-do.call("survreg.control", controlvals)
     iter.max <- controlvals$iter.max
     eps <- controlvals$rel.tolerance
     toler.chol <- controlvals$toler.chol
@@ -24,10 +25,8 @@ survreg.fit<- function(x, y, weights, offset, init, controlvals, dist,
     if (nstrat>1 && (missing(strata) || length(strata)!= n))
 	    stop("Invalid strata variable")
     if (nstrat==1) strata <- rep(1,n)
-    if (scale >0)
-        nstrat2 <- 0
-    else
-        nstrat2 <- nstrat
+    if (scale >0) nstrat2 <- 0          # number of variances to estimate
+    else          nstrat2 <- nstrat
 
     if (is.character(dist)) {
 	sd <- survreg.distributions[[dist]]
@@ -38,30 +37,42 @@ survreg.fit<- function(x, y, weights, offset, init, controlvals, dist,
 	stop("Missing density function in the definition of the distribution")
     dnum <- match(sd$name, c("Extreme value", "Logistic", "Gaussian"))
     if (is.na(dnum)) {
-	# Not one of the "built-in distributions
-	dnum <- 4
-	fitter <- 'survreg3'
-	#Set up the callback for the sparse frailty term
-	n2 <- n + sum(y[,ny]==3)
-	f.expr1 <- function(z){
-            
-	    if (length(parms)) temp <- sd$density(z, parms)
-	    else               temp <- sd$density(z)
-	    
-	    if (!is.matrix(temp) || any(dim(temp) != c(n2,5)))
-		    stop("Density function returned an invalid matrix")
-	    list(z=z,density=as.vector(as.double(temp)))}
+        #  We need to set up a callback routine
+        #  This returns the 5 number distribution summary (see the density
+        #  functions in survreg.distributions).  Interval censored obs require
+        #  2 evals and all others 1, so the call to the routine will have n2
+        #  values.
+	dnum <- 4  # flag for the C routine
+	n2 <- n + sum(y[,ny]==3)  
         
-	survlist <- list(z=double(n2), density=double(n2*5))
-	###.C("init_survcall", expr1, PACKAGE="survival")
-	}
+	#
+        # Create an expression that will be evaluated by the C-code,
+        #   but with knowledge of some current variables
+        # In the R doc, this would be "body(function(z) {"
+	#  in Splus (Chambers book):  "functionBody(function(z)"
+	#  same action, different name.  Luckily 'quote' exists in both.
+	# We make very sure the result is the right type and length here
+	#  rather than in the C code, for simplicity.
+        f.expr <- quote({
+                if (length(parms)) temp <- sd$density(z, parms)
+                else               temp <- sd$density(z)
+                if (!is.matrix(temp) || any(dim(temp) != c(n2,5)) ||
+                    !is.numeric(temp))
+		    stop("Density function returned an invalid matrix")
+                as.vector(as.double(temp))
+                })
+       
+        # create an isolated sandbox (frame or environment) in which
+	#  we can do the evaluation without endangering local objects
+	#  but still with knowlege of sd, parms, and n2
+        if (is.R()) rho <- new.env() #inherits necessary objects
+	else        rho <- new.frame(list(sd=sd, parms=parms, n2=n2))
+        }
     else {
-        fitter <- 'survreg2'
-        f.expr1<-function(z) NULL
-    }
-    ##
-    ## environment for callbacks
-    rho<-environment()
+	f.expr <- 1  #dummy values for the .Call
+	rho <- 1
+	}
+
     # This is a subset of residuals.survreg: define the first and second
     #   derivatives at z=0 for the 4 censoring types
     #   Used below for starting estimates
@@ -98,57 +109,60 @@ survreg.fit<- function(x, y, weights, offset, init, controlvals, dist,
 	}
 
     #
-    # Fit the model with just a mean and scale
-    #    assume initial values don't apply here
-    # Unless, of course, someone is fitting a mean only model!
+    # A good initial value of the scale turns out to be critical for successful
+    #   iteration, in a surprisingly large number of data sets.
+    # The best way we've found to get one is to fit a model with only the
+    #   mean and the scale.  We don't need to do this in 3 situations:
+    #    1. The only covariate is a mean (this step is then just a duplicate
+    #       of the main fit).
+    #    2. There are no scale parameters to estimate
+    #    3. The user gave initial estimates for the scale
+    # However, for 2 and 3 we still want the loglik for a mean only model
+    #  as a part of the returned object.
     #
+    nvar2 <- nvar + nstrat2
     meanonly <- (nvar==1 && all(x==1))
     if (!meanonly) {
 	yy <- ifelse(y[,ny]!=3, y[,1], (y[,1]+y[,2])/2 )
-	coef <- sd$init(yy, weights, parms)
+	coef <- sd$init(yy, weights, parms)  #starting estimate for this model
 	#init returns \sigma^2, I need log(sigma)
 	# We sometimes get into trouble with a small estimate of sigma,
 	#  (the surface isn't SPD), but never with a large one.  Double it.
 	if (scale >0) vars <- log(scale)
-	else vars <- log(coef[2])/2  +.7
+	else vars <- log(4*coef[2])/2    # log(2*sqrt(variance)) = log(4*var)/2
 	coef <- c(coef[1], rep(vars, nstrat))
 	
 	# get a better initial value for the mean using the "glim" trick
 	deriv <- derfun(y, yy, exp(vars), sd$density, parms)
 	wt <-  -1*deriv$ddg*weights
 	coef[1] <- sum(weights*deriv$dg + wt*(yy -offset)) / sum(wt)
-
+        
 	# Now the fit proper (intercept only)
-	nvar2 <- 1 +nstrat2
-	fit0 <- .C(fitter,
-		       iter = as.integer(iter.max),
-		       as.integer(n),
-		       as.integer(1),
+	fit0 <- .Call('survreg6',
+		       iter = as.integer(20),
+		       nvar = as.integer(1),
 		       as.double(y),
 		       as.integer(ny),
-		       as.double(rep(1.0, n)),
+		       x = as.double(rep(1.0, n)),
 		       as.double(weights),
 		       as.double(offset),
 		       coef= as.double(coef),
 		       as.integer(nstrat2),
 		       as.integer(strata),
-		       u = double(3*(nvar2) + nvar2^2),
-		       var = matrix(0.0, nvar2, nvar2),
-		       loglik=double(1),
-		       flag=integer(1),
 		       as.double(eps),
 		       as.double(toler.chol), 
 		       as.integer(dnum),
-		       debug = as.integer(floor(debug/2)),
-                       Rexpr=f.expr1, Renv=rho,
-                   PACKAGE="survival")
+		       f.expr,
+		       rho)
 	}
-
     #
     # Fit the model with all covariates
     #
-    nvar2 <- nvar + nstrat2
     if (is.numeric(init)) {
+	if (length(init) == nvar && (nvar2 > nvar)) {
+	    # Add on the variance estimates from above
+	    init <- c(init, fit0$coef[-1])
+	    }
 	if (length(init) != nvar2) stop("Wrong length for initial parameters")
 	if (scale >0) init <- c(init, log(scale))
 	}
@@ -158,7 +172,7 @@ survreg.fit<- function(x, y, weights, offset, init, controlvals, dist,
 	    yy <- ifelse(y[,ny]!=3, y[,1], (y[,1]+y[,2])/2 )
 	    coef <- sd$init(yy, weights, parms)
 	    if (scale >0) vars <- rep(log(scale), nstrat)
-	    else vars  <- rep(log(coef[2])/2 + .7, nstrat)  
+	    else vars  <- rep(log(4*coef[2])/2, nstrat)  
 	    }
 	else vars <- fit0$coef[-1]
 	eta <- yy - offset     #what would be true for a 'perfect' model
@@ -172,42 +186,30 @@ survreg.fit<- function(x, y, weights, offset, init, controlvals, dist,
 	}
 
     # Now for the fit in earnest
-
-    fit <- .C(fitter,
+    fit <- .Call('survreg6',
 		   iter = as.integer(iter.max),
-		   n = as.integer(n),
 		   as.integer(nvar),
 		   as.double(y),
 		   as.integer(ny),
 		   as.double(x),
 	           as.double(weights),
 		   as.double(offset),
-		   coef= as.double(init),
+		   as.double(init),
 	           as.integer(nstrat2),
 	           as.integer(strata),
-		   u = double(3*(nvar2) + nvar2^2),
-		   var = matrix(0.0, nvar2, nvar2),
-		   loglik=double(1),
-		   flag=integer(1),
 		   as.double(eps),
 	           as.double(toler.chol), 
 		   as.integer(dnum),
-                   debug = as.integer(debug),
-              Rexpr=f.expr1, Renv=rho,
-              PACKAGE="survival")
+		   f.expr,
+		   rho)
 
-    if (debug>0) browser()
     if (iter.max >1 && fit$flag > nvar2) {
-	if (controlvals$failure==1)
-	       warning("Ran out of iterations and did not converge")
-	else if (controlvals$failure==2)
-	       return("Ran out of iterations and did not converge")
+        warning("Ran out of iterations and did not converge")
 	}
 
     cname <- dimnames(x)[[2]]
     if (is.null(cname)) cname <- paste("x", 1:ncol(x))
     if (scale==0) cname <- c(cname, rep("Log(scale)", nstrat))
-    dimnames(fit$var) <- list(cname, cname)
     if (scale>0) fit$coef <- fit$coef[1:nvar2]
     names(fit$coef) <- cname
 
@@ -222,18 +224,12 @@ survreg.fit<- function(x, y, weights, offset, init, controlvals, dist,
 	}
     temp <- list(coefficients   = fit$coef,
 		 icoef  = coef0, 
-		 var    = fit$var,
+		 var    = matrix(fit$var, nvar2, dimnames=list(cname, cname)),
 		 loglik = loglik, 
 		 iter   = fit$iter,
-		 linear.predictors = c(x %*% fit$coef[1:nvar]),	
-		 df     = length(fit$coef)
+		 linear.predictors = c(x %*% fit$coef[1:nvar] + offset),
+                 df= length(fit$coef),
+		 score = fit$u
 		 )
-    if (debug>0) {
-	temp$u <- fit$u[1:nvar2]
-	JJ     <- matrix(fit$u[-seq(1, 3*nvar2)], nvar2, nvar2)
-	temp$JJ <- JJ
-	temp$var2 <- fit$var %*% JJ %*% fit$var
-	}
-
     temp
     }

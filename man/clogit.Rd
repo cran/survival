@@ -33,7 +33,7 @@ clogit(formula, data, method=c("exact", "approximate"), na.action=getOption("na.
 \seealso{\code{\link{strata}},\code{\link{coxph}},\code{\link{glm}} }
 
 \examples{
-clogit(case~spontaneous+induced+strata(stratum),data=infert)
+\dontrun{clogit(case~spontaneous+induced+strata(stratum),data=infert)}
 }
 \keyword{survival}%-- one or more ...
 \keyword{models}

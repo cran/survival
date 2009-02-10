@@ -1,4 +1,4 @@
-# SCCS @(#)frailty.controldf.s	1.3 12/02/98
+# $Id: frailty.controldf.S 10788 2008-09-18 00:48:23Z therneau $
 # A function to calibrate the df
 #    very empirical  
 # Find the closest 3 points that span the target value

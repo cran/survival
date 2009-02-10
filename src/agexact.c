@@ -1,4 +1,4 @@
-/*  SCCS @(#)agexact.c	5.2 10/27/98 */
+/* $Id: agexact.c 11080 2008-10-24 03:47:51Z therneau $ */
 /*
 ** Anderson-Gill formulation of the cox Model
 **   Do an exact calculation of the partial likelihood. (CPU city!)
@@ -52,11 +52,11 @@
 #include "survS.h"
 #include "survproto.h"
 
-void agexact(int *maxiter,  int *nusedx,   int *nvarx,   double *start, 
-	     double *stop,   int *event,    double *covar2,double *offset, 
-	     int   *strata, double *means,  double *beta,  double *u, 
-	     double *imat2,  double loglik[2], int *flag,  double *work, 
-	     int   *work2,  double *eps,    double *tol_chol, double *sctest)
+void agexact(Sint *maxiter,  Sint *nusedx,   Sint *nvarx,   double *start, 
+	     double *stop,   Sint *event,    double *covar2,double *offset, 
+	     Sint   *strata, double *means,  double *beta,  double *u, 
+	     double *imat2,  double loglik[2], Sint *flag,  double *work, 
+	     Sint   *work2,  double *eps,    double *tol_chol, double *sctest)
 {
     int i,j,k, l, person;
     int     iter;
@@ -68,7 +68,7 @@ void agexact(int *maxiter,  int *nusedx,   int *nvarx,   double *start,
     double  denom, zbeta, weight;
     double  time;
     double  temp;
-    double  newlk=0; /*-Wall*/
+    double  newlk =0;
     int     halving;    /*are we doing step halving at the moment? */
     int     nrisk, deaths;
     int *index, *atrisk;
@@ -97,6 +97,7 @@ void agexact(int *maxiter,  int *nusedx,   int *nvarx,   double *start,
 	for (person=0; person<n; person++) temp += covar[i][person];
 	temp /= n;
 	means[i] = temp;
+	for (person=0; person<n; person++) covar[i][person] -= temp;
 	}
 
     /*
@@ -339,14 +340,13 @@ void agexact(int *maxiter,  int *nusedx,   int *nvarx,   double *start,
 	*/
 	*flag = cholesky2(imat, nvar, *tol_chol);
 
-	if (fabs(1-(loglik[1]/newlk))<=*eps ) { /* all done */
+	if (fabs(1-(loglik[1]/newlk))<=*eps && halving==0) { /* all done */
 	    loglik[1] = newlk;
 	    chinv2(imat, nvar);     /* invert the information matrix */
 	    for (i=1; i<nvar; i++)
 		for (j=0; j<i; j++)  imat[i][j] = imat[j][i];
 	    for (i=0; i<nvar; i++)
 		beta[i] = newbeta[i];
-	    if (halving==1) *flag= 1000; /*didn't converge after all */
 	    *maxiter = iter;
 	    return;
 	    }

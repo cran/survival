@@ -1,4 +1,4 @@
-# SCCS @(#)summary.survreg.s	4.15 02/11/99
+# $Id: summary.survreg.S 11059 2008-10-23 12:32:50Z therneau $
 summary.survreg<- function(object, correlation = FALSE,...)
 {
     if (!is.null(object$fail)) {
@@ -63,8 +63,10 @@ summary.survreg<- function(object, correlation = FALSE,...)
 			'scale', 'coefficients', 'var'), 
 		      names(object), nomatch=0)]
     x <- c(x, list(table=table, correlation=correl, parms=pprint,
-		   n=n, chi=2*diff(object$loglik)), robust=!is.null(object$naive.var))
+		   n=n, chi=2*diff(object$loglik)), 
+	           robust=!is.null(object$naive.var))
 
-    class(x) <- 'summary.survreg'
+    if (is.R()) class(x) <- 'summary.survreg'
+    else        oldClass(x) <- 'summary.survreg'
     x
     }

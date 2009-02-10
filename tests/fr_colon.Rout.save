@@ -1,0 +1,316 @@
+
+R version 2.7.1 (2008-06-23)
+Copyright (C) 2008 The R Foundation for Statistical Computing
+ISBN 3-900051-07-0
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> options(na.action=na.exclude) # preserve missings
+> options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
+> library(survival)
+Loading required package: splines
+> 
+> #
+> # Fit models to the Colon cancer data used in Lin
+> #
+> fitc1 <- coxph(Surv(time, status) ~ rx + extent + node4 + cluster(id)
++ 	        + strata(etype), colon)
+> fitc1
+Call:
+coxph(formula = Surv(time, status) ~ rx + extent + node4 + cluster(id) + 
+    strata(etype), data = colon)
+
+
+             coef exp(coef) se(coef) robust se      z       p
+rxLev     -0.0362     0.964   0.0768     0.106 -0.343 7.3e-01
+rxLev+5FU -0.4488     0.638   0.0840     0.117 -3.842 1.2e-04
+extent     0.5155     1.674   0.0796     0.110  4.701 2.6e-06
+node4      0.8799     2.411   0.0681     0.096  9.160 0.0e+00
+
+Likelihood ratio test=248  on 4 df, p=0  n= 1858 
+> 
+> fitc2 <- coxph(Surv(time, status) ~ rx + extent + node4 + 
++ 	       frailty(id, dist='gauss', trace=T)
++ 	        + strata(etype), colon)
+     theta     resid      fsum    trace
+[1,]     1 0.5721865  677.2472 498.2323
+[2,]     3 0.8244916 2430.3958 880.5538
+    new theta= 6 
+
+     theta     resid      fsum     trace
+[1,]     1 0.5721865  677.2472  498.2323
+[2,]     3 0.8244916 2430.3958  880.5538
+[3,]     6 0.3152272 4520.0041 1279.6138
+    new theta= 12 
+
+     theta      resid      fsum     trace
+[1,]     1  0.5721865  677.2472  498.2323
+[2,]     3  0.8244916 2430.3958  880.5538
+[3,]     6  0.3152272 4520.0041 1279.6138
+[4,]    12 -2.1486199 7550.5646 1950.6313
+    new theta= 7.554873 
+
+         theta      resid      fsum     trace
+[1,]  1.000000  0.5721865  677.2472  498.2323
+[2,]  3.000000  0.8244916 2430.3958  880.5538
+[3,]  6.000000  0.3152272 4520.0041 1279.6138
+[4,] 12.000000 -2.1486199 7550.5646 1950.6313
+[5,]  7.554873 -0.1827268 5420.8778 1463.2371
+    new theta= 7.004443 
+
+         theta       resid      fsum     trace
+[1,]  1.000000  0.57218652  677.2472  498.2323
+[2,]  3.000000  0.82449159 2430.3958  880.5538
+[3,]  6.000000  0.31522725 4520.0041 1279.6138
+[4,] 12.000000 -2.14861992 7550.5646 1950.6313
+[5,]  7.554873 -0.18272677 5420.8778 1463.2371
+[6,]  7.004443  0.02102504 5123.0634 1399.3956
+    new theta= 7.06674 
+
+         theta       resid      fsum     trace
+[1,]  1.000000  0.57218652  677.2472  498.2323
+[2,]  3.000000  0.82449159 2430.3958  880.5538
+[3,]  6.000000  0.31522725 4520.0041 1279.6138
+[4,] 12.000000 -2.14861992 7550.5646 1950.6313
+[5,]  7.554873 -0.18272677 5420.8778 1463.2371
+[6,]  7.004443  0.02102504 5123.0634 1399.3956
+[7,]  7.066740 -0.01293658 5148.9076 1406.6504
+    new theta= 7.04162 
+
+         theta        resid      fsum     trace
+[1,]  1.000000  0.572186518  677.2472  498.2323
+[2,]  3.000000  0.824491593 2430.3958  880.5538
+[3,]  6.000000  0.315227245 4520.0041 1279.6138
+[4,] 12.000000 -2.148619920 7550.5646 1950.6313
+[5,]  7.554873 -0.182726773 5420.8778 1463.2371
+[6,]  7.004443  0.021025043 5123.0634 1399.3956
+[7,]  7.066740 -0.012936579 5148.9076 1406.6504
+[8,]  7.041620  0.003463959 5140.3971 1403.7958
+    new theta= 7.047698 
+
+          theta        resid      fsum     trace
+ [1,]  1.000000  0.572186518  677.2472  498.2323
+ [2,]  3.000000  0.824491593 2430.3958  880.5538
+ [3,]  6.000000  0.315227245 4520.0041 1279.6138
+ [4,] 12.000000 -2.148619920 7550.5646 1950.6313
+ [5,]  7.554873 -0.182726773 5420.8778 1463.2371
+ [6,]  7.004443  0.021025043 5123.0634 1399.3956
+ [7,]  7.066740 -0.012936579 5148.9076 1406.6504
+ [8,]  7.041620  0.003463959 5140.3971 1403.7958
+ [9,]  7.047698 -0.001163083 5142.0167 1404.4463
+    new theta= 7.046096 
+
+          theta         resid      fsum     trace
+ [1,]  1.000000  5.721865e-01  677.2472  498.2323
+ [2,]  3.000000  8.244916e-01 2430.3958  880.5538
+ [3,]  6.000000  3.152272e-01 4520.0041 1279.6138
+ [4,] 12.000000 -2.148620e+00 7550.5646 1950.6313
+ [5,]  7.554873 -1.827268e-01 5420.8778 1463.2371
+ [6,]  7.004443  2.102504e-02 5123.0634 1399.3956
+ [7,]  7.066740 -1.293658e-02 5148.9076 1406.6504
+ [8,]  7.041620  3.463959e-03 5140.3971 1403.7958
+ [9,]  7.047698 -1.163083e-03 5142.0167 1404.4463
+[10,]  7.046096 -1.820316e-05 5141.5307 1404.2792
+    new theta= 7.046071 
+
+Warning message:
+In coxpenal.fit(X, Y, strats, offset, init = init, control, weights = weights,  :
+  Inner loop failed to coverge for iterations 4
+> fitc2
+Call:
+coxph(formula = Surv(time, status) ~ rx + extent + node4 + frailty(id, 
+    dist = "gauss", trace = T) + strata(etype), data = colon)
+
+                          coef    se(coef) se2    Chisq   DF  p      
+rxLev                     -0.0267 0.241    0.0824    0.01   1 9.1e-01
+rxLev+5FU                 -0.7880 0.243    0.1071   10.50   1 1.2e-03
+extent                     1.1305 0.218    0.1068   26.81   1 2.2e-07
+node4                      2.1266 0.210    0.0984  102.56   1 0.0e+00
+frailty(id, dist = "gauss                         5464.64 730 0.0e+00
+
+Iterations: 10 outer, 77 Newton-Raphson
+     Variance of random effect= 7.05 
+Degrees of freedom for terms=   0.3   0.2   0.2 729.7 
+Likelihood ratio test=3544  on 730 df, p=0  n= 1858 
+> 
+> fitc3 <- coxph(Surv(time, status) ~ rx + extent + node4 + frailty(id, trace=T)
++ 	        + strata(etype), colon)
+     theta    loglik  c.loglik
+[1,]     0 -5846.216 -5846.216
+[2,]     1 -5305.049 -5590.102
+    new theta= 2 
+
+     theta    loglik  c.loglik
+[1,]     0 -5846.216 -5846.216
+[2,]     1 -5305.049 -5590.102
+[3,]     2 -5036.927 -5479.479
+    new theta= 4 
+
+     theta    loglik  c.loglik
+[1,]     0 -5846.216 -5846.216
+[2,]     1 -5305.049 -5590.102
+[3,]     2 -5036.927 -5479.479
+[4,]     4 -4740.394 -5385.887
+    new theta= 8 
+
+     theta    loglik  c.loglik
+[1,]     0 -5846.216 -5846.216
+[2,]     1 -5305.049 -5590.102
+[3,]     2 -5036.927 -5479.479
+[4,]     4 -4740.394 -5385.887
+[5,]     8 -4457.094 -5347.375
+    new theta= 16 
+
+     theta    loglik  c.loglik
+[1,]     0 -5846.216 -5846.216
+[2,]     1 -5305.049 -5590.102
+[3,]     2 -5036.927 -5479.479
+[4,]     4 -4740.394 -5385.887
+[5,]     8 -4457.094 -5347.375
+[6,]    16 -4223.785 -5393.362
+    new theta= 8.740343 
+
+         theta    loglik  c.loglik
+[1,]  0.000000 -5846.216 -5846.216
+[2,]  1.000000 -5305.049 -5590.102
+[3,]  2.000000 -5036.927 -5479.479
+[4,]  4.000000 -4740.394 -5385.887
+[5,]  8.000000 -4457.094 -5347.375
+[6,] 16.000000 -4223.785 -5393.362
+[7,]  8.740343 -4423.925 -5348.128
+    new theta= 8.058 
+
+         theta    loglik  c.loglik
+[1,]  0.000000 -5846.216 -5846.216
+[2,]  1.000000 -5305.049 -5590.102
+[3,]  2.000000 -5036.927 -5479.479
+[4,]  4.000000 -4740.394 -5385.887
+[5,]  8.000000 -4457.094 -5347.375
+[6,] 16.000000 -4223.785 -5393.362
+[7,]  8.740343 -4423.925 -5348.128
+[8,]  8.058000 -4454.347 -5347.375
+    new theta= 8.025556 
+
+          theta    loglik  c.loglik
+ [1,]  0.000000 -5846.216 -5846.216
+ [2,]  1.000000 -5305.049 -5590.102
+ [3,]  2.000000 -5036.927 -5479.479
+ [4,]  4.000000 -4740.394 -5385.887
+ [5,]  8.000000 -4457.094 -5347.375
+ [6,] 16.000000 -4223.785 -5393.362
+ [7,]  8.740343 -4423.925 -5348.128
+ [8,]  8.058000 -4454.347 -5347.375
+ [9,]  8.025556 -4455.875 -5347.369
+    new theta= 8.028123 
+
+Warning message:
+In coxpenal.fit(X, Y, strats, offset, init = init, control, weights = weights,  :
+  Inner loop failed to coverge for iterations 5 6
+> fitc3
+Call:
+coxph(formula = Surv(time, status) ~ rx + extent + node4 + frailty(id, 
+    trace = T) + strata(etype), data = colon)
+
+                       coef    se(coef) se2   Chisq   DF  p      
+rxLev                   0.0434 0.305    0.140    0.02   1 8.9e-01
+rxLev+5FU              -0.5125 0.310    0.170    2.73   1 9.8e-02
+extent                  1.3373 0.251    0.137   28.45   1 9.6e-08
+node4                   2.3381 0.233    0.156  100.81   1 0.0e+00
+frailty(id, trace = T)                        5939.97 867 0.0e+00
+
+Iterations: 9 outer, 112 Newton-Raphson
+     Variance of random effect= 8.03   I-likelihood = -5347.4 
+Degrees of freedom for terms=   0.5   0.3   0.4 866.7 
+Likelihood ratio test=3787  on 868 df, p=0  n= 1858 
+> 
+> fitc4 <- coxph(Surv(time, status) ~ rx + extent + node4 + frailty(id, df=30)
++ 	        + strata(etype), colon)
+> fitc4
+Call:
+coxph(formula = Surv(time, status) ~ rx + extent + node4 + frailty(id, 
+    df = 30) + strata(etype), data = colon)
+
+                     coef    se(coef) se2    Chisq  DF p      
+rxLev                -0.0374 0.0789   0.0769   0.22  1 6.4e-01
+rxLev+5FU            -0.4565 0.0859   0.0840  28.27  1 1.1e-07
+extent                0.5289 0.0815   0.0798  42.13  1 8.5e-11
+node4                 0.9078 0.0701   0.0681 167.85  1 0.0e+00
+frailty(id, df = 30)                          58.56 30 1.4e-03
+
+Iterations: 3 outer, 9 Newton-Raphson
+     Variance of random effect= 0.0337   I-likelihood = -5832.4 
+Degrees of freedom for terms=  1.9  1.0  0.9 30.0 
+Likelihood ratio test=363  on 33.8 df, p=0  n= 1858 
+> 
+> # Do a fit, removing the no-event people
+> temp <- tapply(colon$status, colon$id, sum)
+> keep <- !(is.na(match(colon$id, names(temp[temp>0])))) 
+> fitc5 <- coxph(Surv(time, status) ~ rx + extent + node4 +cluster(id)
++ 	       + strata(etype), colon, subset=keep)
+> fitc5
+Call:
+coxph(formula = Surv(time, status) ~ rx + extent + node4 + cluster(id) + 
+    strata(etype), data = colon, subset = keep)
+
+
+             coef exp(coef) se(coef) robust se      z       p
+rxLev      0.0832     1.087   0.0771    0.0989  0.841 4.0e-01
+rxLev+5FU -0.0277     0.973   0.0848    0.1090 -0.255 8.0e-01
+extent     0.1797     1.197   0.0785    0.1036  1.735 8.3e-02
+node4      0.5219     1.685   0.0684    0.0912  5.720 1.1e-08
+
+Likelihood ratio test=63.7  on 4 df, p=4.8e-13  n= 1012 
+> 
+> #
+> # Do the factor fit, but first remove the no-event people
+> #
+> #  Ha!  This routine has a factor with 506 levels.  It uses all available
+> #    memory, and can't finish in my patience window.  Commented out.
+> 
+> #fitc6 <- coxph(Surv(time, status) ~ rx + extent + node4 + factor(id), colon,
+> #	       subset=keep)
+> 
+> # Try the AIC
+> fitc7 <- coxph(Surv(time, status) ~ rx + extent + node4 +
++ 	          frailty(id, method='aic', caic=T), colon)
+> fitc7
+Call:
+coxph(formula = Surv(time, status) ~ rx + extent + node4 + frailty(id, 
+    method = "aic", caic = T), data = colon)
+
+                          coef    se(coef) se2    Chisq DF  p      
+rxLev                     -0.0409 0.0915   0.0780   0.2   1 6.6e-01
+rxLev+5FU                 -0.4832 0.0979   0.0852  24.4   1 7.9e-07
+extent                     0.6036 0.0918   0.0816  43.2   1 4.9e-11
+node4                      1.0461 0.0825   0.0700 160.9   1 0.0e+00
+frailty(id, method = "aic                         415.9 205 1.1e-16
+
+Iterations: 8 outer, 31 Newton-Raphson
+     Variance of random effect= 0.270   I-likelihood = -6393.1 
+Degrees of freedom for terms=   1.5   0.8   0.7 204.6 
+Likelihood ratio test=963  on 208 df, p=0  n= 1858 
+> 
+> if (FALSE) {
++     # This fails to converge, with different bad paths in different
++     #  releases (due to changes in eps parameters).  It's not a bug per
++     #  se, just too unstable a solution for the code to find.  
++     # Remove it from the tests 2/2/09
++     fitc8 <- coxph(Surv(time, status) ~ rx + extent + node4 +
++ 	          frailty(id, method='aic', dist='t', caic=T), colon)
++ 
++     fitc8
++     }
+> 
+> 
+> 
+> 

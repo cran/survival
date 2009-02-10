@@ -1,167 +1,236 @@
-#SCCS @(#)print.survfit.s	4.19 07/09/00
+# $Id: print.survfit.S 11250 2009-03-19 13:44:59Z tlumley $
 print.survfit <- function(x, scale=1, 
-			  digits = max(options()$digits - 4, 3),
-                          print.n=getOption("survfit.print.n"),show.rmean=getOption("survfit.print.mean"),...) {
-
-    ##<TSL> different definitions of N....
-    print.n<-match.arg(print.n,c("none","start","records","max"))
+			  digits = max(options()$digits - 4, 3), 
+                          print.rmean = getOption('survfit.print.rmean'),
+                          rmean = getOption('survfit.rmean'), ...) {
 
     if (!is.null(cl<- x$call)) {
 	cat("Call: ")
 	dput(cl)
 	cat("\n")
-    }	
+        }	
     omit <- x$na.action
     if (length(omit)) cat("  ", naprint(omit), "\n")
 
     savedig <- options(digits=digits)
     on.exit(options(savedig))
-    pfun <- function(nused, stime, surv, n.risk, n.event, lower, upper) {
-        ##compute the mean, median, se(mean), and ci(median)
-	minmin <- function(y, xx) {
-            ww<-getOption("warn")
-            on.exit(options(warn=ww))
-            options(warn=-1)
-            if (any(!is.na(y) & y==.5)) {	
-		if (any(!is.na(y) & y <.5))
-                    .5*(min(xx[!is.na(y) & y==.5]) + min(xx[!is.na(y) & y<.5]))
-		else
-                    .5*(min(xx[!is.na(y) & y==.5]) + max(xx[!is.na(y) & y==.5]))
-            }
-            else   min(xx[!is.na(y) & y<=.5])
+
+    # The print.rmean option is depreciated, with the more general
+    #   rmean option taking its place.  But if someone specifically
+    #   uses print.rmean in the call, or has it as an option without
+    #   the rmean option, listen to them.
+    if (!missing(print.rmean) && is.logical(print.rmean) && missing(rmean)) {
+        if (print.rmean) rmean <- 'common'
+        else             rmean <- 'none'
         }
-        
-	min.stime <- min(stime)
-	min.time <- min(0, min.stime)
-	n <- length(stime)
-	hh <- c(ifelse((n.risk[-n]-n.event[-n])==0, 0, 
-		       n.event[-n]/(n.risk[-n]*(n.risk[-n]-n.event[-n]))),0)
-	ndead<- sum(n.event)
-	dif.time <- c(diff(c(min.time, stime)), 0)
-	if (is.matrix(surv)) {
-	    n <- nrow(surv)
-	    mean <- dif.time * rbind(1, surv)
-	    if (n==1)
-                temp <- mean[2,,drop=FALSE]
-	    else
-                temp <- (apply(mean[(n+1):2,,drop=FALSE], 2, cumsum))[n:1,,drop=FALSE]
-	    varmean <- c(hh %*% temp^2)
-	    med <- apply(surv, 2, minmin, stime)
-	    #nused <- as.list(nused)
-	    names(nused)<-NULL
-	    if (!is.null(upper)) {
-		upper <- apply(upper, 2, minmin, stime)
-		lower <- apply(lower, 2, minmin, stime)
-		cbind(nused, ndead, apply(mean, 2, sum),
-		      sqrt(varmean), med, lower, upper)
-	        }
-	    else {
-		cbind(nused, ndead, apply(mean, 2, sum),
-		      sqrt(varmean), med)
-	        }
-	    }
-	else {
-	    mean <- dif.time*c(1, surv)
-	    varmean <- sum(rev(cumsum(rev(mean))^2)[-1] * hh)
-	    med <- minmin(surv, stime)
-	    if (!is.null(upper)) {
-		upper <- minmin(upper, stime)
-		lower <- minmin(lower, stime)
-		c(nused, ndead, sum(mean), sqrt(varmean), med, lower, upper)
-	        }
-	    else
-		    c(nused, ndead, sum(mean), sqrt(varmean), med)
-	    }
+
+    if (is.null(rmean)) {
+        if (is.logical(print.rmean)) {
+            if (print.rmean) rmean <- 'common'
+            else             rmean <- 'none'
+            }
+        else rmean <- 'none'  #no option set
+        }
+
+    # Check validity: it can be numeric or character
+    if (is.numeric(rmean)) {
+        if (is.null(x$start.time)) {
+            if (rmean < min(x$time)) 
+                stop("Truncation point for the mean is < smallest survival")
+            }
+        else if (rmean < x$start.time)
+                stop("Truncation point for the mean is < smallest survival")
+        }
+    else {
+        rmean <- match.arg(rmean, c('none', 'common', 'individual'))
+        if (length(rmean)==0) stop("Invalid value for rmean option")
+        }
+    
+    temp <- survmean(x, scale=scale, rmean)
+    print(temp$matrix)
+    if (rmean != 'none') {
+        if (rmean == 'individual') 
+            cat("   * restricted mean with variable upper limit\n")
+        else cat("    * restricted mean with upper limit = ", 
+                 format(temp$end.time[1]), "\n")
+        }
+    invisible(x)
     }
 
+
+#
+# The function that does all of the actual work -- output is a matrix
+#   Used by both print.survfit and summary.survfit
+#
+
+survmean <- function(x, scale=1, rmean) {
+
+    # The starting point for the integration of the AUC
+    if (!is.null(x$start.time)) start.time <- x$start.time
+    else                        start.time <- min(0, x$time)
+    
+    #
+    # The function below is called once for each line of output,
+    #  i.e., once per curve.  It creates the line of output
+    #
+    pfun <- function(nused, time, surv, n.risk, n.event, lower, upper, 
+		      start.time, end.time) {
+        #
+        # Start by defining a small utility function
+        # Multiple times, we need to find the x corresponding to the first
+        #    y that is <.5.  (The y's are in decreasing order, but may have
+        #    duplicates). 
+        # Nuisance 1: if one of the y's is exactly .5, we want the mean of
+        #    the corresponding x and the first x for which y<.5
+        # Nuisance 2: there may by an NA in the y's
+        # Nuisance 3: if no y's are <=.5, then we should return NA
+        # 
+        minmin <- function(y, x) {
+            keep <- (!is.na(y) & y <=.5)
+            if (!any(keep)) NA
+            else {
+                x <- x[keep]
+                y <- y[keep]
+                if (y[1] == .5 && any(y<.5)) 
+                    (x[1] + x[min(which(y<.5))])/2
+                else x[1]
+                }
+            }
+
+	# compute the mean of the curve, with "start.time" as 0
+	#   start by drawing rectangles under the curve
+        # Lining up the terms for "varmean" is tricky -- the easiest 
+        #   check is to look at the homework solution on page 195-196
+        #   of Miller, Survival Analysis, Wiley, 1981.
+        if (!is.na(end.time)) {
+            hh <- ifelse((n.risk-n.event)==0, 0, 
+		       n.event /(n.risk *(n.risk -n.event)))
+            keep <- which(time <= end.time)
+            temptime <- c(time[keep], end.time)
+            tempsurv <- c(surv[keep], surv[max(keep)])
+            hh <- c(hh[keep], 0)
+                          
+            n <- length(temptime)
+            delta <- diff(c(start.time, temptime))     #width of rectangles
+            rectangles <- delta * c(1, tempsurv[-n])   #area of rectangles
+            varmean <- sum( cumsum(rev(rectangles[-1]))^2 * rev(hh)[-1])
+            mean <- sum(rectangles) + start.time
+            }
+        else { 
+            mean <- 0
+            varmean <- 0  #placeholders 
+            }   
+
+        #compute the median  and ci(median)
+	med <- minmin(surv, time)
+	if (!is.null(upper)) {
+	    upper <- minmin(upper, time)
+	    lower <- minmin(lower, time)
+	    c(nused, max(n.risk), n.risk[1], 
+              sum(n.event), sum(mean), sqrt(varmean), med, lower, upper)
+	    }
+	else
+		c(nused, max(n.risk), n.risk[1], sum(n.event), 
+                  sum(mean), sqrt(varmean), med, 0, 0)
+	}
+
+
+    # Now to the actual work
+    #  We create an output matrix with all 9 columns, and then trim some
+    #  out at the end.
+    #  If rmean='none' for instance, pfun above returns dummy values for
+    #    the mean and var(mean).  Similar for CI of the median.
+    # 
     stime <- x$time/scale
+    if (is.numeric(rmean)) rmean <- rmean/scale
     surv <- x$surv
-    plab <- c("n", "events", "rmean", "se(rmean)", "median")
-    if (!is.null(x$conf.int))
-	    plab2<- paste(x$conf.int, c("LCL", "UCL"), sep='')
+    plab <- c("records", "n.max", "n.start", "events", 
+                  "*rmean", "*se(rmean)", "median",
+              paste(x$conf.int, c("LCL", "UCL"), sep=''))  #col labels
+    ncols <- 9    #number of columns in the output
+    
 
     #Four cases: strata Y/N  by  ncol(surv)>1 Y/N
     #  Repeat the code, with minor variations, for each one
     if (is.null(x$strata)) {
-        nsubjects<-switch(print.n,none=NA,
-                          start=x$n.risk[1],
-                          records=x$n,
-                          max=max(x$n.risk))
-        ##x1 <- pfun(x$n, stime, surv, x$n.risk, x$n.event, x$lower, x$upper)
-        x1 <- pfun(nsubjects, stime, surv, x$n.risk, x$n.event, x$lower, x$upper)
-	if (is.matrix(x1)) {
-	    if (is.null(x$lower))
-		    dimnames(x1) <- list(NULL, plab)
-	    else
-		    dimnames(x1) <- list(NULL, c(plab, plab2))
+        if (rmean=='none') end.time <- NA
+        else if (is.numeric(rmean)) end.time <- rmean
+        else end.time <- max(x$time)
+
+	if (is.matrix(surv)) {
+	    out <- matrix(0, ncol(surv), ncols)
+	    for (i in 1:ncol(surv)) {
+		if (is.null(x$conf.int))
+		     out[i,] <- pfun(x$n, stime, surv[,i], x$n.risk, x$n.event,
+				      NULL, NULL, start.time, end.time)
+		else out[i,] <- pfun(x$n, stime, surv[,i], x$n.risk, x$n.event,
+				    x$lower[,i], x$upper[,i], start.time,
+                                     end.time)
+		}
+	    dimnames(out) <- list(dimnames(surv)[[2]], plab)
 	    }
 	else {
-	    if (is.null(x$lower))
-		    names(x1) <- plab
-	    else
-		    names(x1) <- c(plab, plab2)
+	    out <- matrix(pfun(x$n, stime, surv, x$n.risk, x$n.event, x$lower, 
+			x$upper, start.time, end.time), nrow=1)
+	    dimnames(out) <- list(NULL, plab)
  	    }
-        if (show.rmean)
-            print(x1)
-        else if (is.matrix(x1))
-            print(x1[,!(colnames(x1) %in% c("rmean","se(rmean)"))])
-        else
-            print(x1[!(names(x1) %in% c("rmean","se(rmean)"))])
         }
     else {   #strata case
 	nstrat <- length(x$strata)
-        if (is.null(x$ntimes.strata))
-		stemp <- rep(1:nstrat,x$strata)
-	else stemp <- rep(1:nstrat,x$ntimes.strata)
-	x1 <- NULL
-	if (is.null(x$strata.all))
-            strata.var <- x$strata
-	else
-            strata.var <- x$strata.all
+	stemp <- rep(1:nstrat,x$strata)  # the index vector for strata1, 2, etc
 
- 	for (i in unique(stemp)) {
-	    who <- (stemp==i)
-            ##different defn's of n
-            nsubjects<-switch(print.n,none=NA,
-                              start=x$n.risk[who][1],
-                              records=strata.var[i],
-                              max=max(x$n.risk[who]))
-	    if (is.matrix(surv)) {
-		temp <- pfun(nsubjects, stime[who], surv[who,,drop=FALSE],
-			  x$n.risk[who], x$n.event[who],
-			  x$lower[who,,drop=FALSE], x$upper[who,,drop=FALSE])
-		x1 <- rbind(x1, temp)
-	        }
-	    else  {
-		temp <- pfun(nsubjects, stime[who], surv[who], 
-			     x$n.risk[who], x$n.event[who], x$lower[who], 
-			     x$upper[who])
-		x1 <- rbind(x1, temp)
-	        }
+        last.time <- (rev(x$time))[match(1:nstrat, rev(stemp))]
+        if (rmean=='none') end.time <- rep(NA, nstrat)
+        else if (is.numeric(rmean)) end.time <- rep(rmean, nstrat)
+        else if (rmean== 'common')  end.time <- rep(median(last.time), nstrat)
+        else end.time <- last.time
+	if (is.matrix(surv)) {
+	    ns <- ncol(surv)
+	    out <- matrix(0, nstrat*ns, ncols)
+            if (is.null(dimnames(surv)[[2]]))
+                dimnames(out) <- list(rep(names(x$strata), rep(ns,nstrat)), 
+                                      plab)
+            else {
+                cname <- outer(dimnames(surv)[[2]], names(x$strata), paste,
+                               sep=", ")
+                dimnames(out) <- list(c(cname), plab)
+                }
+	    k <- 0
+	    for (i in 1:nstrat) {
+		who <- (stemp==i)
+ 		for (j in 1:ns) {
+		    k <- k+1
+		    if (is.null(x$lower))
+		         out[k,] <- pfun(x$n[i], stime[who], surv[who,j],
+					 x$n.risk[who], x$n.event[who],
+					 NULL, NULL, start.time, end.time[i])
+		    else out[k,] <- pfun(x$n[i], stime[who], surv[who,j],
+					 x$n.risk[who], x$n.event[who],
+					 x$lower[who,j], x$upper[who,j], 
+					 start.time, end.time[i])
+		    }
+		}
 	    }
-
-	temp <- names(x$strata)
-	if (nrow(x1) > length(temp)) {
-	    nrep <- nrow(x1)/length(temp)
-	    temp <- rep(temp, rep(nrep, length(temp)))
+	else { #non matrix case
+	    out <- matrix(0, nstrat, ncols)
+	    dimnames(out) <- list(names(x$strata), plab)
+	    for (i in 1:nstrat) {
+		who <- (stemp==i)
+		if (is.null(x$lower))
+		     out[i,] <- pfun(x$n[i], stime[who], surv[who], 
+				     x$n.risk[who], x$n.event[who], 
+				     NULL, NULL, start.time, end.time[i])
+		else out[i,] <- pfun(x$n[i], stime[who], surv[who], 
+				     x$n.risk[who], x$n.event[who], 
+				     x$lower[who], x$upper[who], start.time,
+                                     end.time[i])
+		}
 	    }
+	}
 
-	if (is.null(x$lower))
-		dimnames(x1) <- list(temp, plab)
-	else
-		dimnames(x1) <- list(temp, c(plab, plab2))
-
-	if (show.rmean)
-            print(x1)
-        else
-            print(x1[,!(colnames(x1) %in% c("rmean","se(rmean)"))])
-        
+    if (is.null(x$lower)) out <- out[,1:7, drop=F]   #toss away the limits
+    if (rmean=='none') out <- out[,-(5:6), drop=F]   #toss away the mean & sem
+    list(matrix=out[,,drop=T], end.time=end.time)
     }
-invisible(x)
-}
-
-
-
-
 
 

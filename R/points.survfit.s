@@ -1,4 +1,4 @@
-#SCCS 04/14/92 @(#)points.survfit.s	4.2
+# $Id: points.survfit.S 11059 2008-10-23 12:32:50Z therneau $
 points.survfit <- function(x, ...) {
     if (!is.matrix(x$surv))
 	    points(x$time, x$surv, ...)

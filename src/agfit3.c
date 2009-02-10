@@ -1,4 +1,5 @@
-/*  SCCS @(#)agfit3.c	1.3 06/12/00
+/* $Id: agfit3.c 11247 2009-03-18 18:30:44Z therneau $ */
+/*
 ** Anderson-Gill formulation of the Cox Model, using smart subsets
 **
 **  the input parameters are
@@ -50,13 +51,13 @@
 #include "survS.h" 
 #include "survproto.h"
 
-void agfit3( int   *maxiter,  int   *nusedx,  int   *nvarx, 
-	     double *start,    double *stop,    int   *event, 
+void agfit3( Sint   *maxiter,  Sint   *nusedx,  Sint   *nvarx, 
+	     double *start,    double *stop,    Sint   *event, 
 	     double *covar2,   double *offset,  double *weights,
-	     int   *nstrat,   int   *strata,  int   *sort1,
-	     int   *sort2,    double *means,   double *beta, 
+	     Sint   *nstrat,   Sint   *strata,  Sint   *sort1,
+	     Sint   *sort2,    double *means,   double *beta, 
 	     double *u,        double *imat2,   double loglik[2], 
-	     int   *flag,     double *work,   
+	     Sint   *flag,     double *work,   
 	     double *eps,      double *tol_chol, double *sctest)
 {
 
@@ -73,7 +74,7 @@ void agfit3( int   *maxiter,  int   *nusedx,  int   *nvarx,
     double  denom, zbeta, risk;
     double  time;
     double  temp, temp2;
-    double  newlk=0; /*-Wall*/
+    double  newlk =0;
     int     halving;    /*are we doing step halving at the moment? */
     double     method;
     double  meanwt;
@@ -298,6 +299,33 @@ void agfit3( int   *maxiter,  int   *nusedx,  int   *nvarx,
 	    for (i=0; i<nvar; i++)
 		zbeta += newbeta[i]*covar[i][person];
 	    score[person] = zbeta + offset[person];
+	    if (zbeta > 20 && *maxiter>1) {
+		/*
+		** If the above happens, then 
+		**   1. There is a real chance for catastrophic cancellation
+		**       in the computation of "denom", which leads to
+		**       numeric failure via log(neg number) -> inf loglik
+		**   2. A risk score for one person of exp(20) > 400 million
+		**       is either an infinite beta, in which case any
+		**       reasonable coefficient will do, or a big overreach
+		**       in the Newton-Raphson step.
+		** In either case, a good solution is step halving.  However,
+		**   if the user asked for exactly 1 iteration, return it.
+		** 
+		** Why 20?  Most machines have about 16 digits of precision,
+		**   and this preserves approx 7 digits in the subtraction
+		**   when a high risk score person leaves the risk set.
+		**   (Because of centering, the average risk score is about 0).
+		**   Second, if eps is small and beta is infinite, we rarely
+		**   get a value above 16.  So a 20 is usually a NR overreach.
+		** A data set with zbeta=54 on iter 1 led to this fix, the
+		**   true final solution had max values of 4.47.    
+		*/
+		halving=1;
+		for (i=0; i<nvar; i++)
+		    newbeta[i] = (newbeta[i] + beta[i])/2.1;
+		person = -1;  /* force the loop to start over */
+		}
 	    }
 
 	istrat=0;
@@ -386,6 +414,7 @@ void agfit3( int   *maxiter,  int   *nusedx,  int   *nvarx,
 			temp = itemp*method/deaths;
 			d2 = denom - temp*efron_wt;
 			newlk +=  weights[p]*score[p] -meanwt *log(d2);
+
 			for (i=0; i<nvar; i++) {
 			    temp2 = (a[i] - temp*a2[i])/d2;
 			    u[i] += weights[p]*covar[i][p] - meanwt*temp2;
@@ -416,21 +445,20 @@ void agfit3( int   *maxiter,  int   *nusedx,  int   *nvarx,
 	*/
 	*flag = cholesky2(imat, nvar, *tol_chol);
 
-	if (fabs(1-(loglik[1]/newlk))<=*eps ) { /* all done */
+	if (fabs(1-(loglik[1]/newlk))<=*eps  && halving==0) { /* all done */
 	    loglik[1] = newlk;
 	    chinv2(imat, nvar);     /* invert the information matrix */
 	    for (i=1; i<nvar; i++)
 		for (j=0; j<i; j++)  imat[i][j] = imat[j][i];
 	    for (i=0; i<nvar; i++)
 		beta[i] = newbeta[i];
-	    if (halving==1) *flag= 1000; /*didn't converge after all */
 	    *maxiter = iter;
 	    return;
 	    }
 
 	if (iter==*maxiter) break;  /*skip the step halving and etc */
 
-	if (newlk < loglik[1])   {    /*it is not converging ! */
+	if (newlk < loglik[1] || newlk>0)   {    /*it is not converging ! */
 		halving =1;
 		for (i=0; i<nvar; i++)
 		    newbeta[i] = (newbeta[i] + beta[i]) /2; /*half of old increment */

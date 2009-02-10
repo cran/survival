@@ -1,4 +1,4 @@
-/*  SCCS @(#)pyears2.c	5.4 12/30/01
+/* $Id: pyears2.c 10788 2008-09-18 00:48:23Z therneau $ */
 /*
 **  Person-years calculations.
 **     same as pyears1, but no expected rates
@@ -33,12 +33,13 @@
 #include "survproto.h"
 
 /* names that begin with "s" will be re-declared in the main body */
-void pyears2(int   *sn,      int   *sny,   int   *sdoevent, 
-	     double *sy,      double *wt,    int   *sodim,    int   *ofac, 
-	     int   *odims,   double *socut, double *sodata,
+void pyears2(Sint   *sn,      Sint   *sny,   Sint   *sdoevent, 
+	     double *sy,      double *wt,    Sint   *sodim,    Sint   *ofac, 
+	     Sint   *odims,   double *socut, double *sodata,
 	     double *pyears,  double *pn,    double *pcount, 
 	     double *offtable)
     {
+S_EVALUATOR
     int i,j;
     int     n,
 	    ny,
@@ -56,6 +57,7 @@ void pyears2(int   *sn,      int   *sny,   int   *sdoevent,
     int     dostart;
     int     d1;    /* a dummy */
     double  d2;    /* a dummy for pystep */
+    double  eps;   /* round off protection */
 
     n = *sn;
     ny= *sny;
@@ -75,15 +77,38 @@ void pyears2(int   *sn,      int   *sny,   int   *sdoevent,
 	}
     event = stop +n;
     odata = dmatrix(sodata, n, odim);
-    data  = (double *) R_alloc(odim, sizeof(double));
+    data  = (double *) ALLOC(odim, sizeof(double));
     /*
     ** will be a ragged array
     */
-    ocut = (double **)R_alloc(odim, sizeof(double *));
+    ocut = (double **)ALLOC(odim, sizeof(double *));
     for (i=0; i<odim; i++) {
 	ocut[i] = socut;
 	if (ofac[i]==0) socut += odims[i] +1;
 	}
+
+    /*
+    ** Set the round off error to min(time[time>0]) * 1e-8
+    **   The events are counted in the last cell to which person years are
+    **   added in the while() loop below.  We don't want to "spill over" into
+    **   a next (incorrect) cell due to accumulated round off, in the case
+    **   that a subjects fu time exactly matches one of the cell boundaries.
+    */
+    eps =0; /* guard against the rare case that all(time==0) */
+    for (i=0; i<n; i++) {
+	if (dostart==1) timeleft = stop[i] - start[i];
+	else timeleft= stop[i];
+	if (timeleft >0) {
+	    eps = timeleft;  /* starting guess for min = first non-zero value*/
+	    break;
+	    }
+	}
+    for (; i<n; i++) {
+	if (dostart==1) timeleft = stop[i] - start[i];
+	else timeleft= stop[i];
+	if ((timeleft >0) && (timeleft < eps)) eps = timeleft;
+	}
+    eps *= 1e-8;
 
     *offtable =0;
     for (i=0; i<n; i++) {
@@ -108,7 +133,12 @@ void pyears2(int   *sn,      int   *sny,   int   *sdoevent,
 	**   person-years in the current cell, up to the next cell boundary
 	**   (or the amount of time left, whichever is lesser).
 	*/
-	while (timeleft >0) {
+	if (timeleft <=eps && doevent) {
+	    /* we have to call pystep at least once to set the index */
+	    pystep(odim, &index, &d1, &d2, data, ofac, odims, ocut, 1, 0);
+	    }
+
+	while (timeleft > eps) {
 	    thiscell = pystep(odim, &index, &d1, &d2, data, ofac, odims, ocut,
 				    timeleft, 0);
 	    if (index >=0) {

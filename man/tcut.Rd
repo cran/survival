@@ -1,7 +1,6 @@
 \name{tcut}
 \alias{tcut}
 \alias{[.tcut}
-%- Also NEED an `\alias' for EACH other topic documented here.
 \title{Factors for person-year calculations}
 \description{
 Attaches categories for person-year calculations to a variable without
@@ -25,6 +24,8 @@ tcut(x, breaks, labels, scale=1)
 \seealso{ \code{\link{cut}}, \code{\link{pyears}} }
 
 \examples{
+mdy.date <- function(m,d,y)
+   as.Date(paste(ifelse(y<100, y+1900, y), m, d, sep='/'))
 temp1 <- mdy.date(6,6,36)
 temp2 <- mdy.date(6,6,55)# Now compare the results from person-years
 #
@@ -35,5 +36,5 @@ temp.time <- 3700   #total days of fu
 py1 <- pyears(temp.time ~ temp.age + temp.yr, scale=1) #output in days
 py1
 }
-\keyword{survival}% at least one, from doc/KEYWORDS
-\keyword{manip}% __ONLY ONE__ keyword per line
+\keyword{survival}
+
