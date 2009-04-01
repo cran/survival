@@ -1,4 +1,4 @@
-# $Id: summary.survfit.S 11059 2008-10-23 12:32:50Z therneau $
+# $Id: summary.survfit.S 11274 2009-04-01 11:55:07Z tlumley $
 #
 # Version with no C code, using approx() to do the subscript
 #  calculations
@@ -183,11 +183,11 @@ summary.survfit <- function(object, times, censored=FALSE,
     #  the correct output structure
     #
     if (fit$type == 'right' || inherits(fit, 'survfit.cox')) 
-	    temp <- list(surv=surv, time=times, n.risk=n.risk, n.event=n.event,
+	    temp <- list(surv=surv, time=times/scale, n.risk=n.risk, n.event=n.event,
 			 conf.int=fit$conf.int, type=fit$type, table=table)
     
     if (fit$type == 'counting')
-	    temp <- list(surv=surv, time=times, n.risk=n.risk, n.event=n.event,
+	    temp <- list(surv=surv, time=times/scale, n.risk=n.risk, n.event=n.event,
 			 conf.int=fit$conf.int, n.enter=n.enter,
 			 n.censor=n.censor, type=fit$type, 
 			 table=table)
