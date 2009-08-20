@@ -1,4 +1,4 @@
-# $Id: Surv.S 11207 2009-02-09 04:25:50Z therneau $
+# $Id: Surv.S 11284 2009-06-02 15:50:55Z therneau $
 # Package up surivival type data as a structure
 #
 Surv <- function(time, time2, event,
@@ -95,7 +95,7 @@ Surv <- function(time, time2, event,
             if (!all(temp, na.rm=TRUE))
                 warning("Status must be 0, 1, 2 or 3; converted to NA")
 
-	    if (any(event==3)) {
+	    if (any(event==3, na.rm=T)) {
 		if (!is.numeric(time2)) stop("Time2 must be numeric")
 		if (length(time2) !=nn) 
 		    stop ("Time1 and time2 are different lengths")

@@ -45,10 +45,10 @@ r2fitm
 #     same, but darn close.
 
 temp <- coxph(Surv(start, stop, status) ~ rx + offset(r2fitm$frail[id]), rat2)
-all.equal(temp$coef, r2fitm$coef[1])
+all.equal(temp$coef, r2fitm$coef[1], tolerance=1e-7)
 
 temp <- coxph(Surv(start, stop, status) ~ rx + offset(r2fitg$frail[id]), rat2)
-all.equal(temp$coef, r2fitg$coef[1])
+all.equal(temp$coef, r2fitg$coef[1], tolerance=1e-7)
 
 #
 # What do I get with AIC

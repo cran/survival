@@ -1,5 +1,5 @@
 # 
-#  $Id: survreg.fit.S 11236 2009-02-14 11:46:53Z therneau $
+#  $Id: survreg.fit.S 11285 2009-06-10 22:32:00Z therneau $
 #  Do the actual fit of a survreg model.  This routine is for the case
 #   of no penalized terms (splines, etc).
 #
@@ -84,7 +84,7 @@ survreg.fit<- function(x, y, weights, offset, init, controlvals, dist,
 	dtemp<- dmat[,3] * dmat[,4]    #f'
 	if (any(status==3)) {
 	    z2 <- (y[,2] - eta)/sigma
-	    dmat2 <- density(z2)
+	    dmat2 <- density(z2, parms)
 	    }
 	else {
 	    dmat2 <- matrix(0,1,5)   #dummy values

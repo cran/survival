@@ -102,12 +102,10 @@ Loading required package: splines
 > fit  <- coxph(Surv(time, status) ~x, testw1, weights=wt)
 > fitb <- coxph(Surv(time, status) ~x, testw2)
 > 
-> aeq(resid(fit0, type='mart'), (resid(fit0b, type='mart'))[indx])
-[1] "Mean relative difference: 0.1300998"
-> aeq(resid(fit0, type='scor'), (resid(fit0b, type='scor'))[indx])
-[1] "Mean relative difference: 0.1170715"
-> aeq(unique(resid(fit0, type='scho')), unique(resid(fit0b, type='scho')))
-[1] "Mean relative difference: 0.06556285"
+> # The next 3 are not true for an Efron approx, see book.
+> #aeq(resid(fit0, type='mart'), (resid(fit0b, type='mart'))[indx])
+> #aeq(resid(fit0, type='scor'), (resid(fit0b, type='scor'))[indx])
+> #aeq(unique(resid(fit0, type='scho')), unique(resid(fit0b, type='scho')))
 > 
 > truth0 <- byhand(0,pi)
 > aeq(fit0$loglik[1], truth0$loglik)

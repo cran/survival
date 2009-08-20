@@ -3,7 +3,7 @@
 \alias{anova.coxphlist}
 \title{Analysis of Deviance for a Cox model.}
 \usage{
-\method{anova}{coxph}(object, \dots,  test = NULL)
+\method{anova}{coxph}(object, \dots,  test = 'Chisq')
 }
 \description{
   Compute an analysis of deviance table for one or more Cox model fits.
@@ -11,29 +11,25 @@
 \arguments{
   \item{object}{An object of class \code{coxph}}
   \item{\dots}{Further \code{coxph} objects}
-  \item{test}{a character string, (partially) matching one of \code{"Chisq"},
-    \code{"F"} or \code{"Cp"}. See \code{\link{stat.anova}}.}
+  \item{test}{a character string. The appropriate test is a chisquare, all
+other choices result in no test being done.}
 }
 \details{
   Specifying a single object gives a sequential analysis of deviance
-  table for that fit.  That is, the reductions in the residual deviance
+  table for that fit.  That is, the reductions in the model log-likelihood
   as each term of the formula is added in turn are given in as
-  the rows of a table, plus the residual deviances themselves.
+  the rows of a table, plus the log-likelihoods themselves.
 
 
   If more than one object is specified, the table has a row for the
-  residual degrees of freedom and deviance for each model. For all
-  but the first model, the change in degrees of freedom and deviance
+  degrees of freedom and loglikelihood for each model. For all
+  but the first model, the change in degrees of freedom and loglik
   is also given. (This only make statistical sense if the models are
   nested.)  It is conventional to list the models from smallest to
   largest, but this is up to the user.
   
   The table will optionally contain test statistics (and P values)
-  comparing the reduction in deviance for the row to the residuals.
-    Mallows' \eqn{C_p}{Cp} statistic is the residual
-    deviance plus twice the  residual degrees of freedom, which is closely
-  related to AIC. Don't use \code{test=F}, it doesn't make sense for a
-  Cox model.
+  comparing the reduction in loglik for each row.
 }
 \value{
   An object of class \code{"anova"} inheriting from class \code{"data.frame"}.
@@ -49,9 +45,7 @@
 \examples{
 fit <- coxph(Surv(futime, fustat) ~ resid.ds *rx + ecog.ps, data = ovarian) 
 anova(fit)
-anova(fit,test="Chisq")
-fit2 <- coxph(Surv(futime, fustat) ~ resid.ds +rx + ecog.ps, data
-=ovarian)
+fit2 <- coxph(Surv(futime, fustat) ~ resid.ds +rx + ecog.ps, data=ovarian)
 anova(fit2,fit)
  }
 \keyword{models}

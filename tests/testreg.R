@@ -1,5 +1,4 @@
-options(na.action=na.exclude) # preserve missings
-options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
+options(na.action=na.exclude)  #preserve length of missings
 library(survival)
 
 #
@@ -33,17 +32,28 @@ fitfl <- survreg(Surv(futime, fustat) ~ age + ecog.ps, ovarian,
 	dist='loglogistic')
 fitfl
 
-flem2 <- scan("data.fleming2", what=list(ltime=0, rtime=0))
-flsurv<- Surv(flem2$ltime, flem2$rtime, type='interval2')
+#test out interval censoring, using some dummy time values
 
-fitfw2 <- survreg(flsurv ~ age + ecog.ps, ovarian, dist='weibull')
+idat <- read.table('data.interval', skip=3, header=T, sep=',')
+flsurv<- Surv(idat$ltime, idat$rtime, type='interval2')
+
+fitfw2 <- survreg(flsurv ~ age + ecog.ps, idat, dist='weibull')
 summary(fitfw2)
 
-fitfl2 <- survreg(flsurv ~ age + ecog.ps, ovarian, dist='loglogistic')
+fitfl2 <- survreg(flsurv ~ age + ecog.ps, idat, dist='loglogistic')
 summary(fitfl2)
 
-fitfg2 <- survreg(flsurv ~ age + ecog.ps, ovarian, dist='lognormal')
+fitfg2 <- survreg(flsurv ~ age + ecog.ps, idat, dist='lognormal')
 summary(fitfg2)
+
+logt <- c(survreg.distributions$t, 
+          survreg.distributions$weibull[c('trans', 'itrans', 'dtrans')])
+logt$name <- 'log(t)'
+
+fitft2 <- survreg(Surv(ltime, rtime, type='interval2') ~ age + ecog.ps,
+            idat, dist=logt, parm=100)
+summary(fitft2)  #should be quite close to fitfg2
+
 #
 # Check out the survreg density and probability functions
 #

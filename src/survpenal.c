@@ -118,7 +118,7 @@ void survpenal(int whichcase, int nfrail,    int  nvar,    double **hmat,
 	    flag = LOGICAL(VECTOR_ELT(plist, 4));
 	    for (i=0; i<nvar; i++) {
 		if (flag[i] ==1) {  /* See comments above on flag[0]*/
-		    u[i+nfrail] ==0;
+		    u[i+nfrail] =0;
 		    hmat[i][i+nfrail] =1;
 		    for (j=0; j<i; j++) hmat[i][j+nfrail] =0;
 		    }

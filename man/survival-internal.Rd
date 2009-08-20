@@ -1,20 +1,21 @@
 \name{survival-internal}
 \alias{survival-internal}
-\alias{survreg.fit}
-\alias{survpenal.fit}
-\alias{survdiff.fit}
-\alias{is.category}
-\alias{is.na.ratetable2}
-\alias{is.na.coxph.penalty}
-\alias{match.ratetable}
+\alias{agexact.fit}
+\alias{agreg.fit}
 \alias{as.matrix.ratetable}
-\alias{model.newframe}
 \alias{coxpenal.df}
 \alias{coxpenal.fit}
 \alias{coxph.fit}
 \alias{coxph.wtest}
-\alias{agreg.fit}
-\alias{agexact.fit}
+\alias{is.category}
+\alias{is.na.ratetable2}
+\alias{is.na.coxph.penalty}
+\alias{match.ratetable}
+\alias{survfitCI}
+\alias{survfitKM}
+\alias{survreg.fit}
+\alias{survpenal.fit}
+\alias{survdiff.fit}
 \title{Internal survival functions}
 \description{Internal survival functions}
 \usage{
@@ -28,7 +29,6 @@ match.ratetable(R, ratetable)
 \method{as.matrix}{ratetable}(x, ...)
 is.na.ratetable2(x)
 is.na.coxph.penalty(x)
-model.newframe(object, newdata, safe = FALSE, response = FALSE, ...)
 coxpenal.df(hmat, hinv, fdiag, assign.list, ptype, nvar, pen1,
     pen2, sparse)
 coxpenal.fit(x, y, strata, offset, init, control, weights, method,
@@ -40,6 +40,26 @@ agreg.fit(x, y, strata, offset, init, control, weights, method,
     rownames)
 agexact.fit(x, y, strata, offset, init, control, weights, method,
     rownames) 
+survfitCI(X, Y, weights,  type=c('kaplan-meier', 'fleming-harrington', 'fh2'),
+                       error=c('greenwood', "tsiatis"), se.fit=TRUE,
+                       conf.int= .95,
+                       conf.type=c('log',  'log-log',  'plain', 'none'),
+                       conf.lower=c('usual', 'peto', 'modified'),
+                       etype, id)
+survfitKM(x, y, casewt=rep(1,length(x)),
+                       type=c('kaplan-meier', 'fleming-harrington', 'fh2'),
+                       error=c('greenwood', "tsiatis"), se.fit=TRUE,
+                       conf.int= .95,
+                       conf.type=c('log',  'log-log',  'plain', 'none'),
+                       conf.lower=c('usual', 'peto', 'modified'),
+                       start.time, new.time) 
+survfitTurnbull(x, y, casewt,
+                       type=c('kaplan-meier', 'fleming-harrington', 'fh2'),
+                       error=c('greenwood', "tsiatis"), se.fit=TRUE,
+                       conf.int= .95,
+                       conf.type=c('log',  'log-log',  'plain', 'none'),
+                       conf.lower=c('usual', 'peto', 'modified'),
+                       start.time)
 }
 \details{The arguments to these routines are not guarranteed to stay the
 same from release to release -- call them at your own risk!}

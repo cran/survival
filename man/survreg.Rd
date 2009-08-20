@@ -63,7 +63,7 @@ optional fixed value for the scale.  If set to <=0 then the scale is
 estimated.
 }
 \item{control}{
-a list of control values, in the format producted by
+a list of control values, in the format produced by
 \code{\link{survreg.control}}. The default value is \code{survreg.control()}
 }
 \item{model,x,y}{

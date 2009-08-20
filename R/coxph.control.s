@@ -1,10 +1,10 @@
-# $Id: coxph.control.S 11234 2009-02-10 21:08:40Z therneau $
+# $Id: coxph.control.S 11280 2009-05-20 19:22:46Z therneau $
 #
 # Gather all of the control parameters for coxph into one spot
 #
-coxph.control <- function(eps=1e-8, 
+coxph.control <- function(eps=1e-9, 
                           toler.chol = .Machine$double.eps ^ .75, 
-			  iter.max=15,
+			  iter.max=20,
 			  toler.inf= sqrt(eps), outer.max=10 ) {
     if (iter.max <0) stop("Invalid value for iterations")
     if (eps <=0) stop ("Invalid convergence criteria")
@@ -12,6 +12,5 @@ coxph.control <- function(eps=1e-8,
 	    warning("For numerical accuracy, tolerance should be < eps")
     if (toler.inf <=0) stop ("The inf.warn setting must be >0")
     list(eps=eps, toler.chol=toler.chol, iter.max=iter.max, 
-	 toler.inf=toler.inf, outer.max=outer.max,
-	 eps.miss = missing(eps), iter.miss = missing(iter.max))
+	 toler.inf=toler.inf, outer.max=outer.max)
     }

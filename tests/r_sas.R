@@ -255,4 +255,4 @@ kfit <- survfit(Surv(time1, time2, type='interval2') ~1, data=tdata)
 points(kfit$time, qnorm(1-kfit$surv), pch='+')
 
 dev.off()  #close the plot file
-rm(kfit, bfit, bci, xmat, qstat, tdata, tfit) 
+

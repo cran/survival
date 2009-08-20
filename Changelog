@@ -1,0 +1,42 @@
+22 April 2009.  The coxph code had an override to iter and eps, making both of
+them more strict for a penalized model.  However, the overall default values
+have changed over time, so that these lines actually decreased accuracy - the
+opposite of their intent.  Removed the lines.  Also removed the iter.miss and
+eps.miss components (on which this check depended) from coxph.control, which
+makes that function match its documentation.
+
+1 May 2009. The anova.coxph function was incorrect for models with a strata
+term.  Fixed this, and made chisquare tests the default.
+
+20 May 2009.  The manual page for survfit was confusing, since it tries to 
+document both the standard KM (formula method) and the coxph method.  I've
+split them out so that now survfit documents only the basic method and points 
+a user the appropriate specialized page.
+
+21 May 2009 Create a test case for factor variables/newdata/predict for coxph 
+and survreg.  This led to a set of minor fixes; the code is now in line with
+the R standard for model functions.  One consequence is that model.frame.coxph
+and model.frame.survreg are no longer needed, so have been removed.
+
+22 May 2009: Allow single subscripts to rate tables, e.g. survexp[1:10].  
+Returns a simple vector of values.  The str() function does this to print out
+a short summary.  Problem pointed out by Heinz Tuechler.
+
+2 June 2009: Surv(time1, time2, status, type='interval') would fail for an NA
+status code.  Pointed out by Achim Zeilus.
+
+10 June 2009: Fix an error pointed out by Nick Reich, who was the first to use
+interval censored data + user defined distribution in survreg, jointly.  There
+was no test case and creating one uncovered several errors (but only for this
+combination).  All the error cases led to catastrophic failure, highlighting
+the extreme rarity of a user requesting this combination.
+
+17 Aug 2009: Small bug in survfit.coxph.null pointed out by Frank Harrell.  The
+'n' component would be missing if the input data included strata, i.e., the
+initial model had used x=TRUE.  He also pointed out the fix.
+
+20 Aug 2009: One more fix to predict.coxph.  It needed to use 
+delete.response(Terms) rather than Terms, so as to not look for (unnecessarily) 
+the response variable when the newdata argment is used.  Pointed out by Michael
+Conklin.
+  

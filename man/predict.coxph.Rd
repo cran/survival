@@ -11,8 +11,7 @@
 \usage{
 \method{predict}{coxph}(object, newdata,
 type=c("lp", "risk", "expected", "terms"),
-se.fit=FALSE, terms=names(object$assign), collapse,
-safe=FALSE, ...)
+se.fit=FALSE, na.action=na.pass, terms=names(object$assign), collapse, ...)
 }
 \arguments{
 \item{object}{
@@ -33,6 +32,10 @@ the expected number of events given the covariates and follow-up time
 \item{se.fit}{
 if TRUE, pointwise standard errors are produced for the predictions. 
 }
+\item{na.action}{
+  applies only when the \code{newdata} argument is present, and defines
+  the missing value action for the new data.  The default is to include
+  all observations.}
 \item{terms}{
 if type="terms", this argument can be used to specify which terms should be 
 included; the default is all. 
@@ -42,7 +45,6 @@ optional vector of subject identifiers.
 If specified, the output will contain one entry per subject rather than one 
 entry per observation. 
 }
-\item{safe}{not used in R}
 \item{\dots}{For future methods}
 }
 \value{

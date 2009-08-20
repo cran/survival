@@ -186,6 +186,8 @@ double survregc2(int n,          int nvar,     int nstrat,      int whichcase,
 		    dsig =0; ddsig=0; dsg=0;
 		    }
 		else {
+		    funs[3][icount] *= funs[2][icount];  /*f', not f'/f */
+		    funs[3][person] *= funs[2][person];
 		    g = log(temp);
 		    dg  = -(funs[2][icount] -funs[2][person])/(temp*sigma);
 		    ddg = (funs[3][icount] -funs[3][person])*sig2/temp - dg*dg;

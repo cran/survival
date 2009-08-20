@@ -314,8 +314,5 @@ Call: survfit(formula = fit, newdata = list(age = c(30, 70), ecog.ps = c(2,
 > all.equal(survfit(fit)$surv, exp(-baseline))
 [1] TRUE
 > 
-> rm(fit, fit1, fit2, ord, eta, risk, rsum, dead, baseline, rr, sfit, xx)
-Warning message:
-In rm(fit, fit1, fit2, ord, eta, risk, rsum, dead, baseline, rr,  :
-  variable "xx" was not found
+> rm(fit, fit1, fit2, ord, eta, risk, rsum, dead, baseline, rr, sfit)
 > 

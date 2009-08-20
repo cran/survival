@@ -1,9 +1,9 @@
-# $Id: predict.survreg.S 11250 2009-03-19 13:44:59Z tlumley $
+# $Id: predict.survreg.S 11282 2009-05-21 11:00:22Z therneau $
 predict.survreg <-
     function(object, newdata, type=c('response', "link", 'lp', 'linear',
 				     'terms', 'quantile','uquantile'),
 				se.fit=FALSE,  terms=NULL,
-	                        p=c(.1, .9),...) {
+	                        p=c(.1, .9), na.action=na.pass, ...) {
     #
     # What do I need to do predictions ?
     #   
@@ -37,34 +37,39 @@ predict.survreg <-
     if (missing(newdata) && (type=='terms' || se.fit)) need.x <- TRUE
     else  need.x <- FALSE
 
+    if (!missing(newdata)){
+        newframe <- model.frame(Terms, data=newdata, na.action= na.action,
+                                xlev=object$xlevels)
+        na.action.used <- attr(newframe, 'na.action')
+        }
+    else na.action.used <- object$na.action
+
     if (length(strata) && (type=='quantile' || type=='uquantile') &&
 	      !fixedscale) {
 	#
-	# We need to reconstruct the "strata" variable
+	# We need to reconstruct the original "strata" variable
 	#
-	if (is.null(object$model)) m <- model.frame(object)
-	else m <- object$model
+	mf <- model.frame(object)
 	temp <- untangle.specials(Terms, 'strata', 1)
 	dropx <- temp$terms
-	if (length(temp$vars)==1) strata.keep <- m[[temp$vars]]
-	else strata.keep <- strata(m[,temp$vars], shortlabel=TRUE)
+	if (length(temp$vars)==1) strata.keep <- mf[[temp$vars]]
+	else strata.keep <- strata(mf[,temp$vars], shortlabel=TRUE)
 	strata <- as.numeric(strata.keep)
 	nstrata <- max(strata)
 	    
-	if (missing(newdata) && need.x){
+	if (missing(newdata) && need.x){  #need the old x
 	    x <- object[['x']] 
-	    if (is.null(x)) x <- model.matrix(Terms[-dropx], m,
+	    if (is.null(x)) x <- model.matrix(Terms[-dropx], mf,
                                               contr=object$contrasts)
 	    }
 
-	else if (!missing(newdata)) {
-	    newframe <- model.frame(Terms, newdata, na.action=function(x)x)
+	else if (!missing(newdata)) {  #need the new x
 	    if (length(temp$vars)==1) newstrat <- newframe[[temp$vars]]
 	    else newstrat <- strata(newframe[,temp$vars], shortlabel=TRUE)
 	    strata <- match(newstrat, levels(strata.keep))
 	    x <- model.matrix(Terms[-dropx], newframe,
                               contr=object$contrasts)
-	    offset <- model.extract(newframe, 'offset')
+	    offset <- model.offset(newframe)
 	    }
 	}
 
@@ -75,16 +80,13 @@ predict.survreg <-
 	if (missing(newdata) && need.x) {
 	    x <- object[['x']]  # don't accidentally get object$xlevels
 	    if (is.null(x)) {
-		if (is.null(object$model)) 
-			x <- model.matrix(Terms, model.frame(object),
-                                          contr=object$contrasts)
-		else    x <- model.matrix(Terms, object$model,
-                                          contr=object$contrasts)
+		mf <- model.frame(object) 
+                x <-  model.matrix(Terms, mf, contr=object$contrasts)
 		}
 	    }
 
 	else if (!missing(newdata)) {
-	    x <- model.matrix(Terms, newdata, contr=object$contrasts)
+	    x <- model.matrix(Terms, newframe, contr=object$contrasts)
 	    offset <- 0
 	    strata <- rep(1, nrow(x))
 	    }
@@ -236,10 +238,10 @@ predict.survreg <-
         }
 
     #Expand out the missing values in the result
-    # But only if operating on the original dataset
-    if (missing(newdata) && !is.null(object$na.action)) {
-	pred <- naresid(object$na.action, pred)
-	if(se.fit) se <- naresid(object$na.action, se)
+    # 
+    if (!is.null(na.action.used)) {
+	pred <- naresid(na.action.used, pred)
+	if(se.fit) se <- naresid(na.action.used, se)
 
 	
 	}

@@ -82,9 +82,10 @@ fit0b <- coxph(Surv(time, status) ~x, testw2, iter=0)
 fit  <- coxph(Surv(time, status) ~x, testw1, weights=wt)
 fitb <- coxph(Surv(time, status) ~x, testw2)
 
-aeq(resid(fit0, type='mart'), (resid(fit0b, type='mart'))[indx])
-aeq(resid(fit0, type='scor'), (resid(fit0b, type='scor'))[indx])
-aeq(unique(resid(fit0, type='scho')), unique(resid(fit0b, type='scho')))
+# The next 3 are not true for an Efron approx, see book.
+#aeq(resid(fit0, type='mart'), (resid(fit0b, type='mart'))[indx])
+#aeq(resid(fit0, type='scor'), (resid(fit0b, type='scor'))[indx])
+#aeq(unique(resid(fit0, type='scho')), unique(resid(fit0b, type='scho')))
 
 truth0 <- byhand(0,pi)
 aeq(fit0$loglik[1], truth0$loglik)

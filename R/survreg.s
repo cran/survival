@@ -1,5 +1,5 @@
 #
-# $Id: survreg.S 11227 2009-02-09 21:51:09Z therneau $
+# $Id: survreg.S 11282 2009-05-21 11:00:22Z therneau $
 #  The newest version of survreg, that accepts penalties and strata
 #
 if (!is.R()) setOldClass(c('survreg.penal', 'survreg'))
@@ -15,13 +15,13 @@ survreg <- function(formula, data, weights, subset, na.action,
     temp <- Call[c(1,indx)]  # only keep the arguments we wanted
     temp[[1]] <- as.name('model.frame')  # change the function called
 
+    special <- c("strata", "cluster")
+    temp$formula <- if(missing(data)) terms(formula, special)
+                    else              terms(formula, special, data=data)
     if (is.R()) m <- eval(temp, parent.frame())
     else        m <- eval(temp, sys.parent())
 
-    special <- c("strata", "cluster")
-    Terms <- if(missing(data)) terms(formula, special)
-             else              terms(formula, special, data=data)
-
+    Terms <- attr(m, 'terms')
     weights <- model.extract(m, 'weights')
     Y <- model.extract(m, "response")
     if (!inherits(Y, "Surv")) stop("Response must be a survival object")
@@ -57,13 +57,30 @@ survreg <- function(formula, data, weights, subset, na.action,
         }
     else               newTerms <- Terms
     X <- model.matrix(newTerms, m)
+    if (is.R()) {
+	 assign <- lapply(attrassign(X, newTerms)[-1], function(x) x-1)
+         xlevels <- .getXlevels(newTerms, m)
+         contr.save <- attr(X, 'contrasts')
+         }
+    else {
+        assign <- lapply(attr(X, 'assign')[-1], function(x) x -1)
+        xvars <- as.character(attr(newTerms, 'variables'))
+        xvars <- xvars[-attr(newTerms, 'response')]
+        if (length(xvars) >0) {
+                xlevels <- lapply(m[xvars], levels)
+                xlevels <- xlevels[!unlist(lapply(xlevels, is.null))]
+                if(length(xlevels) == 0)
+                        xlevels <- NULL
+                }
+        else xlevels <- NULL
+        contr.save <- attr(X, 'contrasts')
+        }
 
     n <- nrow(X)
     nvar <- ncol(X)
 
-    offset<- attr(Terms, "offset")
-    if (!is.null(offset)) offset <- as.numeric(m[[offset]])
-    else                  offset <- rep(0, n)
+    offset<- model.offset(m) # R returns NULL if no offset, Splus a zero
+    if (length(offset)==0 || all(offset==0)) offset <- rep(0.,n)
 
     type <- attr(Y, "type")
     if (type== 'counting') stop ("Invalid survival type")
@@ -211,7 +228,8 @@ survreg <- function(formula, data, weights, subset, na.action,
     fit$df.residual <- n - sum(fit$df)
 #   fit$fitted.values <- itrans(fit$linear.predictors)
     fit$terms <- Terms
-    fit$formula <- as.vector(attr(Terms, "formula"))
+    fit$contrasts <- contr.save
+    if (length(xlevels)) fit$xlevels <- xlevels
     fit$means <- apply(X,2, mean)
     fit$call <- Call
     fit$dist <- dist

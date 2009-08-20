@@ -26,9 +26,5 @@ toler.chol=1e-10, iter.max, debug=0, outer.max=10)
 }
 
 \seealso{ \code{\link{survreg}}}
-
-\examples{
-
-}
 \keyword{survival}
 

@@ -1,6 +1,6 @@
 
-R version 2.7.1 (2008-06-23)
-Copyright (C) 2008 The R Foundation for Statistical Computing
+R version 2.9.0 (2009-04-17)
+Copyright (C) 2009 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -432,8 +432,5 @@ n= 21
 > dev.off()  #close the plot file
 null device 
           1 
-> rm(kfit, bfit, bci, xmat, qstat, tdata, tfit) 
-Warning message:
-In rm(kfit, bfit, bci, xmat, qstat, tdata, tfit) :
-  variable "bfit" was not found
+> 
 > 

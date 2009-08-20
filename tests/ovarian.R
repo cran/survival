@@ -61,4 +61,4 @@ dead <- (ovarian$fustat[ord]==1)
 baseline <- cumsum(1/rsum[dead])
 all.equal(survfit(fit)$surv, exp(-baseline))
 
-rm(fit, fit1, fit2, ord, eta, risk, rsum, dead, baseline, rr, sfit, xx)
+rm(fit, fit1, fit2, ord, eta, risk, rsum, dead, baseline, rr, sfit)

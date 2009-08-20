@@ -1,4 +1,4 @@
-# $Id: ratetable.S 11183 2009-01-21 13:33:40Z therneau $
+# $Id: ratetable.S 11283 2009-05-22 14:04:19Z therneau $
 #
 # This source file has two distinct parts in it.  The first is the
 #  ratetable(), which is used inside pyears and survexp only to allow
@@ -88,7 +88,7 @@ is.na.ratetable2 <- function(x) {
     attributes(x) <- aa[c("dim", "dimnames")]
     y <- NextMethod("[", drop=FALSE)
     newdim <- attr(y, 'dim')
-    if (is.null(newdim)) stop("Invalid subscript")
+    if (is.null(newdim)) return(y)  #when the subscript was a single vector
     dropped <- (newdim==1)
     if (drop)  change <- (newdim!=aa$dim & !dropped)
     else       change <- (newdim!=aa$dim)

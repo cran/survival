@@ -2,8 +2,8 @@ Title: Survival analysis, including penalised likelihood.
 Maintainer: Thomas Lumley <tlumley@u.washington.edu>
 Priority: recommended
 Package: survival
-Version: 2.35-4
-Date: 2009-04-01
+Version: 2.35-5
+Date: 2009-08-20
 Depends: stats, utils, graphics, splines, R (>= 2.0.0)
 LazyData: Yes
 LazyLoad: Yes
@@ -14,6 +14,6 @@ Description: survival analysis: descriptive statistics, two-sample
         censoring for parametric models. Case-cohort designs.
 License: GPL-2
 URL: http://r-forge.r-project.org
-Packaged: Wed Apr 1 13:56:03 2009; tlumley
+Packaged: 2009-08-24 22:28:51 UTC; tlumley
 Repository: CRAN
-Date/Publication: 2009-04-01 17:02:08
+Date/Publication: 2009-08-25 08:05:38

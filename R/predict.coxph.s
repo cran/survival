@@ -1,4 +1,4 @@
-#$Id: predict.coxph.S 11204 2009-02-06 13:14:06Z therneau $
+#$Id: predict.coxph.S 11329 2009-08-21 01:18:14Z therneau $
 #What do I need to do predictions --
 #
 #linear predictor:  exists
@@ -17,13 +17,13 @@
 #   +new  : new X matrix and the old means + I matrix
 predict.coxph <- function(object, newdata, 
 		       type=c("lp", "risk", "expected", "terms"),
-		       se.fit=FALSE,
-		       terms=names(object$assign), collapse, safe=FALSE, ...)
+		       se.fit=FALSE, na.action=na.pass,
+		       terms=names(object$assign), collapse, ...)
 
     {
     type <-match.arg(type)
     n <- object$n
-    Terms <- object$terms
+    Terms <-  delete.response(object$terms)
     strata <- attr(Terms, 'specials')$strata
     dropx <- NULL
     if (length(strata)) {
@@ -41,6 +41,7 @@ predict.coxph <- function(object, newdata,
     resp <- attr(Terms, "variables")[attr(Terms, "response")]
 
     if (missing(newdata)) {
+        na.action.used <- object$na.action
 	if (type=='terms' || (se.fit && (type=='lp' || type=='risk'))) {
 	    x <- object[['x']]  #don't accidentally grab 'xlevels'
 	    if (is.null(x)) {
@@ -59,24 +60,21 @@ predict.coxph <- function(object, newdata,
 	}
     else {
 	if (type=='expected'){
-	     m <- model.frame(Terms, newdata, xlev=object$xlevels)
+	     m <- model.frame(Terms, data=newdata, xlev=object$xlevels,
+                              na.action=na.action)
              x <- model.matrix(Terms2, m,
                                contr=object$contrasts)[,-1,drop=FALSE]
          }
 	else {
-            m <- model.frame(Terms2, newdata, xlev=object$xlevels)
+            m <- model.frame(Terms2, data=newdata, xlev=object$xlevels,
+                             na.action=na.action)
             x <- model.matrix(delete.response(Terms2), m,
                               contr=object$contrasts)[,-1,drop=FALSE]
         }
+        na.action.used <- attr(m, 'na.action')
 
 	x <- sweep(x, 2, object$means)
-	if (length(offset)) {
-	    if (type=='expected') offset <- as.numeric(m[[offset]])
-	    else {
-		offset <- attr(Terms2, 'offset')
-		offset <- as.numeric(m[[offset]])
-		}
-	    }
+	if (length(offset)) offset<- model.offset(m)
 	else offset <- 0
 	}
 
@@ -159,12 +157,11 @@ predict.coxph <- function(object, newdata,
     pred <- drop(pred)
 
     # Expand out the missing values in the result
-    # But only if operating on the original dataset
-    if (missing(newdata) && !is.null(object$na.action)) {
-	pred <- naresid(object$na.action, pred)
+    if (!is.null(na.action.used)) {
+	pred <- naresid(na.action.used, pred)
         if (is.matrix(pred)) n <- nrow(pred)
 	else               n <- length(pred)
-	if(se.fit) se <- naresid(object$na.action, se)
+	if(se.fit) se <- naresid(na.action.used, se)
 	}
 
     # Collapse over subjects, if requested

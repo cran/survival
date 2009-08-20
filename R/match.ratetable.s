@@ -1,9 +1,9 @@
-# $Id: match.ratetable.S 11183 2009-01-21 13:33:40Z therneau $
-# Do a set of error checks on whether the ratetable() vars match the
-#   actual ratetable
+# $Id: match.ratetable.S 11289 2009-06-12 18:10:51Z therneau $
+# Do a set of error checks on whether any categorical tetable() vars match the
+#   level set of the actual ratetable.  Continuous variables are left alone.
 # This is called by pyears and survexp, but not by users
 #
-# Returns a subscripting matrix
+# The categoricals are turned into integer subscripts
 #
 match.ratetable <- function(R, ratetable) {
     attR <- attributes(R)
@@ -30,14 +30,15 @@ match.ratetable <- function(R, ratetable) {
     rtype  <- attr(ratetable, 'type') # 1= class, 2=cont, 3=date, 4=US yr
     if (is.null(rtype)) { #old style ratetable, be backwards compatable
         temp <- attr(ratetable, 'factor')
-        rtype <- 1*(temp==1) + 4*(temp >1)  
+        # we map 'old continuous' to 'new date'; since it might be a date
+        rtype <- 1*(temp==1) + 3*(temp==0) + 4*(temp >1)  
         }
 
     # Now, go through the dimensions of the ratetable 1 by 1, and
     #  verify that the user's variable is compatable
     #  with the rate table's dimensions
     #
-    if (any(rtype<1 & isDate)) {
+    if (any(rtype<3 & isDate)) {
         indx <- which(rtype<1 & isDate)
         stop(paste("Data has a date type variable, but the reference",
                    "ratetable is not a date for variable", dimid[indx]))

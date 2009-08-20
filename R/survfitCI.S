@@ -1,5 +1,5 @@
 #
-# $Id: survfitCI.S 11238 2009-02-14 11:51:18Z therneau $
+# $Id: survfitCI.S 11290 2009-06-18 18:13:12Z therneau $
 #
 # Compute the current incidence curve for a data set
 #   called from survfit.formula
@@ -44,6 +44,7 @@ survfitCI <- function(X, Y, weights,
     time   <- Y[,ncol(Y) -1]
     status <- Y[,ncol(Y)]
     ncurve <- length(levels(X))
+    n <- length(time)
 
     # make sure that the etypes for status==0 are not tabulated
     #  in our output
@@ -54,7 +55,7 @@ survfitCI <- function(X, Y, weights,
         }
     else etype <- factor(ifelse(status==0, NA, etype))
     
-    if (missing(id) || length(id)==0) {
+    if (missing(id) || length(id)==0 || length(unique(id))==n) {
         # this case implicitly assumes one transition/subject
         # use survfit.km to get the # at risk and etc
 	kfit <- survfitKM(X, Y, se.fit=FALSE)
@@ -110,16 +111,17 @@ survfitCI <- function(X, Y, weights,
 	status <- Y[,2]
 
 	# ensure consistency of the weights
-        idlist <- sort(unique(id))  #should be 1,2,3,...
+        idlist <- sort(unique(id))
 	firstone <- match(idlist, id) # first obs for each subject
-	wt2 <- weights[firstone]
-	if (any(wt2[id] != weights))
-		stop("All case weights for a given subject must agree")
+        # if the ids were Smith, Jones, Doe, Smith, Doe, then indx
+        #   would be 1,2,3,1,3, ...  pointers to the first obs of each id
+        indx <- firstone[match(id, idlist)] 
 
+	if (any(weights[indx] != weights))
+		stop("All case weights for a given subject must agree")
 	if (ncurve >1) {
 	    # Ensure that any given subject is in only one curve
-	    xtemp <- X[firstone]
-	    if (any(xtemp[as.numeric(X)] != X))
+            if (any(X[indx] != X))
 		stop("No subject can be in more than 1 curve")
 	    }
 
@@ -144,6 +146,7 @@ survfitCI <- function(X, Y, weights,
 	    wtindex <- match(id, idlist)
 	    wt2 <- weights[match(idlist, id)]
 	    cetype <- factor(rep(0, length(idlist)), levels=0:netype)
+            islast <- c(id[-1]!= id[-n], TRUE)  # mark the last obs of each id
 
             # For computing "number at risk", I will need the original
             #  weights (censorings not redistributed)
@@ -172,21 +175,20 @@ survfitCI <- function(X, Y, weights,
 			varhaz[i,] <- varhaz[i-1,]
 			}
 		    }
-
 		# Now, redistribute the weights if those who are at the end
                 # of their last interval.  Note that a death will never get
                 # redistributed, because there is no one to recieve it: that
                 # would require the data to have an obs with futime after death
-		redo <- which(time==xtime) 
+		redo <- which(time==xtime & islast) 
                 for (j in redo) {
                     # list of others in the same etype, at this time, with
                     #   a positive weight
-                    k <- wtindex[j]
+                    k <- wtindex[j]   # the position of this id in wt2 vector
                     child <- (cetype==cetype[k] & wt2 >0)
-                    nchild <- sum(child) -1  # since "child" counts me too
+                    otherwt <- sum(wt2[child]) - wt2[k]
                     # if no children, the weight is not redistributed
-                    if (nchild >0){
-                        wt2[child] <- wt2[child] + wt2[k]/nchild
+                    if (otherwt >0){
+                        wt2[child] <- wt2[child]*(1 + wt2[k]/otherwt)
                         wt2[k] <- 0
                         }
 		    }
@@ -203,7 +205,7 @@ survfitCI <- function(X, Y, weights,
 	    kfit <- docurve(time, status, etype2, weights, id, netype)
 	    kfit$type <- 'right'
 	    kfit$call <- 'call'
-	    kfit$n <- n
+	    kfit$n <- length(Y)
 	    }
 	else {
 	    timex  <- vector('list', ncurve)
@@ -228,7 +230,7 @@ survfitCI <- function(X, Y, weights,
 	    kfit <- list(n=table(X),
 			 time= unlist(timex),
 			 n.risk= unlist(n.risk), 
-			 n.event=unlist(n.nevent),
+			 n.event=unlist(n.event),
 			 surv = t(matrix(unlist(surv), nrow=netype)),
 			 type='right', call=call)
 	    if (se.fit) kfit$std.err <- t(matrix(unlist(varhaz),nrow=netype))

@@ -148,8 +148,11 @@ SEXP survreg6(SEXP maxiter2,   SEXP nvarx,  SEXP y,
         dolik = survregc2;
 	/*
 	** Create the vector z in the contained data frame
+	**  needs to be of length n + number of status==3 obs
 	*/
-	PROTECT(z = allocVector(REALSXP, n));
+	j=0;
+	for (i=0; i<n; i++) if (status[i]==3) j++;
+	PROTECT(z = allocVector(REALSXP, n+j));
 	defineVar(install("z"), z, rho);
 	zptr = REAL(z);
 	nprotect = nprotect+1;

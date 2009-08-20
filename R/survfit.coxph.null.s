@@ -1,4 +1,4 @@
-# $Id: survfit.coxph.null.S 11228 2009-02-09 21:51:45Z therneau $
+# $Id: survfit.coxph.null.S 11322 2009-08-17 15:19:05Z therneau $
 survfit.coxph.null <-
   function(formula, newdata, se.fit=TRUE, conf.int=.95, individual=FALSE,
 	    type, vartype,
@@ -36,11 +36,11 @@ survfit.coxph.null <-
 	if (is.null(stratx)) {
 	    temp <- untangle.specials(Terms, 'strata', 1)
 	    stratx <- strata(m[temp$vars])
-	    n.all <- table(stratx)
 	    }
 	if (is.null(y)) y <- model.extract(m, 'response')
 	}
     if (is.null(stratx)) stratx <- rep(1,n)
+    n.all <- table(stratx)
     ny <- ncol(y)
     if (nrow(y) != n) stop ("Mismatched lengths: logic error")
 

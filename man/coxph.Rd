@@ -168,8 +168,8 @@ Springer-Verlag, 2000.
 }
 \seealso{
 \code{\link{cluster}},  \code{\link{strata}},  \code{\link{Surv}},
-\code{\link{survfit}, \code{\link{pspline}}, \code{\link{frailty}},
-\code{\link{ridge}}}.   
+\code{\link{survfit}}, \code{\link{pspline}}, \code{\link{frailty}},
+\code{\link{ridge}}.   
 }
 \examples{
 # Create the simplest test data set 

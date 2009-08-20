@@ -10,8 +10,8 @@ Predicted values for a \code{survreg} object
 \usage{
 \method{predict}{survreg}(object, newdata,  
 type=c("response", "link", "lp", "linear", "terms", "quantile",  
-	"uquantile"),  
- se.fit=FALSE, terms=NULL, p=c(0.1, 0.9),...)
+	"uquantile"),
+ se.fit=FALSE, terms=NULL, p=c(0.1, 0.9), na.action=na.pass, ...)
 }
 \arguments{
 \item{object}{
@@ -40,6 +40,11 @@ one column for every term (excluding the intercept) in the model.
 \item{p}{
 vector of percentiles.  This is used only for quantile predictions. 
 }
+\item{na.action}{
+  applies only when the \code{newdata} argument is present, and defines
+  the missing value action for the new data.  The default is to include
+  all observations.}
+
 \item{\dots}{for future methods}
 }
 \value{
