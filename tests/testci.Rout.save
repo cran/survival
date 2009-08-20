@@ -1,6 +1,6 @@
 
-R version 2.7.1 (2008-06-23)
-Copyright (C) 2008 The R Foundation for Statistical Computing
+R version 2.9.0 (2009-04-17)
+Copyright (C) 2009 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -68,10 +68,7 @@ Loading required package: splines
 > #   This test is in the directory, but won't work unless you have
 > #   installed the cmprsk library!
 > #
-> temp <- library(cmprsk, logical.return=TRUE)
-Warning message:
-In library(cmprsk, logical.return = TRUE) :
-  there is no package called 'cmprsk'
+> temp <- suppressWarnings(library(cmprsk, logical.return=TRUE))
 > if (temp) {
 +     tstat <- ifelse(tdata$status==0, 0, 1+ (tdata$event=='death'))
 +     gray1 <- cuminc(tdata$time, tstat)
@@ -92,4 +89,5 @@ In library(cmprsk, logical.return = TRUE) :
 +     indx1 <- match(names(temp1), fit2$time)
 +     aeq(temp1, 1-fit2$surv[indx1,1])
 +     }
+[1] TRUE
 > 

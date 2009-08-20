@@ -1,6 +1,6 @@
 
-R version 2.7.1 (2008-06-23)
-Copyright (C) 2008 The R Foundation for Statistical Computing
+R version 2.11.1 (2010-05-31)
+Copyright (C) 2010 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -270,7 +270,7 @@ Loading required package: splines
 > # Now test the direct-adjusted curve (Ederer)
 > #
 > efit <- survexp( ~ ratetable(x=x), dummy, ratetable=fit, se=F)
-> direct <- survfit(fit, newdata=dummy)$surv
+> direct <- survfit(fit, newdata=dummy, censor=FALSE)$surv
 > 
 > chaz <- chaz[-1]                  #drop time 0
 > d2 <- exp(outer(-chaz, risk))

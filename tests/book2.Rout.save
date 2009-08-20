@@ -1,6 +1,6 @@
 
-R version 2.9.0 (2009-04-17)
-Copyright (C) 2009 The R Foundation for Statistical Computing
+R version 2.11.1 (2010-05-31)
+Copyright (C) 2010 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -15,10 +15,10 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 'help.start()' for an HTML browser interface to help.
 Type 'q()' to quit R.
 
-> options(na.action=na.exclude) # preserve missings
-> options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
 > library(survival)
 Loading required package: splines
+> options(na.action=na.exclude) # preserve missings
+> options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
 > 
 > #
 > # Tests from the appendix of Therneau and Grambsch
@@ -71,7 +71,7 @@ Loading required package: splines
 +     varhaz <- (varhaz.g + varhaz.d^2/ imat) * exp(2*beta*newx)
 + 
 +     list(loglik=loglik, u=u, imat=imat, xbar=xbar, haz=haz,
-+ 	     mart=mart,  score=score,
++ 	     mart=mart,  score=score, var.g=varhaz.g, var.d=varhaz.d,
 + 		scho=scho, surv=surv, var=varhaz[c(1,3,4)])
 +     }
 > 
@@ -92,8 +92,10 @@ Loading required package: splines
 [1] TRUE
 > aeq(truth0$score, resid(fit0, 'score')[c(3:7,1)])
 [1] TRUE
-> sfit <- survfit(fit0, list(x=0))
+> sfit <- survfit(fit0, list(x=0), censor=FALSE)
 > aeq(sfit$std.err^2, truth0$var)
+[1] TRUE
+> aeq(sfit$surv, truth0$surv)
 [1] TRUE
 > 
 > fit <- coxph(Surv(time, status) ~x, test1, eps=1e-8)
@@ -111,10 +113,10 @@ Loading required package: splines
 > aeq(truth$score, resid(fit, 'score')[c(3:7,1)])
 [1] TRUE
 > 
-> sfit <- survfit(fit, list(x=0))
-> aeq(sfit$std.err^2, truth$var) # sfit skips time 8 (no events there)
+> sfit <- survfit(fit, list(x=0), censor=FALSE)
+> aeq(sfit$surv, truth$surv)
 [1] TRUE
-> aeq(-log(sfit$surv), (cumsum(truth$haz))[c(1,3,4)])
+> aeq(sfit$std.err^2, truth$var)
 [1] TRUE
 > 
 > # 
@@ -131,11 +133,9 @@ Loading required package: splines
  0.1575120  0.4212440 -0.5787560  0.0000000 
 > 
 > predict(fit, type='lp')
-         1          2          3          4          5          6          7 
--0.8384287         NA  0.8384287  0.8384287  0.8384287 -0.8384287 -0.8384287 
+[1] -0.8384287         NA  0.8384287  0.8384287  0.8384287 -0.8384287 -0.8384287
 > predict(fit, type='risk')
-        1         2         3         4         5         6         7 
-0.4323894        NA 2.3127302 2.3127302 2.3127302 0.4323894 0.4323894 
+[1] 0.4323894        NA 2.3127302 2.3127302 2.3127302 0.4323894 0.4323894
 > predict(fit, type='expected')
         1         2         3         4         5         6         7 
 1.3655434        NA 0.2808293 0.2808293 1.4383414 0.2689131 0.3655434 
@@ -172,8 +172,7 @@ $fit
 1.3655434        NA 0.2808293 0.2808293 1.4383414 0.2689131 0.3655434 
 
 $se.fit
-        1         2         3         4         5         6         7 
-1.1685647        NA 0.5299333 0.5299333 1.1993087 0.5185684 0.6046019 
+[1] 1.0649293        NA 0.2864593 0.2864593 1.5922983 0.3661617 0.3661617
 
 > predict(fit, type='terms', se.fit=T)
 $fit

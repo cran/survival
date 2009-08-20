@@ -20,7 +20,7 @@ aeq(fit1$loglik[2] + fit2$loglik[2], fit3$loglik[2])
 #
 # Test out the cluster term in survreg, which means first a test
 #  of the dfbeta residuals
-#
+# I also am checking that missing values propogate
 test1 <- data.frame(time=  c(9, 3,1,1,6,6,8),
                     status=c(1,NA,1,0,1,1,0),
                     x=     c(0, 2,1,1,1,0,0))
@@ -28,17 +28,17 @@ fit1 <- survreg(Surv(time, status) ~ x + cluster(1:7), test1)
 
 db1 <- resid(fit1, 'dfbeta')
 ijack <-db1
-tdata <- na.omit(test1)  #drop the NA
 eps <- 1e-7
-for (i in 1:6) {
-    temp <- rep(1.0,6)
+for (i in 1:7) {
+    temp <- rep(1.0,7)
     temp[i] <- 1-eps
-    tfit <- survreg(Surv(time, status) ~ x, tdata, weight=temp)
+    tfit <- survreg(Surv(time, status) ~ x, test1, weight=temp)
     ijack[i,] <- c(tfit$coef, log(tfit$scale)) 
     }
+ijack[2,] <- NA  # stick the NA back in
 ijack <- (rep(c(fit1$coef, log(fit1$scale)), each=nrow(db1)) - ijack)/eps
 all.equal(db1, ijack, tol=eps)
-all.equal(t(db1)%*% db1, fit1$var)
+all.equal(t(db1[-2,])%*% db1[-2,], fit1$var)
 
 # This is a harder test since there are multiple strata and multiple 
 #  obs/subject.  Use of enum + strata(enum) in essenence fits a different

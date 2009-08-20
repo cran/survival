@@ -52,12 +52,13 @@ i.e., X <- X[,1].  In particular, some downstream libraries depend on
 the assign attribute. 
   For predict.coxph remove an earlier edit so that a single variable model
 + type='terms' returns a matrix, not a vector.  This is expected by the 
-termplot() function.
+termplot() function.  It led to a whole lot of changes in the test suite
+results, though, due to more "matrix" printouts.
 
 1 Oct 09: Fix a bug pointed out by Ben Domingue.  There was one if-then-else
 path into step-halving in the frailty.controldf routine that would refer to
 a non-existent variable.  A very rarely followed path, obviously, and with
-the obvious fix the mathematics of the update was fine.
+the obvious fix. The mathematics of the update was fine.
 
 28 Oct 09: The basehaz function would reorder the labels of the strata
 factor.  Not a bug really, but a "why do this?"  Unintended consequence of
@@ -68,9 +69,9 @@ type='p', should one plot the tops of the step function, the bottoms, or
 both?).  Make it explicitly disallowed in response to an R-help query,
 rather than the confusing error message that currently arose.
 
-14 Dec 09: Fix bug in frailty.xxx, if there is a missing value in the levels
+14 Dec 09: 1.Fix bug in frailty.xxx, if there is a missing value in the levels
 it gets counted by "length(unique(x))" (frailty is called before NA
-removal.)  SurvfitCI had an incorrect CI with case weights, and
+removal.)  2.SurvfitCI had an incorrect CI with case weights, and 3. in
 survreg a call to resid instead of residuals.survreg, before the class
 was attached.  
 
@@ -79,3 +80,92 @@ cluster statement, when a t(x)%*%x was replaced with crossprod.  A trivial
 fix, but in response I added another test that more formally checks the
 dfbeta residuals and found a major oversight for the case of multiple
 strata.  
+
+25 Jan 10: Fix bug in summary.ratetable pointed out by Heinze Tuechler.  Added
+a call to the function to the test suite as well.
+
+26 Jan 10: Fix bug pointed out by Thomas Lumley -- with case weights <1 a Cox 
+model with (start, stop) input would inappropriately decide it needed to do 
+step halving to find a solution, eventually failing to converge.  It was
+treating a loglik >0 as an indication of failure, but such values arise for
+small case weights. Let L(w) be the loglik for a data set where everyone is
+given a weight of w, then L(w)= wL(1) - d log(w) where d=number of deaths in
+the data.  For small enough w positivity of L(w) is certain.
+
+26 Jan 10: At the request of Alex Bokov, added the xmax, xscale, and fun
+arguments to points.survfit.
+
+8 Feb 10: Bug pointed out by Heinz Tuechler -- if a subscript was dropped from
+a rate table the 'type' attribute got dropped, e.g. survexp.usr[,1,,].
+
+24 Feb 2010: Serious bug pointed out by Kevin Buhr.  In Surv(time1, time2,stat)
+if there were i) missing values in time1 and/or time2, ii) illegal value
+sets with time1 >=time2, and iii) all the instances of ii do not preceed all
+the instances of i, then the wrong observation (not the illegal) will be 
+thrown out.  Repaired, and a new test added.
+  Minor updates to 3 test files: survreg2, testci, ratetable.
+
+7 April 2010: Minor bug pointed out by Fredrik Lundgren.  In survfit if the
+method was KM (default) and error = Tsiatis an error message results.  Simple
+fix: code went down the wrong branch.
+
+24 May 2010: Fix an annoyance in summary.survfit.  When the survival data 
+had an event or censor at time 0 and summary is called with a times argument,
+then my constructed call to approx() would have duplicate x values.  The answer
+was always right, but approx has begun to print a bothersome warning message.  
+A small change to the constructed argument vector avoids it.
+
+21 May 2010: Fix bug in summary.survfit.  For a survival curve from a Cox model
+with start,stop data, the 'times' argument would generate an error.
+
+11 July 2010: A rewrite of the majority of the survfit.coxph code.  The primary
+benefits are 1: finally tracked down and eliminated the bug for standard errors
+of case weights + Cox survival + Efron method; 2: the individual=TRUE and FALSE
+options now use the same underlying code for curves, before there were some
+options valid only for one or the other; 3: code was rewritten using noweb 
+with a considerable increase in documentation; 4: during the verification
+process some errors were found in the test suite and corrected, e.g., a 
+typo in my book led to failure of an all.equal test in book4.R.  Similar
+to the rewrite for survfit several years ago, the new code has far less use
+of .C to help transparency.
+
+  Also added the noweb.R processing function from the coxme package, so that
+the noweb code can be extracted "on the fly" during installation using
+commands in the configure and cleanup scripts.  
+
+21 July 2010: Fix a problem pointed out by a user: calling survfit with almost
+tied times, e.g., c(2, sqrt(2)^2), could lead to an inconsistent result.  Some
+parts of the code saw these as 2 unique values per the unique() function, some
+as a single value using the results of table().  We now pre-round the input
+times to one less decimal digit than the max from .Machine$double.digits.
+
+29 July 2010: Fix 2 bugs in pyears.  The check for a US rate table was off
+(minor effect on calculations), and there was a call to julian which assumed
+that the origin argument could be a vector.  
+
+15 July 2010: Add a coxph method for the logLik function.  This is used by
+the AIC function and was requested by a user.
+
+12 Oct 2010: Fix a bug in the modified lower limits for survfit (Dory & Korn).
+A logical vector was being inadvertently converted to numeric.  Pointed out
+by Andy Mugglin.  A new case was added to the test suite. 
+	
+17 Oct 2010: Per a request from Frank Harrell (interaction with his library),
+survfit.coxph no longer reconstructs the model frame unless it really needs
+it: in some cases the 'x' and 'y' matrices may be sufficient, and may be
+saved in the result.  Add an argument "mf" to model.matrix.coxph for more 
+efficient interaction when a parent routine has already recovered the model 
+frame.
+  In general, we are trying to make use of model.matrix.coxph in many of the
+routines, so that the logic contained there (remove cluster() calls, pull
+out strata, how to handle intercepts) need not be replicated in multiple 
+places.
+
+27 Oct 2010: Finish corrections and test to the new code. It now passes
+the checks.  The predict.coxph routine now does strata and standard errors
+correctly, factors propogate through to predictions, and numerous small 
+errors are addressed.  Predicted survival curves for a Cox model has been
+rewritten in noweb and expanded. Change the version number to 2.36-1.
+
+
+

@@ -1,6 +1,6 @@
 
-R version 2.7.1 (2008-06-23)
-Copyright (C) 2008 The R Foundation for Statistical Computing
+R version 2.10.0 (2009-10-26)
+Copyright (C) 2009 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -43,8 +43,8 @@ Loading required package: splines
 > fitc  <- coxph(Surv(time, status) ~ offset(fit$coef*x), test1)
 > fitd  <- coxph(Surv(start, stop, status) ~ offset(fit$coef*x), test1b)
 > 
-> aeq(fit$coef, fit0$coef)
-[1] "Mean relative difference: 1"
+> aeq(fit0b$coef, fit0$coef)
+[1] TRUE
 > 
 > aeq(resid(fit0), resid(fit0b, collapse=test1b$id))
 [1] TRUE
@@ -65,19 +65,12 @@ Loading required package: splines
 > aeq(resid(fit, type='scho'), resid(fitb, type='scho', collapse=test1b$id))
 [1] TRUE
 > 
-> summary(survfit(fit, list(x=0)))
-Call: survfit(formula = fit, newdata = list(x = 0))
-
- time n.risk n.event survival std.err lower 95% CI upper 95% CI
-    1      6       1    0.949  0.0732       0.8157            1
-    6      4       2    0.694  0.2541       0.3385            1
-    9      1       1    0.255  0.2718       0.0317            1
-> summary(survfit(fitb,list(x=0)))
-Call: survfit(formula = fitb, newdata = list(x = 0))
-
- time n.risk n.event survival std.err lower 95% CI upper 95% CI
-   10      6       1    0.949  0.0732       0.8157            1
-   20      4       2    0.694  0.2541       0.3385            1
-   40      1       1    0.255  0.2718       0.0317            1
+> # The two survivals will have different censoring times
+> #  nrisk, nevent, surv, and std should be the same
+> temp1 <- survfit(fit, list(x=1), censor=FALSE)
+> temp2 <- survfit(fitb, list(x=1), censor=FALSE)
+> all.equal(unclass(temp1)[c(3,4,6,8)], unclass(temp2)[c(3,4,6,8)])
+[1] TRUE
+> 
 > 
 > 

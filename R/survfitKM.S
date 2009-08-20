@@ -1,4 +1,4 @@
-# $Id: survfitKM.S 11207 2009-02-09 04:25:50Z therneau $
+# $Id: survfitKM.S 11435 2010-10-19 17:06:49Z therneau $
 #  A version that does more work in S, less in C
 survfitKM <- function(x, y, casewt=rep(1,length(x)),
 		       type=c('kaplan-meier', 'fleming-harrington', 'fh2'),
@@ -129,7 +129,7 @@ survfitKM <- function(x, y, casewt=rep(1,length(x)),
 	    if (error.int==1) # Greenwood
 		    varhaz[[i]] <- cumsum(nevent/(trisk*(trisk-nevent)))
 	    else {
-		if (method==2) varhaz[[i]] <- cumsum(nevent/(trisk^2))
+		if (method <3) varhaz[[i]] <- cumsum(nevent/(trisk^2))
 		else 	       varhaz[[i]] <- cumsum(nevent* tsum$sum2)
 		}
 	    }
@@ -176,8 +176,8 @@ survfitKM <- function(x, y, casewt=rep(1,length(x)),
 	#   the first time of a strata)
 	#
 	events <- temp$n.event >0
-	if (nstrat==1) events[1] <- 1
-	else           events[1 + cumsum(c(0, strata[-nstrat]))] <- 1
+	if (nstrat==1) events[1] <- TRUE
+	else           events[1 + cumsum(c(0, strata[-nstrat]))] <- TRUE
 	zz <- 1:length(events)
 	n.lag <- rep(temp$n.risk[events], diff(c(zz[events], 1+max(zz))))
 	std.low <- switch(conf.lower,

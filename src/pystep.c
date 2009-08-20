@@ -1,4 +1,4 @@
-/*  $Id: pystep.c 11080 2008-10-24 03:47:51Z therneau $ */
+/*  $Id: pystep.c 11166 2008-11-24 22:10:34Z therneau $ */
 /*
 ** Returns the amount of time that will be spent in the current "cell",
 **  along with the index of the cell (treating a multi-way array as linear).

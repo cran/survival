@@ -1,6 +1,6 @@
+library(survival)
 options(na.action=na.exclude) # preserve missings
 options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
-library(survival)
 
 #
 # Tests from the appendix of Therneau and Grambsch
@@ -59,14 +59,14 @@ aeq(truth0$mart, fit0$resid[c(2:6,1)])
 aeq(truth0$scho, resid(fit0, 'schoen'))
 aeq(truth0$score, resid(fit0, 'score')[c(3:7,1)])
 sfit <- survfit(fit0, list(x=0))
-aeq(sfit$std.err^2, c(7/180, 2/9, 11/9))
+aeq(sfit$std.err^2, c(7/180, 2/9, 2/9, 11/9))
 aeq(resid(fit0, 'score'), c(5/24, NA, 5/12, -1/12, 7/24, -1/24, 5/24))
 
 fit1 <- coxph(Surv(time, status) ~x, test1, iter=1, method='breslow')
 aeq(fit1$coef, 8/5)
 
 # This next gives an ignorable warning message
-fit2 <- coxph(Surv(time, status) ~x, test1, method='breslow', iter=3)
+fit2 <- coxph(Surv(time, status) ~x, test1, method='breslow', iter=2)
 aeq(round(fit2$coef, 6), 1.472724)
 
 fit <- coxph(Surv(time, status) ~x, test1, method='breslow', eps=1e-8)
@@ -78,9 +78,13 @@ aeq(truth$mart, fit$resid[c(2:6,1)])
 aeq(truth$scho, resid(fit, 'schoen'))
 aeq(truth$score, resid(fit, 'score')[c(3:7,1)])
 
-sfit <- survfit(fit, list(x=0))
+sfit <- survfit(fit, list(x=0), censor=FALSE)
 aeq(sfit$std.err^2, truth$var[c(1,2,4)]) # sfit skips time 8 (no events there)
 aeq(-log(sfit$surv), (cumsum(truth$haz))[c(1,2,4)])
+sfit <- survfit(fit, list(x=0), censor=TRUE)
+aeq(sfit$std.err^2, truth$var) 
+aeq(-log(sfit$surv), (cumsum(truth$haz)))
+
 
 # 
 # Done with the formal test, now print out lots of bits

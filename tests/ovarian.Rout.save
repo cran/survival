@@ -1,6 +1,6 @@
 
-R version 2.7.1 (2008-06-23)
-Copyright (C) 2008 The R Foundation for Statistical Computing
+R version 2.11.1 (2010-05-31)
+Copyright (C) 2010 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -218,7 +218,7 @@ coxph(formula = Surv(futime, fustat) ~ age + ecog.ps + strata(rx))
 age      0.13853   1.14858  0.04801  2.885  0.00391 **
 ecog.ps -0.09670   0.90783  0.62994 -0.154  0.87800   
 ---
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 
         exp(coef) exp(-coef) lower .95 upper .95
 age        1.1486     0.8706    1.0454     1.262
@@ -255,11 +255,11 @@ Call: survfit(formula = fit)
 Call: survfit(formula = fit, newdata = list(age = c(30, 70), ecog.ps = c(2, 
     3)))
 
-        records n.max n.start events median 0.95LCL 0.95UCL
-1, rx=1      13    13      13      7     NA      NA      NA
-2, rx=1      13    13      13      7    268     115      NA
-1, rx=2      13    13      13      5     NA      NA      NA
-2, rx=2      13    13      13      5    365     353      NA
+     records n.max n.start events median 0.95LCL 0.95UCL
+rx=1      13    13      13      7     NA      NA      NA
+rx=1      13    13      13      7    268     115      NA
+rx=2      13    13      13      5     NA      NA      NA
+rx=2      13    13      13      5    365     353      NA
 > summary(sfit)
 Call: survfit(formula = fit, newdata = list(age = c(30, 70), ecog.ps = c(2, 
     3)))
@@ -300,18 +300,20 @@ Call: survfit(formula = fit, newdata = list(age = c(30, 70), ecog.ps = c(2,
 [1] TRUE
 > 
 > fit <- coxph(Surv(futime, fustat) ~ age + offset(rx), ovarian)
-> survfit(fit)$surv
+> survfit(fit, censor=FALSE)$surv^exp(-1.5)
  [1] 0.9977751 0.9951975 0.9917927 0.9881504 0.9825769 0.9770280 0.9704304
  [8] 0.9603196 0.9499085 0.9385539 0.9217097 0.9031334
 > 
 > # Check it by hand -- there are no tied times
-> eta <- fit$coef*(ovarian$age - fit$mean) + ovarian$rx
+> #  Remember that offsets from survfit are centered, which is 1.5 for
+> #  this data set.
+> eta <- fit$coef*(ovarian$age - fit$mean) + (ovarian$rx - 1.5)
 > ord <- order(ovarian$futime)
 > risk <- exp(eta[ord])
 > rsum <- rev(cumsum(rev(risk)))   # cumulative risk at each time point
 > dead <- (ovarian$fustat[ord]==1)
 > baseline <- cumsum(1/rsum[dead])
-> all.equal(survfit(fit)$surv, exp(-baseline))
+> all.equal(survfit(fit, censor=FALSE)$surv, exp(-baseline))
 [1] TRUE
 > 
 > rm(fit, fit1, fit2, ord, eta, risk, rsum, dead, baseline, rr, sfit)

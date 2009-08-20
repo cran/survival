@@ -1,4 +1,4 @@
-# $Id: frailty.controlgauss.S 11059 2008-10-23 12:32:50Z therneau $
+# $Id: frailty.controlgauss.S 11166 2008-11-24 22:10:34Z therneau $
 #
 # The control function for REML on a gaussian
 #

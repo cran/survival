@@ -50,15 +50,17 @@ fit2 <- coxph(Surv(futime, fustat) ~ age + offset(rx*fit1$coef[2]), ovarian,
 all.equal(fit1$coef[1], fit2$coef[1])
 
 fit <- coxph(Surv(futime, fustat) ~ age + offset(rx), ovarian)
-survfit(fit)$surv
+survfit(fit, censor=FALSE)$surv^exp(-1.5)
 
 # Check it by hand -- there are no tied times
-eta <- fit$coef*(ovarian$age - fit$mean) + ovarian$rx
+#  Remember that offsets from survfit are centered, which is 1.5 for
+#  this data set.
+eta <- fit$coef*(ovarian$age - fit$mean) + (ovarian$rx - 1.5)
 ord <- order(ovarian$futime)
 risk <- exp(eta[ord])
 rsum <- rev(cumsum(rev(risk)))   # cumulative risk at each time point
 dead <- (ovarian$fustat[ord]==1)
 baseline <- cumsum(1/rsum[dead])
-all.equal(survfit(fit)$surv, exp(-baseline))
+all.equal(survfit(fit, censor=FALSE)$surv, exp(-baseline))
 
 rm(fit, fit1, fit2, ord, eta, risk, rsum, dead, baseline, rr, sfit)

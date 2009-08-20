@@ -1,6 +1,6 @@
 
-R version 2.9.0 (2009-04-17)
-Copyright (C) 2009 The R Foundation for Statistical Computing
+R version 2.11.1 (2010-05-31)
+Copyright (C) 2010 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -15,10 +15,10 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 'help.start()' for an HTML browser interface to help.
 Type 'q()' to quit R.
 
-> options(na.action=na.exclude) # preserve missings
-> options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
 > library(survival)
 Loading required package: splines
+> options(na.action=na.exclude) # preserve missings
+> options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
 > 
 > #
 > # Tests from the appendix of Therneau and Grambsch
@@ -82,7 +82,7 @@ Loading required package: splines
 > aeq(truth0$score, resid(fit0, 'score')[c(3:7,1)])
 [1] TRUE
 > sfit <- survfit(fit0, list(x=0))
-> aeq(sfit$std.err^2, c(7/180, 2/9, 11/9))
+> aeq(sfit$std.err^2, c(7/180, 2/9, 2/9, 11/9))
 [1] TRUE
 > aeq(resid(fit0, 'score'), c(5/24, NA, 5/12, -1/12, 7/24, -1/24, 5/24))
 [1] TRUE
@@ -92,12 +92,12 @@ Loading required package: splines
 [1] TRUE
 > 
 > # This next gives an ignorable warning message
-> fit2 <- coxph(Surv(time, status) ~x, test1, method='breslow', iter=3)
+> fit2 <- coxph(Surv(time, status) ~x, test1, method='breslow', iter=2)
 Warning message:
 In fitter(X, Y, strats, offset, init, control, weights = weights,  :
   Ran out of iterations and did not converge
 > aeq(round(fit2$coef, 6), 1.472724)
-[1] "Mean relative difference: 0.001735259"
+[1] TRUE
 > 
 > fit <- coxph(Surv(time, status) ~x, test1, method='breslow', eps=1e-8)
 > aeq(round(fit$coef,7), 1.4752849)
@@ -114,11 +114,17 @@ In fitter(X, Y, strats, offset, init, control, weights = weights,  :
 > aeq(truth$score, resid(fit, 'score')[c(3:7,1)])
 [1] TRUE
 > 
-> sfit <- survfit(fit, list(x=0))
+> sfit <- survfit(fit, list(x=0), censor=FALSE)
 > aeq(sfit$std.err^2, truth$var[c(1,2,4)]) # sfit skips time 8 (no events there)
 [1] TRUE
 > aeq(-log(sfit$surv), (cumsum(truth$haz))[c(1,2,4)])
 [1] TRUE
+> sfit <- survfit(fit, list(x=0), censor=TRUE)
+> aeq(sfit$std.err^2, truth$var) 
+[1] TRUE
+> aeq(-log(sfit$surv), (cumsum(truth$haz)))
+[1] TRUE
+> 
 > 
 > # 
 > # Done with the formal test, now print out lots of bits
@@ -136,11 +142,9 @@ In fitter(X, Y, strats, offset, init, control, weights = weights,  :
  0.1861407  0.4069297 -0.5930703  0.0000000 
 > 
 > predict(fit, type='lp')
-         1          2          3          4          5          6          7 
--0.7376425         NA  0.7376425  0.7376425  0.7376425 -0.7376425 -0.7376425 
+[1] -0.7376425         NA  0.7376425  0.7376425  0.7376425 -0.7376425 -0.7376425
 > predict(fit, type='risk')
-        1         2         3         4         5         6         7 
-0.4782401        NA 2.0910001 2.0910001 2.0910001 0.4782401 0.4782401 
+[1] 0.4782401        NA 2.0910001 2.0910001 2.0910001 0.4782401 0.4782401
 > predict(fit, type='expected')
         1         2         3         4         5         6         7 
 1.3333333        NA 0.2712864 0.2712864 1.4574271 0.3333333 0.3333333 
@@ -177,8 +181,7 @@ $fit
 1.3333333        NA 0.2712864 0.2712864 1.4574271 0.3333333 0.3333333 
 
 $se.fit
-        1         2         3         4         5         6         7 
-1.1547005        NA 0.5208517 0.5208517 1.2072395 0.5773503 0.5773503 
+[1] 1.0540926        NA 0.2785989 0.2785989 1.1069433 0.3333333 0.3333333
 
 > predict(fit, type='terms', se.fit=T)
 $fit

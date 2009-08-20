@@ -1,4 +1,4 @@
-# $Id: summary.survfit.S 11274 2009-04-01 11:55:07Z tlumley $
+# $Id: summary.survfit.S 11427 2010-07-12 15:22:24Z therneau $
 #
 # Version with no C code, using approx() to do the subscript
 #  calculations
@@ -52,8 +52,8 @@ summary.survfit <- function(object, times, censored=FALSE,
 	    times <- fit$time
 	    n.risk<- fit$n.risk
 	    n.event <- fit$n.event
-	    n.enter <- fit$n.enter
-	    n.censor  <- fit$n.censor
+	    n.enter <- fit$n.enter    #may be NULL
+	    n.censor  <- fit$n.censor #may be NULL
 	    strata <- factor(stemp, labels=strata.names)
 	    }
 	else {
@@ -62,8 +62,8 @@ summary.survfit <- function(object, times, censored=FALSE,
 	    times <- fit$time[who]
 	    n.risk <- fit$n.risk[who]
 	    n.event <- fit$n.event[who]
-	    n.enter <- fit$n.enter[who]
-	    n.censor <- fit$n.censor[who]
+	    n.enter <- fit$n.enter[who]  #may be NULL
+	    n.censor <- fit$n.censor[who]#may be NULL
 	    surv <- surv[who,,drop=FALSE]
 	    if (!is.null(std.err)) std.err <- std.err[who,,drop=FALSE]
 	    if (!is.null(fit$lower)) {
@@ -94,8 +94,8 @@ summary.survfit <- function(object, times, censored=FALSE,
 	# For the survival, stderr, and confidence limits it suffices
 	#   to create a single list 'indx1' containing a subscripting vector
 	indx1 <- n.risk <- n.event <- newtimes <- vector('list', nstrat)
-	if (!is.null(fit$n.enter))  n.enter <- vector('list', nstrat)
-	if (!is.null(fit$n.censor)) n.censor<- vector('list', nstrat)
+	n.enter <- vector('list', nstrat)
+	n.censor<- vector('list', nstrat)
 	n <- length(stemp)
 	for (i in 1:nstrat) {
 	    who <- (1:n)[stemp==i]  # the rows of the object for this strata
@@ -113,7 +113,7 @@ summary.survfit <- function(object, times, censored=FALSE,
 
 	    newtimes[[i]] <- ptimes
 
-	    # If we tack a 0 onto the front of the vector of survival
+	    # If we tack a -1 onto the front of the vector of survival
 	    #  times, then indx1 is the subscript for that vector
 	    #  corresponding to the list of "ptimes".  If the input
 	    #  data had stime=c(10,20) and ptimes was c(5,10,15,20),
@@ -126,7 +126,7 @@ summary.survfit <- function(object, times, censored=FALSE,
 	    #  extra point needs to be added at the end.
 	    #
 	    ntime <- length(stime)  #number of points
-	    temp1 <- approx(c(mintime, stime), 0:ntime, xout=ptimes,
+	    temp1 <- approx(c(mintime-1, stime), 0:ntime, xout=ptimes,
 			    method='constant', f=0, rule=2)$y
 	    indx1[[i]] <- ifelse(temp1==0, 1, 1+ who[pmax(1,temp1)])
             # Why not just "who[temp1]" instead of who[pmax(1,temp1)] in the
@@ -163,8 +163,9 @@ summary.survfit <- function(object, times, censored=FALSE,
 	times  <- unlist(newtimes)
 	n.risk <-  unlist(n.risk)
 	n.event <- unlist(n.event)
-	if (!is.null(fit$n.enter))  n.enter <- unlist(n.enter)
-	if (!is.null(fit$n.censor)) n.censor<- unlist(n.censor)
+	n.enter <- unlist(n.enter)   #may be NULL
+	n.censor<- unlist(n.censor)  #may be NULL
+
 	indx1 <- unlist(indx1)
 	surv <- (rbind(1.,surv))[indx1,,drop=FALSE]
 	if (!is.null(std.err)) std.err <- rbind(0.,std.err)[indx1,,drop=FALSE]
@@ -182,16 +183,11 @@ summary.survfit <- function(object, times, censored=FALSE,
     # Final part of the routine: paste the material together into
     #  the correct output structure
     #
-    if (fit$type == 'right' || inherits(fit, 'survfit.cox')) 
-	    temp <- list(surv=surv, time=times/scale, n.risk=n.risk, n.event=n.event,
-			 conf.int=fit$conf.int, type=fit$type, table=table)
-    
-    if (fit$type == 'counting')
-	    temp <- list(surv=surv, time=times/scale, n.risk=n.risk, n.event=n.event,
-			 conf.int=fit$conf.int, n.enter=n.enter,
-			 n.censor=n.censor, type=fit$type, 
-			 table=table)
 
+    temp <- list(surv=surv, time=times/scale, n.risk=n.risk, n.event=n.event,
+			 conf.int=fit$conf.int, type=fit$type, table=table)
+    if (!is.null(n.censor)) temp$n.censor <- n.censor
+    if (!is.null(n.enter))  temp$n.enter <- n.enter
     if (!is.null(fit$start.time)) temp$start.time <- fit$start.time
 
     if (ncol(surv)==1) {

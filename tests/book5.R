@@ -1,6 +1,6 @@
+library(survival)
 options(na.action=na.exclude) # preserve missings
 options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
-library(survival)
 
 # Tests of the weighted Cox model
 #  This is section 1.3 of my appendix -- no yet found in any of the
@@ -88,8 +88,9 @@ aeq(1/truth0$imat, fit0$var)
 aeq(truth0$mart, fit0$resid)
 aeq(truth0$scho, resid(fit0, 'schoen'))
 aeq(truth0$score, resid(fit0, 'score')) 
-sfit <- survfit(fit0, list(x=pi))
+sfit <- survfit(fit0, list(x=pi), censor=FALSE)
 aeq(sfit$std.err^2, truth0$var)
+aeq(-log(sfit$surv), cumsum(truth0$haz))
 
 truth <- byhand(fit$coef, .3)
 aeq(truth$loglik, fit$loglik[2])
@@ -98,7 +99,7 @@ aeq(truth$mart, fit$resid)
 aeq(truth$scho, resid(fit, 'schoen'))
 aeq(truth$score, resid(fit, 'score'))
 
-sfit <- survfit(fit, list(x=.3))
+sfit <- survfit(fit, list(x=.3), censor=FALSE)
 aeq(sfit$std.err^2, truth$var) 
 aeq(-log(sfit$surv), (cumsum(truth$haz)* exp(fit$coef*.3)))
 

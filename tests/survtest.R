@@ -23,14 +23,14 @@ fit2 <- survfit(Surv(start, stop, event) ~x, test2, start.time=3,
 cfit1<- survfit(coxph(Surv(start, stop, event)~1, test2))
 cfit2<- survfit(coxph(Surv(start, stop, event) ~ strata(x), test2, subset=-1))
 
-deaths <- fit1$n.event>0
+deaths <- (fit1$n.event + fit1$n.censor)>0
 aeq(fit1$time[deaths], cfit1$time)
 aeq(fit1$n.risk[deaths], cfit1$n.risk)
 aeq(fit1$n.event[deaths], cfit1$n.event)
 aeq(fit1$surv[deaths], cfit1$surv)
 aeq(fit1$std.err[deaths], cfit1$std.err)
 
-deaths <- fit2$n.event>0
+deaths <- (fit2$n.event + fit2$n.censor)>0
 aeq(fit2$time[deaths], cfit2$time)
 aeq(fit2$n.risk[deaths], cfit2$n.risk)
 aeq(fit2$n.event[deaths], cfit2$n.event)
@@ -46,7 +46,7 @@ aeq(fit3$surv[fit3$n.event>0], c(.5, 1/3, 4/15, 1/5, 3/20, 9/100))
 #  Verify that both surv AND n.risk are right between time points.
 #
 fit <- survfit(Surv(time, status) ~1, test1)
-temp <- summary(fit, time=c(.5,1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5), extend=TRUE)
+temp <- summary(fit, time=c(.5,1, 1.5, 6, 7.5, 8, 8.9, 9, 10), extend=TRUE)
 
 aeq(temp$n.risk, c(6,6,4,4,2,2,1,1,0))
 aeq(temp$surv, c(1, fit$surv[c(1,1,2,2,3,3,4,4)]))

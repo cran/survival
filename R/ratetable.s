@@ -1,4 +1,4 @@
-# $Id: ratetable.S 11283 2009-05-22 14:04:19Z therneau $
+# $Id: ratetable.S 11389 2010-02-08 22:53:51Z therneau $
 #
 # This source file has two distinct parts in it.  The first is the
 #  ratetable(), which is used inside pyears and survexp only to allow
@@ -108,7 +108,8 @@ is.na.ratetable2 <- function(x) {
 				   dimnames = dimnames(y)[!dropped],
 				   dimid = aa$dimid[!dropped],
 				   factor = aa$factor[!dropped],
-				   cutpoints =aa$cutpoints[!dropped])
+				   cutpoints =aa$cutpoints[!dropped],
+                                   type = aa$type[!dropped])
 	    if (is.R()) class(y) <- 'ratetable'
 	    else        oldClass(y) <- 'ratetable'
 	    y

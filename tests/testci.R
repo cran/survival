@@ -47,7 +47,7 @@ aeq(fit3$surv, fit1$surv[-(1:fit1$strata[1]),])
 #   This test is in the directory, but won't work unless you have
 #   installed the cmprsk library!
 #
-temp <- library(cmprsk, logical.return=TRUE)
+temp <- suppressWarnings(library(cmprsk, logical.return=TRUE))
 if (temp) {
     tstat <- ifelse(tdata$status==0, 0, 1+ (tdata$event=='death'))
     gray1 <- cuminc(tdata$time, tstat)

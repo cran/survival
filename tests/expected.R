@@ -233,7 +233,7 @@ all.equal(as.vector(efit), as.vector(efit2))  #ignore mismatched name attrib
 # Now test the direct-adjusted curve (Ederer)
 #
 efit <- survexp( ~ ratetable(x=x), dummy, ratetable=fit, se=F)
-direct <- survfit(fit, newdata=dummy)$surv
+direct <- survfit(fit, newdata=dummy, censor=FALSE)$surv
 
 chaz <- chaz[-1]                  #drop time 0
 d2 <- exp(outer(-chaz, risk))

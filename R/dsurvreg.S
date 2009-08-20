@@ -1,4 +1,4 @@
-# $Id: dsurvreg.S 10788 2008-09-18 00:48:23Z therneau $
+# $Id: dsurvreg.S 11166 2008-11-24 22:10:34Z therneau $
 # The density, quantile, and CDF functions for those distributions
 #   supported by survreg
 #

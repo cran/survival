@@ -1,5 +1,5 @@
 #
-# $Id: survfitCI.S 11377 2009-12-14 22:59:56Z therneau $
+# $Id: survfitCI.S 11436 2010-10-28 02:17:21Z therneau $
 #
 # Compute the current incidence curve for a data set
 #   called from survfit.formula
@@ -10,6 +10,8 @@ survfitCI <- function(X, Y, weights,
                        conf.type=c('log',  'log-log',  'plain', 'none'),
                        conf.lower=c('usual', 'peto', 'modified'),
                        etype, id) {
+    # Turn off standard errors, as there is a major bug 10/2010
+    se.fit <- FALSE
 
     method <- match.arg(type)
     error <- match.arg(error)
@@ -248,8 +250,8 @@ survfitCI <- function(X, Y, weights,
 	#   the first time of a strata)
 	#
 	events <- kfit$n.event >0
-	if (ncurve==1) events[1] <- 1
-	else           events[1 + cumsum(c(0, kfit$strata[-ncurve]))] <- 1
+	if (ncurve==1) events[1] <- TRUE
+	else           events[1 + cumsum(c(0, kfit$strata[-ncurve]))] <- TRUE
 	zz <- 1:length(events)
 	n.lag <- rep(kfit$n.risk[events], diff(c(zz[events], 1+max(zz))))
 	std.low <- switch(conf.lower,

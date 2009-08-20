@@ -25,7 +25,7 @@ fitb  <- coxph(Surv(start, stop, status) ~x, test1b)
 fitc  <- coxph(Surv(time, status) ~ offset(fit$coef*x), test1)
 fitd  <- coxph(Surv(start, stop, status) ~ offset(fit$coef*x), test1b)
 
-aeq(fit$coef, fit0$coef)
+aeq(fit0b$coef, fit0$coef)
 
 aeq(resid(fit0), resid(fit0b, collapse=test1b$id))
 aeq(resid(fit), resid(fitb, collapse=test1b$id))
@@ -38,6 +38,10 @@ aeq(resid(fit, type='score'), resid(fitb, type='score', collapse=test1b$id))
 aeq(resid(fit0, type='scho'), resid(fit0b, type='scho', collapse=test1b$id))
 aeq(resid(fit, type='scho'), resid(fitb, type='scho', collapse=test1b$id))
 
-summary(survfit(fit, list(x=0)))
-summary(survfit(fitb,list(x=0)))
+# The two survivals will have different censoring times
+#  nrisk, nevent, surv, and std should be the same
+temp1 <- survfit(fit, list(x=1), censor=FALSE)
+temp2 <- survfit(fitb, list(x=1), censor=FALSE)
+all.equal(unclass(temp1)[c(3,4,6,8)], unclass(temp2)[c(3,4,6,8)])
+
 

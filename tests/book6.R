@@ -1,6 +1,6 @@
+library(survival)
 options(na.action=na.exclude) # preserve missings
 options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
-library(survival)
 
 # Tests of the weighted Cox model
 #  This is section 1.3 of my appendix -- no yet found in any of the
@@ -15,11 +15,6 @@ testw1 <- data.frame(time=  c(1,1,2,2,2,2,3,4,5),
 		    x=      c(2,0,1,1,0,1,0,1,0),
 		    wt =    c(1,2,3,4,3,2,1,2,1))
 xx <- testw1$wt
-testw2 <- data.frame(time=   rep(c(1,1,2,2,2,2,3,4,5), xx),
-		     status= rep(c(1,0,1,1,1,0,0,1,0), xx),
-		     x=      rep(c(2,0,1,1,0,1,0,1,0), xx),
-		     id=     rep(1:9, xx))
-indx <- match(1:9, testw2$id)
 
 # Efron estimate
 byhand <- function(beta, newx=0) {
@@ -76,16 +71,8 @@ temp <- byhand(0,0)
 aeq(temp$xbar, c(13/19, 11/16, 26/38, 19/28, 2/3))
 aeq(temp$hazard, c(1/19, 5/24, 5/19, 5/14, 2/3))
 
-
 fit0 <- coxph(Surv(time, status) ~x, testw1, weights=wt, iter=0)
-fit0b <- coxph(Surv(time, status) ~x, testw2, iter=0)
 fit  <- coxph(Surv(time, status) ~x, testw1, weights=wt)
-fitb <- coxph(Surv(time, status) ~x, testw2)
-
-# The next 3 are not true for an Efron approx, see book.
-#aeq(resid(fit0, type='mart'), (resid(fit0b, type='mart'))[indx])
-#aeq(resid(fit0, type='scor'), (resid(fit0b, type='scor'))[indx])
-#aeq(unique(resid(fit0, type='scho')), unique(resid(fit0b, type='scho')))
 
 truth0 <- byhand(0,pi)
 aeq(fit0$loglik[1], truth0$loglik)
@@ -93,9 +80,9 @@ aeq(1/truth0$imat, fit0$var)
 aeq(truth0$mart, fit0$resid)
 aeq(truth0$scho, resid(fit0, 'schoen'))
 aeq(truth0$score, resid(fit0, 'score')) 
-sfit <- survfit(fit0, list(x=pi))
-aeq(sfit$std.err^2, truth0$var)   #new test 2/7/09, shows a bug
-aeq(-log(sfit$surv), cumsum(truth0$hazard)[c(1,4,5)]) # ''
+sfit <- survfit(fit0, list(x=pi), censor=FALSE)
+aeq(sfit$std.err^2, truth0$var)  
+aeq(-log(sfit$surv), cumsum(truth0$hazard)[c(1,4,5)]) 
 
 truth <- byhand(fit$coef, .3)
 aeq(truth$loglik, fit$loglik[2])
@@ -104,9 +91,9 @@ aeq(truth$mart, fit$resid)
 aeq(truth$scho, resid(fit, 'schoen'))
 aeq(truth$score, resid(fit, 'score'))
 
-sfit <- survfit(fit, list(x=.3))
-aeq(sfit$std.err^2, truth$var)   #bug 2/7/09
-aeq(-log(sfit$surv), (cumsum(truth$haz)* exp(fit$coef*.3))[c(1,2,5)]) #bug
+sfit <- survfit(fit, list(x=.3), censor=FALSE)
+aeq(sfit$std.err^2, truth$var)  
+aeq(-log(sfit$surv), (cumsum(truth$hazard)* exp(fit$coef*.3))[c(1,4,5)]) 
 
 
 fit0
@@ -116,10 +103,7 @@ resid(fit0, type='scho')
 
 resid(fit, type='score')
 resid(fit, type='scho')
-# These next 3 are not true for an Efron approximation
-#aeq(resid(fit, type='mart'), (resid(fitb, type='mart'))[indx])
-#aeq(resid(fit, type='scor'), (resid(fitb, type='scor'))[indx])
-#aeq(unique(resid(fit, type='scho')), unique(resid(fitb, type='scho')))
+
 rr1 <- resid(fit, type='mart')
 rr2 <- resid(fit, type='mart', weighted=T)
 aeq(rr2/rr1, testw1$wt)

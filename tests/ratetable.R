@@ -56,3 +56,8 @@ attributes(temp) <- list(dim=c(21,2,4),
     cutpoints=list(c(75:95), NULL, mdy.date(1,1,2000) +c(0:3)*366.25),
     class='ratetable')
 is.ratetable(temp, verbose=T)
+
+
+# Print and summary
+print(survexp.us[1:30,,c('1953', '1985')] )
+summary(survexp.usr)

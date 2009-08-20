@@ -1,4 +1,4 @@
-/* $Id: agfit3.c 11247 2009-03-18 18:30:44Z therneau $ */
+/* $Id: agfit3.c 11386 2010-01-26 18:07:06Z therneau $ */
 /*
 ** Anderson-Gill formulation of the Cox Model, using smart subsets
 **
@@ -458,7 +458,7 @@ void agfit3( Sint   *maxiter,  Sint   *nusedx,  Sint   *nvarx,
 
 	if (iter==*maxiter) break;  /*skip the step halving and etc */
 
-	if (newlk < loglik[1] || newlk>0)   {    /*it is not converging ! */
+	if (newlk < loglik[1])   {    /*it is not converging ! */
 		halving =1;
 		for (i=0; i<nvar; i++)
 		    newbeta[i] = (newbeta[i] + beta[i]) /2; /*half of old increment */

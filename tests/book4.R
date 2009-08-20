@@ -17,8 +17,8 @@ byhand <- function(beta, newx=0) {
         log(2*r +2))
     u <- 1/(r+1) +  1/(3*r+1) + 2*(1/(3*r+2) + 1/(2*r+2)) -
                  ( r/(r+2) +3*r/(3*r+2) + 3*r/(3*r+1))
-    imat <- r*(1/(r+1)^2 + 2/(r+2)^2 + 9/(3*r+2)^2 +
-            3/(3*r+1)^2 + 6*(1/(3*r+2)^2 + 1/(2*r +2)^2))
+    imat <- r*(1/(r+1)^2 + 2/(r+2)^2 + 6/(3*r+2)^2 +
+            6/(3*r+1)^2 + 6/(3*r+2)^2 + 4/(2*r +2)^2)
 
     hazard <-c( 1/(r+1), 1/(r+2), 1/(3*r+2), 1/(3*r+1), 1/(3*r+1),
                1/(3*r+2), 1/(2*r +2) )
@@ -54,7 +54,7 @@ byhand <- function(beta, newx=0) {
     scho <- colSums(resid)
 
     # We need to add the ties back up (they are symmetric)
-    scho[7:8] <- rep(mean(scho[7:8]), 2)
+    scho[6:7] <- rep(mean(scho[6:7]), 2)
 
     list(loglik=loglik, u=u, imat=imat, xbar=xbar, haz=hazard,
 	     mart=mart,  score=score, rmat=resid,

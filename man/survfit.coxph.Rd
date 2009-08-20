@@ -12,7 +12,7 @@ hazards model.
         se.fit=TRUE, conf.int=.95,
         individual=FALSE, 
         type,vartype,
-        conf.type=c("log","log-log","plain","none"),...)
+        conf.type=c("log","log-log","plain","none"), censor, ...)
 }
 \arguments{
   \item{formula}{
@@ -20,7 +20,8 @@ hazards model.
   }
   \item{newdata}{
     a data frame with the same variable names as those that appear 
-    in the \code{coxph} formula.  
+    in the \code{coxph} formula.  It is also valid to use a vector, if
+    the data frame would consist of a single row.
     
     The curve(s) produced will be representative of a cohort whose 
     covariates correspond to the values in \code{newdata}. 
@@ -45,12 +46,17 @@ hazards model.
   }
   \item{type,vartype}{
     a character string specifying the type of survival curve. 
-    Possible values are  \code{"aalen"} or \code{"kaplan-meier"} 
+    Possible values are  \code{"aalen"}, \code{"efron"}, or
+    \code{"kalbfleish-prentice"} 
     (only the first two characters are necessary). 
-    The default is \code{"aalen"}  
-    Earlier versions of \code{survfit} 
-    used \code{type="tsiatis"} to get the \code{"aalen"} estimator.  For backward 
-    compatibility, this is still allowed. 
+    The default is to match the computation used in the Cox model.
+    The Nelson-Aalen-Breslow estimate for \code{ties='breslow'}, the Efron
+    estimate for \code{ties='efron'} and the Kalbfleisch-Prentice
+    estimate for a discrete time model \code{ties='exact'}.
+    Variance estimates are the Aalen-Link-Tsiatis, Efron, and
+    Greenwood.
+    The default will be the Efron
+    estimate for \code{ties='efron'} and the Aalen estimate otherwise.    
   }
  
   \item{conf.type}{
@@ -64,6 +70,8 @@ hazards model.
     cumulative hazard or log(survival). The last option bases
     intervals on the log hazard or log(-log(survival)). 
   }
+  \item{censor}{if FALSE time points at which there are no events (only
+  censoring) are not included in the result.}  
   \item{\dots}{for future methods}
 }
 \value{
@@ -74,35 +82,38 @@ details. Methods defined for survfit objects are
 \code{lines}, and \code{points}. 
 }
 \details{
-See \code{\link{survfit}} for more Details.
+    Serious thought has been given to removing the `default' for
+    \code{newdata}, since the resulting curve(s) almost never make sense.
+    It remains due to the unwarranted attachment to the option shown by
+    other packages and by users.  Two particularly egregious examples
+    are factor variables and interactions.  Suppose one were studying
+    interspecies transmission of a virus, and the data set has a factor
+    variable with levels ("pig", "chicken") and about equal numbers of
+    observations for each.  The ``mean'' covariate level will be 1/2 --
+    is this a flying pig?  As to interactions assume data with sex coded as 0/1,
+    ages ranging from 50 to 80, and a model with age*sex.  The ``mean''
+    value for the age:sex interaction term will be about 30, a value
+    that does not occur in the data.
+
+    Users are strongly advised to use the newdata argument.  Note that
+    this data set needs to contain values for the main effects but not
+    for any interaction terms.
   
-The estimates used are the Kalbfleisch-Prentice 
-(Kalbfleisch and Prentice, 1980, p.86) and the Tsiatis/Link/Breslow, 
-which reduce to the Kaplan-Meier and Fleming-Harrington estimates, 
-respectively, when the weights are unity.  
-When the parent data is a Cox model, there is an extra
-term in the variance of the curve, due to the variance of the coefficients and 
-hence variance in the computed weights.  Details of the Aalen 
-estimator and its variance are found in Tsiatis (1981). 
+When all the coefficients are zero,
+the Kalbfleisch-Prentice estimator reduces to the Kaplan-Meier,
+the Aalen estimate to the exponential of Nelson's
+cumulative hazard estimate, and the Efron estimate to the
+Fleming-Harrington estimate of survival.
+The variances of the curves from a Cox model are larger, however, due
+to the variance of the coefficients.
 
-The two variants of the F-H estimate have to do with how ties are handled.
-If there were 3 deaths out of 10 at risk, then the first
-increments the hazard by 3/10 and the second
-by 1/10 + 1/9 + 1/8.
-For the first method S(t) = exp(H), where H is 
-the Nelson-Aalen cumulative hazard estimate,
-whereas the \code{fh2} method will 
-give results S(t) results closer to the Kaplan-Meier. 
-For curves created 
-after a Cox model these correspond to the Breslow and Efron estimates, 
-respectively, and the proper choice is made automatically. 
+See \code{\link{survfit}} for more details about the counts (number of
+events, number at risk, etc.)
 
+  The censor argument was fixed at FALSE in earlier versions of the code
+  and not made  available to the user.
 }
 \section{References}{
-Dorey, F. J. and Korn, E. L. (1987).  Effective sample sizes for confidence 
-intervals for survival probabilities.  \emph{Statistics in Medicine} 
-\bold{6}, 679-87. 
-
 Fleming, T. H. and Harrington, D. P. (1984).  Nonparametric estimation of the 
 survival distribution in censored data.  \emph{Comm. in Statistics}  
 \bold{13}, 2469-86. 
@@ -115,6 +126,9 @@ Link, C. L. (1984). Confidence intervals for the survival
 function using Cox's proportional hazards model with  
 covariates.  \emph{Biometrics}  
 \bold{40}, 601-610.
+
+Therneau T and Grambsch P (2000), Modeling Survival Data: Extending the
+Cox Model, Springer-Verlag.
 
 Tsiatis, A. (1981). A large sample study of the estimate 
 for the integrated hazard function in Cox's regression 

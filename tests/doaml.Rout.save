@@ -1,6 +1,6 @@
 
-R version 2.7.1 (2008-06-23)
-Copyright (C) 2008 The R Foundation for Statistical Computing
+R version 2.11.1 (2010-05-31)
+Copyright (C) 2010 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -19,7 +19,7 @@ Type 'q()' to quit R.
 > options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
 > library(survival)
 Loading required package: splines
-> 
+> aeq <- function(x,y) all.equal(as.vector(x), as.vector(y))
 > #
 > # These results can be found in Miller
 > #
@@ -108,19 +108,22 @@ aml$x=Nonmaintained 12       11     7.31      1.86      3.40
 > #    halve the variance
 > temp2 <-survfit(Surv(aml$time, aml$status)~1, type='kaplan', weight=rep(2,23))
 > temp  <-survfit(Surv(time, status)~1, aml)
-> temp$surv/temp2$surv
- [1] 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-> (temp$std.err/temp2$std.err)^2
- [1] 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+> aeq(temp$surv, temp2$surv)
+[1] TRUE
+> aeq(temp$std.err^2, 2*temp2$std.err^2)
+[1] TRUE
 > 
 > # Risk weights-- use a null Cox model
 > tfit <- coxph(Surv(aml$time, aml$status) ~ offset(log(1:23)))
-> sfit <- survfit(tfit, type='aalen')
+> sfit <- survfit(tfit, type='aalen', censor=FALSE)
 > 
-> # Now compute it by hand
-> #  Ties are a challenge
+> # Now compute it by hand.  The survfit program will produce a curve
+> #   corresponding to the mean offset.  This is a change on 7/2010,
+> #   which caused S(new) = S(old)^exp(mean(log(1:23))).
+> #  Ties are a nuisance
+> rscore <- exp(log(1:23) - mean(log(1:23)))[order(aml$time)]
 > atime <- sort(aml$time)
-> denom <- rev(cumsum(rev((1:23)[order(aml$time)])))
+> denom <- rev(cumsum(rev(rscore)))
 > denom <- denom[match(unique(atime), atime)]
 > deaths <- tapply(aml$status, aml$time, sum)
 > chaz <- cumsum(deaths/denom)
@@ -129,46 +132,27 @@ aml$x=Nonmaintained 12       11     7.31      1.86      3.40
 > cvar <- cumsum(deaths/denom^2)
 > all.equal(sfit$std^2, as.vector(cvar[deaths>0]))
 [1] TRUE
-> summary(sfit)
-Call: survfit.coxph.null(formula = tfit, type = "aalen")
-
- time n.risk n.event survival std.err lower 95% CI upper 95% CI
-    5     23       2    0.993 0.00509        0.983        1.000
-    8     21       2    0.985 0.00750        0.970        1.000
-    9     19       1    0.980 0.00868        0.964        0.998
-   12     18       1    0.976 0.00970        0.957        0.995
-   13     17       1    0.971 0.01075        0.950        0.993
-   18     14       1    0.966 0.01193        0.943        0.990
-   23     13       2    0.955 0.01400        0.928        0.983
-   27     11       1    0.949 0.01518        0.920        0.979
-   30      9       1    0.942 0.01670        0.910        0.975
-   31      8       1    0.934 0.01856        0.898        0.971
-   33      7       1    0.925 0.02042        0.885        0.965
-   34      6       1    0.913 0.02298        0.870        0.960
-   43      5       1    0.901 0.02567        0.852        0.953
-   45      4       1    0.885 0.03021        0.827        0.946
-   48      2       1    0.843 0.04943        0.752        0.946
 > 
 > # And the Efron result
 > summary(survfit(tfit))
-Call: survfit.coxph.null(formula = tfit)
+Call: survfit(formula = tfit)
 
  time n.risk n.event survival std.err lower 95% CI upper 95% CI
-    5     23       2    0.993 0.00521        0.982        1.000
-    8     21       2    0.984 0.00771        0.970        1.000
-    9     19       1    0.980 0.00885        0.963        0.998
-   12     18       1    0.976 0.00986        0.957        0.995
-   13     17       1    0.971 0.01089        0.950        0.992
-   18     14       1    0.966 0.01205        0.942        0.990
-   23     13       2    0.955 0.01424        0.927        0.983
-   27     11       1    0.948 0.01540        0.919        0.979
-   30      9       1    0.941 0.01689        0.909        0.975
-   31      8       1    0.933 0.01873        0.897        0.970
-   33      7       1    0.924 0.02057        0.884        0.965
-   34      6       1    0.913 0.02310        0.869        0.959
-   43      5       1    0.901 0.02577        0.852        0.953
-   45      4       1    0.884 0.03029        0.826        0.945
-   48      2       1    0.843 0.04944        0.751        0.945
+    5     23       2    0.932  0.0461       0.8463        1.000
+    8     21       2    0.863  0.0637       0.7467        0.997
+    9     19       1    0.827  0.0704       0.6999        0.977
+   12     18       1    0.793  0.0755       0.6576        0.955
+   13     17       1    0.757  0.0801       0.6152        0.931
+   18     14       1    0.719  0.0846       0.5709        0.905
+   23     13       2    0.645  0.0907       0.4893        0.849
+   27     11       1    0.607  0.0929       0.4496        0.819
+   30      9       1    0.565  0.0955       0.4054        0.787
+   31      8       1    0.519  0.0982       0.3579        0.752
+   33      7       1    0.474  0.0994       0.3140        0.715
+   34      6       1    0.423  0.1009       0.2649        0.675
+   43      5       1    0.373  0.1006       0.2198        0.633
+   45      4       1    0.312  0.1009       0.1657        0.588
+   48      2       1    0.199  0.1102       0.0674        0.589
 > 
 > # Lots of ties, so its a good test case
 > x1 <- coxph(Surv(time, status)~x, aml, method='efron')
@@ -182,9 +166,8 @@ xNonmaintained 0.916       2.5    0.512 1.79 0.074
 
 Likelihood ratio test=3.38  on 1 df, p=0.0658  n= 23 
 > x2 <- coxph(Surv(rep(0,23),time, status) ~x, aml, method='efron')
-> x1$coef - x2$coef
-xNonmaintained 
- -1.110223e-16 
+> aeq(x1$coef, x2$coef)
+[1] TRUE
 > 
 > rm(x1, x2, atime, denom, deaths, chaz,cvar, tfit, sfit, temp, temp2, fit)
 > 

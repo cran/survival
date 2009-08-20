@@ -1,4 +1,4 @@
-# $Id: print.summary.survfit.S 10788 2008-09-18 00:48:23Z therneau $
+# $Id: print.summary.survfit.S 11408 2010-07-07 12:15:58Z therneau $
 print.summary.survfit <- function(x, 
 				  digits = max(options()$digits - 4, 3), ...) {
     savedig <- options(digits=digits)
@@ -13,7 +13,7 @@ print.summary.survfit <- function(x,
     omit <- x$na.action
     if (length(omit)) 
 	    cat(naprint(omit), "\n")
-    if (x$type == 'right' || is.null(x$n.entered)) {
+    if (x$type == 'right' || is.null(x$n.enter)) {
 	mat <- cbind(x$time, x$n.risk, x$n.event, x$surv)
 	cnames <- c("time", "n.risk", "n.event")
         }

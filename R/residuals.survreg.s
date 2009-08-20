@@ -1,5 +1,5 @@
-# Automatically generated from inst/noweb/all.nw
-# $Id: residuals.survreg.S 11380 2009-12-18 03:49:37Z therneau $
+# Automatically generated from all.nw using noweb
+# $Id$
 #
 #  Residuals for survreg objects
 residuals.survreg <- function(object, type=c('response', 'deviance',

@@ -1,6 +1,6 @@
+library(survival)
 options(na.action=na.exclude) # preserve missings
 options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
-library(survival)
 
 #
 # Tests from the appendix of Therneau and Grambsch
@@ -73,8 +73,9 @@ aeq(1/truth0$imat, fit0$var)
 aeq(truth0$mart, fit0$resid)
 aeq(truth0$scho, resid(fit0, 'schoen'))
 aeq(truth0$score, resid(fit0, 'score')) 
-sfit <- survfit(fit0, list(x=0))
+sfit <- survfit(fit0, list(x=0), censor=FALSE)
 aeq(sfit$std.err^2, truth0$var)
+aeq(sfit$surv, truth0$surv)
 
 fit <- coxph(Surv(start, stop, event) ~x, test2, eps=1e-8, method='breslow')
 truth <- byhand(fit$coef, 0)
@@ -84,8 +85,8 @@ aeq(truth$mart, fit$resid)
 aeq(truth$scho, resid(fit, 'schoen'))
 aeq(truth$score, resid(fit, 'score'))
 
-sfit <- survfit(fit, list(x=0))
-aeq(sfit$std.err^2, truth$var) # sfit skips time 8 (no events there)
+sfit <- survfit(fit, list(x=0), censor=FALSE)
+aeq(sfit$std.err^2, truth$var) 
 aeq(-log(sfit$surv), (cumsum(truth$haz)))
 
 # 

@@ -1,6 +1,6 @@
 
-R version 2.7.1 (2008-06-23)
-Copyright (C) 2008 The R Foundation for Statistical Computing
+R version 2.11.1 (2010-05-31)
+Copyright (C) 2010 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -41,7 +41,7 @@ Loading required package: splines
 > cfit1<- survfit(coxph(Surv(start, stop, event)~1, test2))
 > cfit2<- survfit(coxph(Surv(start, stop, event) ~ strata(x), test2, subset=-1))
 > 
-> deaths <- fit1$n.event>0
+> deaths <- (fit1$n.event + fit1$n.censor)>0
 > aeq(fit1$time[deaths], cfit1$time)
 [1] TRUE
 > aeq(fit1$n.risk[deaths], cfit1$n.risk)
@@ -53,7 +53,7 @@ Loading required package: splines
 > aeq(fit1$std.err[deaths], cfit1$std.err)
 [1] TRUE
 > 
-> deaths <- fit2$n.event>0
+> deaths <- (fit2$n.event + fit2$n.censor)>0
 > aeq(fit2$time[deaths], cfit2$time)
 [1] TRUE
 > aeq(fit2$n.risk[deaths], cfit2$n.risk)
@@ -78,16 +78,16 @@ Loading required package: splines
 > #  Verify that both surv AND n.risk are right between time points.
 > #
 > fit <- survfit(Surv(time, status) ~1, test1)
-> temp <- summary(fit, time=c(.5,1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5), extend=TRUE)
+> temp <- summary(fit, time=c(.5,1, 1.5, 6, 7.5, 8, 8.9, 9, 10), extend=TRUE)
 > 
 > aeq(temp$n.risk, c(6,6,4,4,2,2,1,1,0))
-[1] "Mean relative difference: 0.7"
+[1] TRUE
 > aeq(temp$surv, c(1, fit$surv[c(1,1,2,2,3,3,4,4)]))
-[1] "Mean relative difference: 0.6666667"
+[1] TRUE
 > aeq(temp$n.event, c(0,1,0,2,0,0,0,1,0))
-[1] "Mean absolute difference: 1.5"
+[1] TRUE
 > aeq(temp$std.err, c(0, (fit$surv*fit$std.err)[c(1,1,2,2,3,3,4,4)]))
-[1] "'is.NA' value mismatch: 2 in current 0 in target"
+[1] TRUE
 > 
 > 
 > fit <- survfit(Surv(start, stop, event) ~1, test2)
