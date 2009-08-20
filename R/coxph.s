@@ -1,4 +1,4 @@
-# $Id: coxph.S 11282 2009-05-21 11:00:22Z therneau $
+# $Id: coxph.S 11370 2009-09-30 18:02:09Z therneau $
 if (!is.R())  setOldClass(c('coxph.penal', 'coxph'))
 
 coxph <- function(formula, data, weights, subset, na.action,
@@ -68,6 +68,7 @@ coxph <- function(formula, data, weights, subset, na.action,
 
     # Attributes of X need to be saved away before the X <- X[,-1] line removes the
     #  intercept, since subscripting removes some of them!
+    Xatt <- attributes(X)
     if (is.R()) {
 	 assign <- lapply(attrassign(X, newTerms)[-1], function(x) x-1)
          xlevels <- .getXlevels(newTerms, m)
@@ -188,6 +189,10 @@ coxph <- function(formula, data, weights, subset, na.action,
 	if (length(na.action)) fit$na.action <- na.action
 	if (model) fit$model <- m
 	if (x)  {
+            Xatt$dim <- attr(X, 'dim')
+            Xatt$dimnames <- attr(X, 'dimnames')
+            Xatt$assign <- Xatt$assign[-1]
+            attributes(X) <- Xatt
 	    fit$x <- X
 	    if (length(strats)) fit$strata <- strata.keep
 	    }

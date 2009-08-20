@@ -1,4 +1,4 @@
-# $Id: frailty.controldf.S 11166 2008-11-24 22:10:34Z therneau $
+# $Id: frailty.controldf.S 11373 2009-10-28 17:12:59Z therneau $
 # A function to calibrate the df
 #    very empirical  
 # Find the closest 3 points that span the target value
@@ -60,7 +60,7 @@ frailty.controldf <- function(parms, iter, old, df) {
 	else if (all(y<target)) b1 <- nx-2
 	else {
 	    b1 <- max((1:nx)[y <= target]) #this point below target, next above
-	    if (!doing.well && old$half<2) {
+	    if (!doing.well && (is.null(old$half) ||  old$half<2)) {
 		#try bisection
 		if (length(parms$trace) && parms$trace){
 		    print(cbind(thetas=thetas, dfs=dfs))
@@ -69,7 +69,7 @@ frailty.controldf <- function(parms, iter, old, df) {
 		    }
 		return(list(theta= mean(x[b1+0:1]),done=done, 
 			      history=cbind(thetas=thetas, dfs=dfs), 
-				            half=old$half+1))
+				            half=max(old$half, 0) +1))
 		}
 	    # use either b1,b1+1,b1+2 or  b1-1, b1, b1+1, whichever is better
 	    #  better = midpoint of interval close to the target

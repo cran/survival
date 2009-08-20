@@ -1,5 +1,5 @@
 #
-# $Id: survreg.S 11282 2009-05-21 11:00:22Z therneau $
+# $Id: survreg.S 11384 2009-12-18 13:00:11Z therneau $
 #  The newest version of survreg, that accepts penalties and strata
 #
 if (!is.R()) setOldClass(c('survreg.penal', 'survreg'))
@@ -223,8 +223,6 @@ survreg <- function(formula, data, weights, subset, na.action,
 	}
 
     if (!score) fit$score <- NULL   #do not return the score vector
-    na.action <- attr(m, "na.action")
-    if (length(na.action)) fit$na.action <- na.action
     fit$df.residual <- n - sum(fit$df)
 #   fit$fitted.values <- itrans(fit$linear.predictors)
     fit$terms <- Terms
@@ -238,12 +236,21 @@ survreg <- function(formula, data, weights, subset, na.action,
     if (y)     fit$y <- Y
     if (length(parms)) fit$parms <- parms
 
+    # Do this before attaching the na.action, so that residuals() won't
+    #   reinsert missing values under na.exclude
     if (robust) {
         fit$naive.var <- fit$var
+        if (!model) fit$model <- m  #temporary addition, so resid doesn't
+                                    # have to reconstruct
         if (length(cluster))
-             fit$var <- crossprod(rowsum(resid(fit, 'dfbeta'), cluster))
-        else fit$var <- crossprod(rowsum(resid(fit, 'dfbeta')))
+             fit$var <- crossprod(rowsum(residuals.survreg(fit, 'dfbeta'), 
+                                         cluster))
+        else fit$var <- crossprod(rowsum(residuals.survreg(fit, 'dfbeta')))
+        if (!model) fit$model <- NULL  # take it back out
         }
+
+    na.action <- attr(m, "na.action")
+    if (length(na.action)) fit$na.action <- na.action
 
     if (is.R()) {
         if (any(pterms)) class(fit) <- c('survreg.penal', 'survreg')

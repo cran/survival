@@ -1,4 +1,4 @@
-# $Id: untangle.specials.S 11166 2008-11-24 22:10:34Z therneau $
+# $Id: untangle.specials.S 11059 2008-10-23 12:32:50Z therneau $
 #
 # This function takes a terms object, and extracts some aspects
 #  of it into a "nice" list.  It is simple an operation that

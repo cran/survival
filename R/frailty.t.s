@@ -1,10 +1,10 @@
-# $Id: frailty.t.S 11203 2009-02-05 00:06:16Z therneau $
+# $Id: frailty.t.S 11377 2009-12-14 22:59:56Z therneau $
 # 
 # Defining function for t-distribution frailty fits
 #
 frailty.t <- function(x, sparse=(nclass>5), theta, df, eps= 1e-5,  tdf=5,
 			  method=c("aic", "df", "fixed"), ...) {
-    nclass <- length(unique(x))
+    nclass <- length(unique(x[!is.na(x)]))
     if (sparse){
 	x <-as.numeric(as.factor(x))
 	if (is.R()) class(x) <- "coxph.penalty"

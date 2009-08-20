@@ -1,6 +1,6 @@
 
-R version 2.7.1 (2008-06-23)
-Copyright (C) 2008 The R Foundation for Statistical Computing
+R version 2.9.0 (2009-04-17)
+Copyright (C) 2009 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -145,8 +145,14 @@ In fitter(X, Y, strats, offset, init, control, weights = weights,  :
         1         2         3         4         5         6         7 
 1.3333333        NA 0.2712864 0.2712864 1.4574271 0.3333333 0.3333333 
 > predict(fit, type='terms')
-         1          2          3          4          5          6          7 
--0.7376425         NA  0.7376425  0.7376425  0.7376425 -0.7376425 -0.7376425 
+           x
+1 -0.7376425
+2         NA
+3  0.7376425
+4  0.7376425
+5  0.7376425
+6 -0.7376425
+7 -0.7376425
 > predict(fit, type='lp', se.fit=T)
 $fit
          1          2          3          4          5          6          7 
@@ -176,12 +182,24 @@ $se.fit
 
 > predict(fit, type='terms', se.fit=T)
 $fit
-         1          2          3          4          5          6          7 
--0.7376425         NA  0.7376425  0.7376425  0.7376425 -0.7376425 -0.7376425 
+           x
+1 -0.7376425
+2         NA
+3  0.7376425
+4  0.7376425
+5  0.7376425
+6 -0.7376425
+7 -0.7376425
 
 $se.fit
-        1         2         3         4         5         6         7 
-0.6278672        NA 0.6278672 0.6278672 0.6278672 0.6278672 0.6278672 
+          x
+1 0.6278672
+2        NA
+3 0.6278672
+4 0.6278672
+5 0.6278672
+6 0.6278672
+7 0.6278672
 
 > 
 > summary(survfit(fit))

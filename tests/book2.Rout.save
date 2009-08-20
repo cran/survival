@@ -1,6 +1,6 @@
 
-R version 2.7.1 (2008-06-23)
-Copyright (C) 2008 The R Foundation for Statistical Computing
+R version 2.9.0 (2009-04-17)
+Copyright (C) 2009 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -140,8 +140,14 @@ Loading required package: splines
         1         2         3         4         5         6         7 
 1.3655434        NA 0.2808293 0.2808293 1.4383414 0.2689131 0.3655434 
 > predict(fit, type='terms')
-         1          2          3          4          5          6          7 
--0.8384287         NA  0.8384287  0.8384287  0.8384287 -0.8384287 -0.8384287 
+           x
+1 -0.8384287
+2         NA
+3  0.8384287
+4  0.8384287
+5  0.8384287
+6 -0.8384287
+7 -0.8384287
 > predict(fit, type='lp', se.fit=T)
 $fit
          1          2          3          4          5          6          7 
@@ -171,12 +177,24 @@ $se.fit
 
 > predict(fit, type='terms', se.fit=T)
 $fit
-         1          2          3          4          5          6          7 
--0.8384287         NA  0.8384287  0.8384287  0.8384287 -0.8384287 -0.8384287 
+           x
+1 -0.8384287
+2         NA
+3  0.8384287
+4  0.8384287
+5  0.8384287
+6 -0.8384287
+7 -0.8384287
 
 $se.fit
-        1         2         3         4         5         6         7 
-0.6388078        NA 0.6388078 0.6388078 0.6388078 0.6388078 0.6388078 
+          x
+1 0.6388078
+2        NA
+3 0.6388078
+4 0.6388078
+5 0.6388078
+6 0.6388078
+7 0.6388078
 
 > 
 > summary(survfit(fit))

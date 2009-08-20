@@ -1,4 +1,4 @@
-# $Id: survexp.cfit.S 11166 2008-11-24 22:10:34Z therneau $
+# $Id: survexp.cfit.S 11059 2008-10-23 12:32:50Z therneau $
 #
 #  Do expected survival based on a Cox model
 #   A fair bit of the setup work is identical to survfit.coxph, i.e.,

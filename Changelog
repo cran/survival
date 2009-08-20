@@ -36,7 +36,7 @@ the extreme rarity of a user requesting this combination.
 initial model had used x=TRUE.  He also pointed out the fix.
 
 20 Aug 2009: One more fix to predict.coxph.  It needed to use 
-delete.response(Terms) rather than Terms, so as to not look for (unnecessarily) 
+delete.response(Terms) rather than Terms, so as to not look for (unnecessarily)
 the response variable when the newdata argment is used.  Pointed out by Michael
 Conklin.
 
@@ -46,4 +46,36 @@ between R 2.9 and 2.9.2 (best guess).  This wasn't picked up in the test
 suite but rather by failure of 3 packages that depend on survival.  Also added
 a test.  Update CRAN since this broke other's packages.
 	
-  
+30 Sep 2009: For coxph and model.matrix.coxph, re-attach the
+attributues lost from the X matrix when the intercept is removed,
+i.e., X <- X[,1].  In particular, some downstream libraries depend on
+the assign attribute. 
+  For predict.coxph remove an earlier edit so that a single variable model
++ type='terms' returns a matrix, not a vector.  This is expected by the 
+termplot() function.
+
+1 Oct 09: Fix a bug pointed out by Ben Domingue.  There was one if-then-else
+path into step-halving in the frailty.controldf routine that would refer to
+a non-existent variable.  A very rarely followed path, obviously, and with
+the obvious fix the mathematics of the update was fine.
+
+28 Oct 09: The basehaz function would reorder the labels of the strata
+factor.  Not a bug really, but a "why do this?"  Unintended consequence of
+a character -> factor conversion.
+
+11 Nov 09: The 'type' argument does not make sense for plot.survfit.  (If 
+type='p', should one plot the tops of the step function, the bottoms, or
+both?).  Make it explicitly disallowed in response to an R-help query,
+rather than the confusing error message that currently arose.
+
+14 Dec 09: Fix bug in frailty.xxx, if there is a missing value in the levels
+it gets counted by "length(unique(x))" (frailty is called before NA
+removal.)  SurvfitCI had an incorrect CI with case weights, and
+survreg a call to resid instead of residuals.survreg, before the class
+was attached.  
+
+15 Dec 09: Two users pointed out a bug that crept into survreg() with a
+cluster statement, when a t(x)%*%x was replaced with crossprod.  A trivial
+fix, but in response I added another test that more formally checks the
+dfbeta residuals and found a major oversight for the case of multiple
+strata.  

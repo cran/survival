@@ -1,5 +1,5 @@
-/*  $Id: chsolve2.c 11166 2008-11-24 22:10:34Z therneau $
-/*
+/*  $Id: chsolve2.c 11376 2009-12-14 22:53:57Z therneau $
+**
 ** Solve the equation Ab = y, where the cholesky decomposition of A and y
 **   are the inputs.
 **

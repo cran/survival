@@ -12,7 +12,7 @@ basehaz <- function(fit, centered=TRUE) {
 
     strata<-sfit$strata
     if (!is.null(strata))
-        strata<-rep(names(strata),strata)
+        strata<- factor(rep(names(strata),strata), levels=names(strata))
     
     if (!centered){
         z0<-fit$means

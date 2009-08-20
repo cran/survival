@@ -1,4 +1,4 @@
-#  $Id: coxpenal.df.S 11166 2008-11-24 22:10:34Z therneau $
+#  $Id: coxpenal.df.S 10788 2008-09-18 00:48:23Z therneau $
 #
 # degrees of freedom computation, based on Bob Gray's paper
 #

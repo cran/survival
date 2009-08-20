@@ -1,4 +1,4 @@
-#$Id: predict.coxph.S 11329 2009-08-21 01:18:14Z therneau $
+#$Id: predict.coxph.S 11370 2009-09-30 18:02:09Z therneau $
 #What do I need to do predictions --
 #
 #linear predictor:  exists
@@ -152,9 +152,10 @@ predict.coxph <- function(object, newdata,
 	}
  
         
-    # Tom had the next two lines commented out.  Check with him
-    if (se.fit) se <- drop(se)
-    pred <- drop(pred)
+    # Terms should always return a matrix, or R termplot() gets unhappy.
+    #   So the next two lines are commented out.
+    # if (se.fit) se <- drop(se)
+    # pred <- drop(pred)
 
     # Expand out the missing values in the result
     if (!is.null(na.action.used)) {
@@ -167,9 +168,12 @@ predict.coxph <- function(object, newdata,
     # Collapse over subjects, if requested
     if (!missing(collapse)) {
 	if (length(collapse) != n) stop("Collapse vector is the wrong length")
-	pred <- drop(rowsum(pred, collapse))  # in R, rowsum is a matrix, always
-	if (se.fit) se <- sqrt(drop(rowsum(se^2, collapse)))
-        
+	pred <- rowsum(pred, collapse)  # in R, rowsum is a matrix, always
+	if (se.fit) se <- sqrt(rowsum(se^2, collapse))
+        if (type != 'terms') {
+            pred <- drop(pred)
+            if (se.fit) se <- drop(se)
+            }
 	}
 
     if (se.fit) list(fit=pred, se.fit=se)

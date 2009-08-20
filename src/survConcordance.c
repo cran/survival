@@ -1,5 +1,5 @@
 /*
-**    $Id: survConcordance.c 11166 2008-11-24 22:10:34Z therneau $
+**    $Id: survConcordance.c 11080 2008-10-24 03:47:51Z therneau $
 **
 **  For each observation, we want to know, for the subset of observations
 **     with longer survival (and only those)

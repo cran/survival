@@ -131,8 +131,9 @@ SEXP survreg6(SEXP maxiter2,   SEXP nvarx,  SEXP y,
        
 
     if (ny==2) {
-	time1= REAL(y);
+	time1= REAL(y); 
 	status = time1 +n;
+	time2 = NULL;    /*keep gcc from complaining */
 	}
     else {
 	time1= REAL(y);

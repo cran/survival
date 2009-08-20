@@ -1,10 +1,10 @@
-#  $Id: frailty.gamma.S 11203 2009-02-05 00:06:16Z therneau $
+#  $Id: frailty.gamma.S 11377 2009-12-14 22:59:56Z therneau $
 # 
 # Defining function for gamma frailty fits
 #
 frailty.gamma <- function(x, sparse=(nclass >5), theta, df, eps= 1e-5, 
 			  method=c("em", "aic", "df", "fixed"), ...) {
-    nclass <- length(unique(x))
+    nclass <- length(unique(x[!is.na(x)]))
     if (sparse)	x <-as.numeric(as.factor(x))
     else{
 	x <- as.factor(x)

@@ -1,4 +1,4 @@
-# $Id: predict.survreg.penal.S 11166 2008-11-24 22:10:34Z therneau $
+# $Id: predict.survreg.penal.S 10788 2008-09-18 00:48:23Z therneau $
 #
 # This routine just stops disastrous arithmetic for models with sparse
 # terms.  A placeholder until the proper sparse terms actions are inserted.

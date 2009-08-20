@@ -12,16 +12,17 @@ makemn <- function() {
     nsingle <- length(singleyear)
 
     data2 <- array(0., dim=c(100, 2, nsingle))
-    for (i in 1:length(nsingle)) {
+    for (i in 1:nsingle) {
         data2[,,i] <- scan(paste('minn', singleyear[i], '.dat', sep=''), 
                            what=0, skip=4, quiet=TRUE)
         }
 
     # Create the table of raw rates
     rates <- array(0., dim=c(110,2, ndecen+nsingle))
-    rates[,,1:ndecen] <- -log(1- data1$q)
+    rates[,,1:ndecen] <- -log(1- data1$q)/365.25
 
-    # For annual Minnesota rates are very bumpy.  Smooth them out using
+    # For annual Minnesota rates from the state (2000 and 2004 data)
+    #  are very bumpy.  Smooth them out using
     #  smoothing splines on the hazard ratios.  The biggest advantage of
     #  using ratios wrt 1990 (currently the last state decennial) is that
     #  a direct smooth has to "jump up" for infant mortality of age 0, which
@@ -31,7 +32,7 @@ makemn <- function() {
     for (sex in 1:2) {
         baseline <- rates[,sex,ndecen]  #the oldest decennial
         for (j in 1:nsingle) {
-            y <- -log(1- data2[,sex,j]/100000)
+            y <- -log(1- data2[,sex,j]/100000) / 365.25
             fit <- smooth.spline(0:99, y/baseline[1:100], df=20)
             rates[, sex, j+ndecen] <- predict(fit, 0:109)$y * baseline
             }
@@ -94,7 +95,7 @@ makemn2 <- function() {
 
     # Create the table of raw rates
     rates <- array(0., dim=c(110,2, ndecen+1))
-    rates[,,1:ndecen] <- -log(1- data1$q)
+    rates[,,1:ndecen] <- -log(1- data1$q)/365.25
     rates[,,ndecen+1] <- as.matrix(extrap)
 
     # Make the rate table

@@ -1,4 +1,4 @@
-# $Id: survdiff.fit.S 11166 2008-11-24 22:10:34Z therneau $
+# $Id: survdiff.fit.S 11059 2008-10-23 12:32:50Z therneau $
 survdiff.fit <- function(y, x, strat, rho=0) {
     #
     # This routine is almost always called from survdiff

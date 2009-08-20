@@ -1,4 +1,4 @@
-# $Id: agexact.fit.S 11166 2008-11-24 22:10:34Z therneau $
+# $Id: agexact.fit.S 10788 2008-09-18 00:48:23Z therneau $
 agexact.fit <- function(x, y, strata, offset, init, control,
 			  weights, method, rownames)
     {

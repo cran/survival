@@ -31,7 +31,17 @@ model.matrix.coxph <- function(object, data=NULL, contrast.arg=object$contrasts,
             newTerms <- Terms
             X <- model.matrix(Terms, data, contrasts=contrast.arg)
             }
-        X[,-1,drop=F]
+
+        # Save attributes that are removed by subscripting, then
+        #  put them back on.  Dim and dimnames are correctly changed
+        #  by the subscripting.
+        Xatt <- attributes(X)
+        X <- X[,-1,drop=F]
+        Xatt$dim <- attr(X, 'dim')
+        Xatt$dimnames <- attr(X, 'dimnames')
+        Xatt$assign <- Xatt$assign[-1]
+        attributes(X) <- Xatt
+        X
         }
     }
 

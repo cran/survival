@@ -1,5 +1,5 @@
 #
-# $Id: survfitCI.S 11290 2009-06-18 18:13:12Z therneau $
+# $Id: survfitCI.S 11377 2009-12-14 22:59:56Z therneau $
 #
 # Compute the current incidence curve for a data set
 #   called from survfit.formula
@@ -97,7 +97,7 @@ survfitCI <- function(X, Y, weights,
 		
 	# compute the Greenwood error
 	if (se.fit) {
-	    greenwood <- newjump /(kfit$n.risk*(1-newjump))
+	    greenwood <- newjump /(kfit$n.risk*(kfit$n.risk-newjump))
 	    kfit$std.err <- sqrt(apply(greenwood, 2, cumsum))
 	    }
         }

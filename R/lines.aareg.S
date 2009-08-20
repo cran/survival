@@ -1,4 +1,4 @@
-# $Id: lines.aareg.S 11166 2008-11-24 22:10:34Z therneau $
+# $Id: lines.aareg.S 10788 2008-09-18 00:48:23Z therneau $
 lines.aareg <- function(x, se=FALSE, maxtime, type='s', ...) {
     if (!inherits(x, 'aareg')) stop ("Must be an aareg object")
 

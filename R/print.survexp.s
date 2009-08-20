@@ -1,4 +1,4 @@
-# $Id: print.survexp.S 11166 2008-11-24 22:10:34Z therneau $
+# $Id: print.survexp.S 10788 2008-09-18 00:48:23Z therneau $
 print.survexp <- function(x, scale=1, digits = max(options()$digits - 4, 3), naprint=FALSE, ...) {
     if (!inherits(x, 'survexp'))
 	    stop("Invalid data")

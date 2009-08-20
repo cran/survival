@@ -88,11 +88,16 @@ an object of class \code{survreg} is returned.
 \code{\link{pspline}}, \code{\link{frailty}}, \code{\link{ridge}}
 }
 \examples{
-# Fit an exponential model: these are all the same
-survreg(Surv(futime, fustat) ~ ecog.ps + rx, ovarian, dist='weibull',scale=1)
+# Fit an exponential model: the two fits are the same
+survreg(Surv(futime, fustat) ~ ecog.ps + rx, ovarian, dist='weibull',
+                                    scale=1)
 survreg(Surv(futime, fustat) ~ ecog.ps + rx, ovarian,
         dist="exponential")
 
+#
+# A model with different baseline survival shapes for two groups, i.e.,
+#   two different scales
+survreg(Surv(time, status) ~ ph.ecog + age + strata(sex), lung)
 
 # There are multiple ways to parameterize a Weibull distribution. The survreg 
 # function imbeds it in a general location-scale familiy, which is a 
@@ -105,7 +110,7 @@ y <- rweibull(1000, shape=2, scale=5)
 survreg(Surv(y)~1, dist="weibull")
 
 # Economists fit a model called `tobit regression', which is a standard
-# linear regression with Gaussian errors, but with left censored data.
+# linear regression with Gaussian errors, and left censored data.
 tobinfit <- survreg(Surv(durable, durable>0, type='left') ~ age + quant,
 	            data=tobin, dist='gaussian')
 }

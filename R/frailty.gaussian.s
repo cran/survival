@@ -1,11 +1,10 @@
-# $Id: frailty.gaussian.S 11203 2009-02-05 00:06:16Z therneau $
+# $Id: frailty.gaussian.S 11381 2009-12-18 03:50:50Z therneau $
 # 
 # Defining function for gaussian frailty fits
 #
 frailty.gaussian <- function(x, sparse=(nclass >5), theta, df, 
 		   method=c("reml", "aic", "df", "fixed"), ...) {
 
-    nclass <- length(unique(x))
     # Check for consistency of the arguments
     if (missing(method)) {
 	if (!missing(theta)) {
@@ -25,6 +24,7 @@ frailty.gaussian <- function(x, sparse=(nclass >5), theta, df,
     if (method !='fixed' && !missing(theta)) 
 	    stop("Method is not 'fixed', but have a theta argument")
 
+    nclass <- length(unique(x[!is.na(x)]))
     if (sparse){
 	x <-as.numeric(as.factor(x))
 	if (is.R()) class(x) <- "coxph.penalty"
@@ -32,6 +32,7 @@ frailty.gaussian <- function(x, sparse=(nclass >5), theta, df,
 	}
     else{
 	x <- as.factor(x)
+        nclass <- length(levels(x))
 	if (is.R()) {
             class(x) <- c("coxph.penalty", class(x))
             attr(x, 'contrasts') <- contr.treatment(nclass, contrasts=FALSE)

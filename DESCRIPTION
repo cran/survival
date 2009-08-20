@@ -2,7 +2,7 @@ Title: Survival analysis, including penalised likelihood.
 Maintainer: Terry Therneau <therneau.terry@mayo.edu>
 Priority: recommended
 Package: survival
-Version: 2.35-7
+Version: 2.35-8
 Date: 2009-08-20
 Depends: stats, utils, graphics, splines, R (>= 2.0.0)
 LazyData: Yes
@@ -14,6 +14,8 @@ Description: survival analysis: descriptive statistics, two-sample
         censoring for parametric models. Case-cohort designs.
 License: GPL-2
 URL: http://r-forge.r-project.org
-Packaged: 2009-09-09 15:32:13 UTC; therneau
 Repository: CRAN
-Date/Publication: 2009-09-09 17:03:11
+Repository/R-Forge/Project: survival
+Repository/R-Forge/Revision: 11384
+Date/Publication: 2009-12-21 17:43:26
+Packaged: 2009-12-18 21:29:15 UTC; rforge

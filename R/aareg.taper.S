@@ -1,4 +1,4 @@
-# SCCS $Id: aareg.taper.S 11166 2008-11-24 22:10:34Z therneau $
+# SCCS $Id: aareg.taper.S 10788 2008-09-18 00:48:23Z therneau $
 #
 # Do running averages of an information matrix
 # 

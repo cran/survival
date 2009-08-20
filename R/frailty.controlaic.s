@@ -1,4 +1,4 @@
-#  $Id: frailty.controlaic.S 11166 2008-11-24 22:10:34Z therneau $
+#  $Id: frailty.controlaic.S 10788 2008-09-18 00:48:23Z therneau $
 # Control function to minimize the AIC
 #  the optional paramater "caic" chooses corrected aic (default=FALSE)
 # n is the "effective" sample size

@@ -1,4 +1,4 @@
-# $Id: plot.survfit.S 11166 2008-11-24 22:10:34Z therneau $
+# $Id: plot.survfit.S 11377 2009-12-14 22:59:56Z therneau $
 plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 			mark=3,col=1,lty=1, lwd=1, cex=1, log=FALSE,
 			xscale=1, yscale=1, 
@@ -6,6 +6,10 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 			xmax, ymin=0,
 			fun, xlab="", ylab="", xaxs='S', ...) {
 
+    dotnames <- names(list(...))
+    if (any(dotnames=='type'))
+        stop("The graphical argument 'type' is not allowed")
+    
     if (is.logical(log)) {
 	logy <- log
 	logx <- FALSE

@@ -1,4 +1,4 @@
-# $Id: points.survfit.S 11166 2008-11-24 22:10:34Z therneau $
+# $Id: points.survfit.S 11059 2008-10-23 12:32:50Z therneau $
 points.survfit <- function(x, ...) {
     if (!is.matrix(x$surv))
 	    points(x$time, x$surv, ...)

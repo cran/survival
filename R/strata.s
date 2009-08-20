@@ -1,4 +1,4 @@
-# $Id: strata.S 11166 2008-11-24 22:10:34Z therneau $
+# $Id: strata.S 11059 2008-10-23 12:32:50Z therneau $
 # Create a strata variable, possibly from many objects
 #
 strata <- function(..., na.group=FALSE, shortlabel=FALSE, sep=', ') {
