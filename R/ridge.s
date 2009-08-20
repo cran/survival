@@ -1,4 +1,4 @@
-# $Id: ridge.S 10788 2008-09-18 00:48:23Z therneau $
+# $Id: ridge.S 11166 2008-11-24 22:10:34Z therneau $
 ridge <- function(..., theta, df=nvar/2, eps=.1, scale=TRUE) {
     x <- cbind(...)
     nvar <- ncol(x)

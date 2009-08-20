@@ -1,4 +1,4 @@
-# $Id: frailty.controldf.S 10788 2008-09-18 00:48:23Z therneau $
+# $Id: frailty.controldf.S 11166 2008-11-24 22:10:34Z therneau $
 # A function to calibrate the df
 #    very empirical  
 # Find the closest 3 points that span the target value

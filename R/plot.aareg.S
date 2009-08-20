@@ -1,4 +1,4 @@
-# $Id: plot.aareg.S 10788 2008-09-18 00:48:23Z therneau $
+# $Id: plot.aareg.S 11166 2008-11-24 22:10:34Z therneau $
 plot.aareg <- function(x, se=TRUE, maxtime, type='s', ...) {
     if (!inherits(x, 'aareg')) stop ("Must be an aareg object")
 

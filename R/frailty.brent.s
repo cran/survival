@@ -1,4 +1,4 @@
-# $Id: frailty.brent.S 10788 2008-09-18 00:48:23Z therneau $
+# $Id: frailty.brent.S 11166 2008-11-24 22:10:34Z therneau $
 #
 # Brent's method for finding a maximum
 #  If upper and/or lower is given, it transforms x to stay out of trouble

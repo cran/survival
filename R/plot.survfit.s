@@ -1,4 +1,4 @@
-# $Id: plot.survfit.S 11059 2008-10-23 12:32:50Z therneau $
+# $Id: plot.survfit.S 11166 2008-11-24 22:10:34Z therneau $
 plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 			mark=3,col=1,lty=1, lwd=1, cex=1, log=FALSE,
 			xscale=1, yscale=1, 

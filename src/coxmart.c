@@ -1,4 +1,4 @@
-/* $Id: coxmart.c 11080 2008-10-24 03:47:51Z therneau $ */
+/* $Id: coxmart.c 11166 2008-11-24 22:10:34Z therneau $ */
 /*
 ** Compute the martingale residual for a Cox model
 **

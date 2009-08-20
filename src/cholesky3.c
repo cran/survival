@@ -1,4 +1,4 @@
-/* $Id: cholesky3.c 11080 2008-10-24 03:47:51Z therneau $ */
+/* $Id: cholesky3.c 11166 2008-11-24 22:10:34Z therneau $ */
 /*
 ** subroutine to do Cholesky decompostion on a matrix: C = FDF'
 **   where F is lower triangular with 1's on the diagonal, and D is diagonal

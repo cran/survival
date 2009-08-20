@@ -3,7 +3,6 @@
 \alias{vcov.coxph}
 \alias{print.coxph.null}
 \alias{print.coxph.penal}
-\alias{model.frame.coxph}
 \alias{coxph.penalty}
 \alias{[.coxph.penalty}
 \alias{coxph.getdata}

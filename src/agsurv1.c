@@ -1,4 +1,4 @@
-/*  $Id: agsurv1.c 11080 2008-10-24 03:47:51Z therneau $ */
+/*  $Id: agsurv1.c 11166 2008-11-24 22:10:34Z therneau $ */
 /*
 ** Fit the survival curve, the special case of an Anderson-Gill style data
 **   This program differs from survfit in several key ways:

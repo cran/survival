@@ -1,4 +1,4 @@
-# $Id: print.summary.survfit.S 10788 2008-09-18 00:48:23Z therneau $
+# $Id: print.summary.survfit.S 11166 2008-11-24 22:10:34Z therneau $
 print.summary.survfit <- function(x, 
 				  digits = max(options()$digits - 4, 3), ...) {
     savedig <- options(digits=digits)
