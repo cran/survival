@@ -14,7 +14,7 @@ makemn <- function() {
     data2 <- array(0., dim=c(100, 2, nsingle))
     for (i in 1:length(nsingle)) {
         data2[,,i] <- scan(paste('minn', singleyear[i], '.dat', sep=''), 
-                           what=0, skip=4)
+                           what=0, skip=4, quiet=TRUE)
         }
 
     # Create the table of raw rates

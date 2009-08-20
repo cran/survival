@@ -1,5 +1,5 @@
-/* $Id: coxscore.c 11080 2008-10-24 03:47:51Z therneau $
-/*
+/* $Id: coxscore.c 11357 2009-09-04 15:22:46Z therneau $
+**
 ** Compute the score residuals for a Cox model
 **
 ** Input

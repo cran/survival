@@ -1,5 +1,5 @@
-/* $Id: dmatrix.c 11080 2008-10-24 03:47:51Z therneau $
-/*
+/* $Id: dmatrix.c 11357 2009-09-04 15:22:46Z therneau $
+**
 ** set up ragged arrays, with #of columns and #of rows
 */
 #include "survS.h"

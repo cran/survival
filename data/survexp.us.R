@@ -35,7 +35,8 @@ usfun1 <- function() {
     temp3 <- array(0, dim=c(113, 2, 3, nsingle)) #age, sex, race, year
     for (i in 1:nsingle) {
         temp3[4:113,,,i] <- scan(paste("us", singleyear[i], ".dat", sep=''),
-                       what=0, skip=5)/100000
+                                 quiet=TRUE,
+                                 what=0, skip=5)/100000
         }
     temp3[4:113,,,] <- -log(1-temp3[4:113,,,]) #  hazard = -log(1-q)
 
@@ -157,7 +158,8 @@ usfun2 <- function() {
     temp3 <- array(0, dim=c(113, 2, 3, nsingle)) #age, sex, race, year
     for (i in 1:nsingle) {
         temp3[4:113,,,i] <- scan(paste("us", singleyear[i], ".dat", sep=''),
-                       what=0, skip=5)/100000
+                                 quiet=TRUE,
+                                 what=0, skip=5)/100000
         }
     temp3[4:113,,,] <- -log(1-temp3[4:113,,,]) #  hazard = -log(1-q)
 

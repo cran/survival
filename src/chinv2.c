@@ -1,5 +1,5 @@
-/* $Id: chinv2.c 11080 2008-10-24 03:47:51Z therneau $
-/*
+/* $Id: chinv2.c 11357 2009-09-04 15:22:46Z therneau $
+**
 ** matrix inversion, given the FDF' cholesky decomposition
 **
 ** input  **matrix, which contains the chol decomp of an n by n

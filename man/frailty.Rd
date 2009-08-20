@@ -102,7 +102,10 @@ function, such as \code{frailty} or
 routine.  The strength of this is that a user can plug in any penalization
 routine they choose.  A weakness is that it is very difficult for the
 modeling routine to know whether a sensible penalty routine has been
-supplied.  
+supplied.
+
+For Cox models the \code{coxme} package has replaced superseded
+this method.
 }
 \section{References}{
 S Ripatti and J Palmgren, Estimation of multivariate frailty 
@@ -114,7 +117,7 @@ Penalized survival models and frailty,
 J Computational and Graphical Statistics, 12:156-175, 2003.
 }
 \seealso{
-\link{coxph}, \link{survreg}, \link[pkg=bdsmatrix]{coxme}
+\link{coxph}, \link{survreg}
 }
 \examples{
 # Random institutional effect

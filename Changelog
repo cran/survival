@@ -39,4 +39,11 @@ initial model had used x=TRUE.  He also pointed out the fix.
 delete.response(Terms) rather than Terms, so as to not look for (unnecessarily) 
 the response variable when the newdata argment is used.  Pointed out by Michael
 Conklin.
+
+4 Sep 2009: Added a model.matrix.coxph and model.frame.coxph methods.  The
+model.matrix.default function ceased to work for coxph models sometime
+between R 2.9 and 2.9.2 (best guess).  This wasn't picked up in the test
+suite but rather by failure of 3 packages that depend on survival.  Also added
+a test.  Update CRAN since this broke other's packages.
+	
   

@@ -1,5 +1,5 @@
-/* $Id: pyears3.c 11183 2009-01-21 13:33:40Z therneau $
-/*
+/* $Id: pyears3.c 11357 2009-09-04 15:22:46Z therneau $
+**
 **  Person-years calculations, leading to expected survival for a cohort.
 **    The output table depends only on factors, not on continuous.
 **
