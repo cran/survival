@@ -15,19 +15,22 @@ survfit.coxph <-
         survtype <- match(object$method, temp1)
             }
     else {
-        temp1 <- c("kalbfleisch-prentice", "aalen", "efron")
+        temp1 <- c("kalbfleisch-prentice", "aalen", "efron",
+                   "kaplan-meier", "breslow", "fleming-harrington",
+                   "greenwood", "tsiatis", "exact")
         survtype <- match(match.arg(type, temp1), temp1)
+        survtype <- c(1,2,3,1,2,3,1,2,3)[survtype]
         }
     if (missing(vartype)) {
         vartype <- survtype
         }
     else {
-        temp2 <- c("greenwood", "tsiatis", "efron", "aalen")
+        temp2 <- c("greenwood", "aalen", "efron", "tsiatis")
         vartype <- match(match.arg(vartype, temp2), temp2)
-        if (vartype=="tsiatis") vartype<- "aalen"
+        if (vartype==4) vartype<- 2
         }
 
-    if (!se.fit) conf.type <- 'none'
+    if (!se.fit) conf.type <- "none"
     else conf.type <- match.arg(conf.type)
     if (is.null(object$y) || is.null(object[['x']]) ||
         !is.null(object$call$weights) || 
@@ -74,16 +77,27 @@ survfit.coxph <-
         x <- matrix(0., nrow=n)
         coef <- 0.0
         varmat <- matrix(0.0,1,1)
+        risk <- rep(exp(offset- mean(offset)), length=n)
         }
     else {
         varmat <- object$var
-        x <- scale(x, center=object$means, scale=FALSE)    
         coef <- ifelse(is.na(object$coefficients), 0, object$coefficients)
+        xcenter <- object$means    
+        if (is.null(object$frail)) {
+            x <- scale(x, center=xcenter, scale=FALSE)    
+            risk <- c(exp(x%*% coef + offset - mean(offset)))
+            }
+       else {
+           x <- x[,!is.na(match(dimnames(x)[[2]], names(coef))), drop=F]
+           risk <- exp(object$linear.predictor)
+           x <- scale(x, center=xcenter, scale=FALSE)    
+           }
         }
-    risk <- exp(x%*% coef + offset - mean(offset))
 
     if (individual) {
         if (missing(newdata)) stop("The newdata argument must be present")
+        if (!is.null(object$frail)) 
+            stop("The newdata argument is not supported for sparse frailty terms")
         if (!is.data.frame(newdata)) stop("Newdata must be a data frame")
         temp <- untangle.specials(Terms, 'cluster')
         if (length(temp$vars)) Terms2 <- Terms[-temp$terms]
@@ -102,7 +116,7 @@ survfit.coxph <-
         
         x2 <- model.matrix(Terms2, mf2)[,-1, drop=FALSE]  #no intercept
         if (length(x2)==0) x2 <- matrix(0.0, nrow=nrow(mf2), ncol=1)
-        else x2 <- scale(x2, center=object$means, scale=FALSE)
+        else x2 <- scale(x2, center=xcenter, scale=FALSE)
 
         offset2 <- model.offset(mf2)
         if (length(offset2) >0) offset2 <- offset2 - mean(offset)
@@ -118,6 +132,8 @@ survfit.coxph <-
             offset2 <- 0
             }
         else {
+          if (!is.null(object$frail)) 
+              stop("The newdata argument is not supported for sparse frailty terms")
             if (!is.data.frame(newdata)) {
                 if (is.list(newdata)) newdata <- data.frame(newdata)
                 else if (is.numeric(newdata) && 
@@ -135,14 +151,15 @@ survfit.coxph <-
             if (length(temp$vars)) Terms2 <- Terms2[-temp$terms]
             mf2 <- model.frame(Terms2, newdata, xlev=object$xlevels)
             x2 <- model.matrix(Terms2, mf2)[,-1, drop=FALSE]  #no intercept
-            x2 <- scale(x2, center=object$means, scale=FALSE)
+            x2 <- scale(x2, center=xcenter, scale=FALSE)
             offset2 <- model.offset(mf2)
             if (length(offset2) >0) offset2 <- offset2 - mean(offset)
             else offset2 <- 0
             }
         }
     newrisk <- exp(c(x2 %*% coef) + offset2)
-    ustrata <- levels(as.factor(strata))
+    if (is.factor(strata)) ustrata <- levels(strata)
+    else                   ustrata <- sort(unique(strata))
     nstrata <- length(ustrata)
     survlist <- vector('list', nstrata)
     if (se.fit) varhaz <- vector('list', nstrata)

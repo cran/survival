@@ -62,7 +62,8 @@ survexp <- function(formula, data,
     newvar <- all.vars(rcall)
     if (length(newvar) > 0) {
         tform <- paste(deparse(Terms), paste(newvar, collapse='+'), sep='+')
-        m$formula <- as.formula(tform)
+        if (is.R()) m$formula <- as.formula(tform, environment(Terms))
+        else m$formula <- as.formula(tform)
         }
 
     if (is.R())  m <- eval(m, parent.frame())

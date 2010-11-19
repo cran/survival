@@ -1,4 +1,4 @@
-# $Id: print.coxph.S 11166 2008-11-24 22:10:34Z therneau $
+# $Id: print.coxph.S 11451 2010-11-19 21:36:31Z therneau $
 print.coxph <-
  function(x, digits=max(options()$digits - 4, 3), ...)
     {
@@ -42,11 +42,13 @@ print.coxph <-
     cat("Likelihood ratio test=", format(round(logtest, 2)), "  on ",
 	df, " df,", " p=", format(1 - pchisq(logtest, df)),  sep="")
     omit <- x$na.action
+    cat("  n=", x$n)
+    if (!is.null(x$nevent)) cat(", number of events=", x$nevent, "\n")
+    else cat("\n")
     if (length(omit))
-	cat("  n=", x$n, " (", naprint(omit), ")\n", sep="")
-    else cat("  n=", x$n, "\n")
-    if (length(x$icc))
-	cat("   number of clusters=", x$icc[1],
-	    "    ICC=", format(x$icc[2:3]), "\n")
-    invisible()
+	cat("   (", naprint(omit), ")\n", sep="")
+#    if (length(x$icc))
+#	cat("   number of clusters=", x$icc[1],
+#	    "    ICC=", format(x$icc[2:3]), "\n")
+    invisible(x)
     }
