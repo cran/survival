@@ -1,6 +1,15 @@
 \name{NEWS}
 \title{NEWS file for the surival package}
 
+\section{Changes in version 2.36-8}{
+  \itemize{
+    \item Unitialized variable in calcuation of the variance of the
+    concordance.  Found on platform cross-checking by Brian Ripley.
+    \item Changed testci to use a fixed file of results from cmprsk
+    rather than invoking that package on-the-fly.  Suggested by the CRAN
+    maintainers.
+  }
+  }
 \section{Changes in version 2.36-7}{
   \itemize{
     \item Due to changes in R 2.13 default printout, the results of many of
