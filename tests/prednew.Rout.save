@@ -60,13 +60,13 @@ Loading required package: splines
 > p3 <- predict(myfit, type='expected', se.fit=TRUE)
 > p4 <- predict(myfit, type="expected", newdata=lung[keep,], se.fit=TRUE)
 > aeq(p1[keep], p2)
-[1] "Numeric: lengths (100, 227) differ"
+[1] "Mean relative difference: 0.002096468"
 > aeq(p1, p3$fit)
 [1] TRUE
 > aeq(p1[keep], p4$fit)
-[1] "Numeric: lengths (100, 227) differ"
+[1] "Mean relative difference: 0.002096468"
 > aeq(p3$se.fit[keep], p4$se.fit)
-[1] "Numeric: lengths (100, 227) differ"
+[1] TRUE
 > 
 > p1 <- predict(myfit, type='terms')
 > p2 <- predict(myfit, type="terms",newdata=lung[keep,])
@@ -81,4 +81,31 @@ Loading required package: splines
 > aeq(p3$se.fit[keep,], p4$se.fit)
 [1] TRUE
 > 
+> #
+> # Check out the logic whereby predict does not need to
+> #  recover the model frame.  The first call should not 
+> #  need to do so, the second should in each case.
+> #
+> myfit <- coxph(Surv(time, status) ~ age + factor(sex), lung, x=T)
+> p1 <- predict(myfit, type='risk', se=T)
+> myfit2 <- coxph(Surv(time, status) ~ age + factor(sex), lung)
+> p2 <- predict(myfit2, type='risk', se=T)
+> aeq(p1$fit, p2$fit)
+[1] TRUE
+> aeq(p1$se, p2$se)
+[1] TRUE
+> 
+> p1 <- predict(myfit, type='expected', se=T)
+> p2 <- predict(myfit2, type='expected', se=T)
+> aeq(p1$fit, p2$fit)
+[1] TRUE
+> aeq(p1$se.fit, p2$se.fit)
+[1] TRUE
+> 
+> p1 <- predict(myfit, type='terms', se=T)
+> p2 <- predict(myfit2, type='terms', se=T)
+> aeq(p1$fit, p2$fit)
+[1] TRUE
+> aeq(p1$se.fit, p2$se.fit)
+[1] TRUE
 > 

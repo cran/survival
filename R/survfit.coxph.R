@@ -156,7 +156,7 @@ survfit.coxph <-
                 }
             else stop ("Invalid newdata object")
             }
-        mf2 <- eval(tcall)
+        mf2 <- eval(tcall, parent.frame())
         }
     if (individual) {
         if (missing(newdata)) 

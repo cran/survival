@@ -38,11 +38,13 @@ predict.coxph <- function(object, newdata,
     has.weights <- any(names(object$call) == 'weights')
     na.action.used <- object$na.action
     n <- length(object$residuals)
+    have.mf <- FALSE
     if (type == 'expected') {
         y <- object[['y']]
         if (is.null(y)) {  # very rare case
             mf <- model.frame(object)
             y <-  model.extract(mf, 'response')
+            have.mf <- TRUE  #for the logic a few lines below, avoid double work
             }
         }
 
@@ -50,7 +52,7 @@ predict.coxph <- function(object, newdata,
         need.x <- TRUE
         if (is.null(object[['x']]) || has.strata || has.weights || has.offset) {
             # I need the original model frame
-            mf <- model.frame(object)
+            if (!have.mf) mf <- model.frame(object)
             if (nrow(mf) != n)
                 stop("Data is not the same size as it was in the original fit")
 
@@ -114,7 +116,7 @@ predict.coxph <- function(object, newdata,
         else {
             newx <- model.matrix(Terms2, mf2,
                              contr=object$contrasts)[,-1,drop=FALSE]
-            newstrat <- rep(0L, nrow(mf))
+            newstrat <- rep(0L, nrow(mf2))
             }
 
         newoffset <- model.offset(mf2) 
@@ -133,14 +135,10 @@ predict.coxph <- function(object, newdata,
             ustrata <- unique(oldstrat)
             risk <- exp(object$linear.predictors)
             x <- x - rep(object$means, each=nrow(x))  #subtract from each column
-            if (se.fit) { 
-                se <- double(nrow(mf))
-                }
-            if (missing(newdata))
-                se <- double(nrow(mf))
-            if (!missing(newdata)) {
-                se <- double(nrow(mf))
-                pred <- se
+            if (missing(newdata)) #se.fit must be true
+                se <- double(n)
+            else {
+                pred <- se <- double(nrow(mf2))
                 newx <- newx - rep(object$means, each=nrow(newx))
                 newrisk <- c(exp(newx %*% object$coef))
                 }
