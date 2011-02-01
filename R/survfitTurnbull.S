@@ -1,4 +1,3 @@
-# $Id: survfitTurnbull.S 11238 2009-02-14 11:51:18Z therneau $
 # Compute the K-M for left/right/interval censored data via Turnbull's
 #      slow EM calculation
 # x is a factor giving the groups, y is a survival object
@@ -60,6 +59,19 @@ survfitTurnbull <- function(x, y, casewt,
         who <- (status==3 & y[,1]==y[,2])
         status[who] <- 1
         }
+
+    #
+    # Deal with the issue of "almost tied" times that are equal to
+    #  machine precision
+    # Convert to the levels of a factor.  We come back to times later
+    if (ncol(y)==3) {
+        ftime <- factor(y[,1:2])
+        y <- matrix(as.numeric(ftime), ncol=2)
+    }
+    else {
+        ftime <- factor(y[,1])
+        y <- as.matrix(as.numeric(ftime))
+    }
 
     # the code below actually does the estimate, one curve at a time
     doit <- function(y,status, wt, ...) {
@@ -125,15 +137,26 @@ survfitTurnbull <- function(x, y, casewt,
         #   <= the time recorded, and for an interval one that (a, b] contains
         #   the true event time.  This is motivated by data that would come
         #   from repeated visits, and agrees with Turnbull's paper.
-	temp <- matrix(jtimes, nrow=sum(status>1), ncol=njump, byrow=TRUE)
-	indx <- (1:n)[status>1] #these are the interval and lc rows of the data
-        temp1 <- (temp <= y[indx,1])   # logical matrix for the left censored
-        temp2 <- ( temp >  y[indx,1] & temp <= y[indx,2]) # same for interval
-        temp3 <- rep(status[indx]==2, njump)
-        wtmat <- matrix(as.numeric((temp3&temp1) | (!temp3 & temp2)),
+        # If all status <=1, this is the unusual case of left censoring before
+        #  some minimal time, in which case I can skip this step.  There are
+        #  no interval censored or left censored be "split".
+        if (any(status>1)) {
+            temp <- matrix(jtimes, nrow=sum(status>1), ncol=njump, byrow=TRUE)
+            indx <- (1:n)[status>1] #the subjects of interest
+            temp1 <- (temp <= y[indx,1]) # logical matrix for the left censored
+            if (any(status>2)) #interval censored
+                temp2 <- (temp >  y[indx,1] & temp <= y[indx,2])
+            else temp2 <- FALSE & temp1
+            temp3 <- rep(status[indx]==2, njump)
+            wtmat <- matrix(as.numeric((temp3&temp1) | (!temp3 & temp2)),
                         ncol=njump)
-
 	lwt <- wt[indx]  # the input vector of case weights, for these
+        }
+        else {
+            wtmat <- matrix(rep(1, length(jtimes)), nrow=1)
+            lwt <- 1
+        }
+
 	eps <- 1
 
 	# The initial "starter" KM is proportional to the number of intervals
@@ -214,12 +237,13 @@ survfitTurnbull <- function(x, y, casewt,
     surv   <- vector('list', nstrat)
     n.cens <- vector('list', nstrat)
     n.event<- vector('list', nstrat)
+    fnumeric <- as.numeric(levels(ftime))
 
     uniquex <- sort(unique(x))
     for (i in 1:nstrat) {
 	who <- (x== uniquex[i])
 	tfit <- doit(y[who,,drop=FALSE], status[who], casewt[who])
-	time[[i]]   <- tfit$time
+	time[[i]]   <- approx(1:length(fnumeric), fnumeric, tfit$time)$y
 	n.risk[[i]] <- tfit$n.risk
 	surv[[i]]   <- tfit$surv
 	n.cens[[i]] <- tfit$n.cens

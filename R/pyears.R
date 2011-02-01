@@ -125,8 +125,6 @@ pyears <- function(formula, data,
             }
         else stop("Invalid ratetable")
         }
-
-    # Now process the other (non-ratetable) variables
     ovars <- attr(Terms, 'term.labels')
     if (length(ovars)==0)  {
         # no categories!
@@ -141,8 +139,7 @@ pyears <- function(formula, data,
         outdname <- vector("list", odim)
         for (i in 1:odim) {
             temp <- m[[ovars[i]]]
-            ctemp <- oldClass(temp)
-            if (!is.null(ctemp) && ctemp=='tcut') {
+            if (inherits(temp, 'tcut')) {
                 X[,i] <- temp
                 temp2 <- attr(temp, 'cutpoints')
                 odims[i] <- length(temp2) -1
@@ -158,8 +155,8 @@ pyears <- function(formula, data,
                 ofac[i] <- 1
                 outdname[[i]] <- temp3
                 }
-            }
         }
+    }
     ocut <-c(ocut,0)   #just in case it were of length 0
     osize <- prod(odims)
     if (has.ratetable) {  #include expected
@@ -217,6 +214,7 @@ pyears <- function(formula, data,
                                         nint:(nint*nyear))$y - .0001)
                 }
             }
+
         temp <- .C("pyears1",
                         as.integer(n),
                         as.integer(ncol(Y)),
@@ -239,9 +237,10 @@ pyears <- function(formula, data,
                         pn    =double(osize),
                         pcount=double(if(is.Surv(Y)) osize else 1),
                         pexpect=double(osize),
-                        offtable=double(1))[18:22]
+                        offtable=double(1),
+                    DUP=FALSE)[18:22]
         }
-    else {
+    else {   #no expected
         temp <- .C('pyears2',
                         as.integer(n),
                         as.integer(ncol(Y)),

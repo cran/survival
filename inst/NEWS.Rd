@@ -1,12 +1,104 @@
 \name{NEWS}
 \title{NEWS file for the surival package}
 
+\section{Changes in version 2.36-7}{
+  \itemize{
+    \item Due to changes in R 2.13 default printout, the results of many of
+    the test programs change in trivial way (one more or fewer digits).
+    Update the necessary test/___.Rout.save files.  Per the core team's
+    suggestion the dependency for the package is marked as >=2.13.
+  }}
+  
+\section{Changes in version 2.36-6}{
+  \itemize{
+    \item An example from A Drummond caused iteration failure in
+    coxph: x=c(1,1,1,0,1, rep(0,35)), time=1:40, status=1.  The first
+    iteration overshoots the solution and lands on an almost perfectly
+    linear part of the loglik surface, which made the second iteration
+    go to a huge number and exp() overflows.  A sanity check routine
+    coxsafe is now invoked on all values of the linear predictor.
+    
+    \item 1 April: Fix minor bug in survfit.  For left censored data
+    where all the left censored are on the very left, it would give a
+    spurious warning message when trying to create a 0 row matrix that
+    it didn't need or use.  Pointed out by Steve Su.
+    
+    \item 31 March 2011: One of the plots in the r_sas test was wrong
+    (it's been a long time since I visually checked these).  The error
+    was in predict.survreg; it had not taken into account a change in
+    R2.7.1: the intercept attribute is reset to 1 whenever one
+    subscripts a terms object, leading to incorrect results for a model
+    with "-1" in the formula and a strata(): the intercept returned
+    when removing the strata.  I used this opportunity to move most of
+    the logic into model.frame.survreg and model.matrix.survreg
+    functions.  Small change to the model.frame.coxph and
+    model.matrix.coxph functions due to a better understanding of
+    xlevels processing.
+    
+    \item Round off error issue in survfit: it used both unique(time)
+    and table(time), and the resulting number of unique values is not
+    guarranteed to be the same for times that differ by a tiny amount.
+    Now times are coverted to a factor first.  Peter Savicky from the R
+    core team provided a nice discussion of the issue and helped me
+    clarify how best to deal with it.  The prior fix of first rounding
+    to 15 digits was good enough for almost every data set -- except the
+    one found by a local user just last week.
+    
+    \item Round off error in print.survfit pointed out by Micheal Faye.
+    If a survival value was .5 in truth, but .5- eps due to round off
+    the printed median was wrong. But it was ok for .5+eps. Simple
+    if-then logic error.
+    
+    \item Re-fix a bug in survfit.  It uses both unique and table in
+    various places, which do not round the same; I had added a
+    pre-rounding step to the code.  A data set from Fan Chun showed that
+    I didn't round quite enough. But the prior rounding did work for a
+    time of 2 vs (sqrt(2))^2: this bug is very hard to produce.  I now
+    use as.numeric(as.character(factor(x))), which induces exactly the
+    same rounding as table, since it is the same compuation path.
+
+    \item Further changes to pspline.  The new Boundary.knots argument
+    allows a user to set the boundary knots inside the range of data.
+    Code for extrapolation outside that range was needed,
+    essentially a copy of the code found in ns() for the same issue.
+    Also added a psplineinverse function, which may be useful with
+    certain tt() calls in coxph.
+    
+    \item 10 Mar 2011: Add the capablilty for time-dependent
+    transformations to coxph, along with a small vignette describing use
+    of the feature.  This code is still incompletely incorporated in
+    that the models work but other methods (residuals, predict, etc) are
+    not yet defined.
+    
+    \item 8 Mar 2011: Expand the survConcordance function.  The function
+    now correctly handles strata and  time dependent covariates, and
+    computes a standard error for the estimate.  All computation is based
+    on a balanced binary tree strucure, which leads to computation in
+    \eqn{O(n \log_2(n))}{O(n log(n))} time.
+    The \code{coxph} function now adds concordance to its output, and
+    \code{summary.coxph} displays the result.
+
+    \item 8 Mar 2011: Add the "reference" option to predict.coxph, a
+    feature and need pointed out by Stephen Bond.
+
+    \item 4 Mar 2011: Add a makepredictcall method for pspline(), which
+    in turn required addition of a Boundary.knots argument to the
+    function.
+    
+    \item 25 Feb 2011: Bug in pyears pointed out by Norm Phillips.  If a
+    subject started out with "off table" time, their age was not
+    incremented by that amount as they moved forward to the next "in
+    table" cell of the result.  This could lead to using the wrong
+    expected rate from the rate table.
+  }
+}
+
 \section{Changes in version 2.36-5}{
   \itemize{
     \item 20 Feb 2011: Update survConcordance to correctly handle case
     weights, time dependent covariates, and strata.
 
-    \item 18 Feb 2011: Bug in predict.coxph found a user (1 day after
+    \item 18 Feb 2011: Bug in predict.coxph found by a user (1 day after
     36-4!).  If the coxph call had a subset and predict used newdata,
     the subset clause was "remembered" in the newdata construction,
     which is not appropriate.

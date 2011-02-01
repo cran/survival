@@ -19,7 +19,8 @@ fit2 <- survreg(Surv(log(time), status) ~ I(1000/(273.2+temp)), motor,
 		subset=(temp>150), dist='gaussian')
 
 
-# Give the quantile estimates
+# Give the quantile estimates, which is the lower half of "output 48.1.5"
+#  in the SAS 9.2 manual
 
 pp1 <- predict(fit1, newdata=list(temp=c(130,150)), p=c(.1, .5, .9),
 		      type='quantile', se=T)
@@ -76,7 +77,6 @@ for (i in 1:4) {
     temp <- kfit[i]
     points(temp$time, tfun(1-temp$surv), col=i, pch=i)
     }
-
 
 # Now a table
 temp <- array(0, dim=c(4,4,4))  #4 groups by 4 parameters by 4 stats
@@ -144,7 +144,8 @@ text(rep(9,6), seq(.5, -1.0, length=6),
            format(tapply(cracks$n, cfit$y[,3], sum)), "ML"), adj=1)
 
 # Now a portion of his percentiles table
-#  I don't get the same SE as SAS, haven't checked out why
+#  I don't get the same SE as SAS, I haven't checked out why.  The
+#  estimates and se for the underlying Weibull model are the same.
 temp <- predict(cfit, type='quantile', p=plist, se=T)
 tempse <- sqrt(temp$se[1,])
 mat <- cbind(temp$fit[1,], tempse, 
@@ -186,6 +187,7 @@ valve$time1[indx]   <- valve$time1[indx] - .1
 valve$time2[indx-1] <- valve$time2[indx-1] - .1
 
 kfit <- survfit(Surv(time1, time2, status) ~1, valve, type='fh2')
+
 plot(kfit, fun='cumhaz', ylab="Sample Mean Cumulative Failures", xlab='Time',
      ylim=range(-log(kfit$lower)))
 title("Valve replacement data")
@@ -201,10 +203,9 @@ dimnames(temp) <- list(rep("", nrow(temp)),
                          "lower 95%", "upper 95%"))
 print(temp, digits=2)
 
-# Note that I have different estimates and SE's.  We are using a
-#  different estimator of both the curve and the se. It's a statistical 
-#  argument  about which estimator is more appropriate (one coulde defend both
-#  sides).
+# Note that I have the same estimates but different SE's.  We are using a
+#  different estimator. It's a statistical argument as to which is
+#  better (one could defend both sides): do you favor JASA or Technometrics?
 rm(temp, kfit, indx, xx)
                     
 ######################################################

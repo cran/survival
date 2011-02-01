@@ -1,4 +1,3 @@
-# $Id: print.survfit.S 11453 2010-12-20 15:04:08Z therneau $
 print.survfit <- function(x, scale=1, 
 			  digits = max(options()$digits - 4, 3), 
                           print.rmean = getOption('survfit.print.rmean'),
@@ -24,27 +23,29 @@ print.survfit <- function(x, scale=1,
         else             rmean <- 'none'
         }
 
-    if (is.null(rmean)) {
-        if (is.logical(print.rmean)) {
-            if (print.rmean) rmean <- 'common'
-            else             rmean <- 'none'
+    else {
+        if (is.null(rmean)) {
+            if (is.logical(print.rmean)) {
+                if (print.rmean) rmean <- 'common'
+                else             rmean <- 'none'
             }
-        else rmean <- 'none'  #no option set
+            else rmean <- 'none'  #no option set
         }
 
-    # Check validity: it can be numeric or character
-    if (is.numeric(rmean)) {
-        if (is.null(x$start.time)) {
-            if (rmean < min(x$time)) 
-                stop("Truncation point for the mean is < smallest survival")
+        # Check validity: it can be numeric or character
+        if (is.numeric(rmean)) {
+            if (is.null(x$start.time)) {
+                if (rmean < min(x$time)) 
+                    stop("Truncation point for the mean is < smallest survival")
             }
-        else if (rmean < x$start.time)
+            else if (rmean < x$start.time)
                 stop("Truncation point for the mean is < smallest survival")
         }
-    else {
-        rmean <- match.arg(rmean, c('none', 'common', 'individual'))
-        if (length(rmean)==0) stop("Invalid value for rmean option")
+        else {
+            rmean <- match.arg(rmean, c('none', 'common', 'individual'))
+            if (length(rmean)==0) stop("Invalid value for rmean option")
         }
+    }
     
     temp <- survmean(x, scale=scale, rmean)
     print(temp$matrix)
@@ -87,6 +88,8 @@ survmean <- function(x, scale=1, rmean) {
         #    roundoff error.
         # Nuisance 2: there may by an NA in the y's
         # Nuisance 3: if no y's are <=.5, then we should return NA
+        # Nuisance 4: the obs (or many) after the .5 may be censored, giving
+        #   a stretch of values = .5 +- epsilon
         # 
         minmin <- function(y, x) {
             tolerance <- .Machine$double.eps^.5   #same as used in all.equal()
@@ -95,8 +98,8 @@ survmean <- function(x, scale=1, rmean) {
             else {
                 x <- x[keep]
                 y <- y[keep]
-                if (abs(y[1]-.5) <tolerance  && any(y<.5)) 
-                    (x[1] + x[min(which(y<.5))])/2
+                if (abs(y[1]-.5) <tolerance  && any(y< y[1])) 
+                    (x[1] + x[min(which(y<y[1]))])/2
                 else x[1]
                 }
             }

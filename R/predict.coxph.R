@@ -2,7 +2,8 @@
 predict.coxph <- function(object, newdata, 
                        type=c("lp", "risk", "expected", "terms"),
                        se.fit=FALSE, na.action=na.pass,
-                       terms=names(object$assign), collapse, ...) {
+                       terms=names(object$assign), collapse, 
+                       reference=c("strata", "sample"), ...) {
     if (!inherits(object, 'coxph'))
         stop("Primary argument much be a coxph object")
 
@@ -38,6 +39,7 @@ predict.coxph <- function(object, newdata,
     has.weights <- any(names(object$call) == 'weights')
     na.action.used <- object$na.action
     n <- length(object$residuals)
+    reference <- match.arg(reference)
     have.mf <- FALSE
     if (type == 'expected') {
         y <- object[['y']]
@@ -50,45 +52,50 @@ predict.coxph <- function(object, newdata,
 
     if (se.fit || !missing(newdata) || type=='terms' || has.strata) {
         need.x <- TRUE
-        if (is.null(object[['x']]) || has.strata || has.weights || has.offset) {
+        if (is.null(object[['x']]) || has.weights || has.offset ||
+             (has.strata && is.null(object$strata))) {
             # I need the original model frame
             if (!have.mf) mf <- model.frame(object)
             if (nrow(mf) != n)
                 stop("Data is not the same size as it was in the original fit")
 
             if (has.strata) {
-                stemp <- untangle.specials(Terms, 'strata')
-                if (length(stemp$vars)==1) oldstrat <- mf[[stemp$vars]]
-                else oldstrat <- strata(mf[,stemp$vars], shortlabel=TRUE)
-                # A model with x:strata(grp) will have stemp$terms of length 0
-                if (length(stemp$terms))
-                    x <- model.matrix(Terms[-stemp$terms], mf,
-                                  contr=object$contrasts)[,-1,drop=FALSE]
-                else x<- model.matrix(Terms, mf,
-                                  contr=object$contrasts)[,-1,drop=FALSE]
+                if (!is.null(object$strata)) oldstrat <- object$strata
+                else {
+                    stemp <- untangle.specials(Terms, 'strata')
+                    if (length(stemp$vars)==1) oldstrat <- mf[[stemp$vars]]
+                    else oldstrat <- strata(mf[,stemp$vars], shortlabel=TRUE)
+                    # A model with x:strata(grp) will have stemp$terms of length 0
+                    if (length(stemp$terms))
+                        x <- model.matrix(Terms[-stemp$terms], mf,
+                                          contr=object$contrasts)[,-1,drop=FALSE]
+                    else x<- model.matrix(Terms, mf,
+                                          contr=object$contrasts)[,-1,drop=FALSE]
                 }
+            }
             else {
                 x <- model.matrix(Terms, mf,
                           contr=object$contrasts)[,-1,drop=FALSE]
                 oldstrat <- rep(0L, n)
-                }
+            }
             weights <- model.weights(mf)
             if (is.null(weights)) weights <- rep(1.0, n)
             offset <- model.offset(mf)
             if (is.null(offset))  offset  <- 0
-             }
+        }
         else {
             x <- object[['x']]
-            oldstrat <- rep(0, n)
+            if (has.strata) oldstrat <- object$strata
+            else oldstrat <- rep(0L, n)
             weights <-  rep(1.,n)
             offset <-   0
-            }
         }
+    }
     else {
         oldstrat <- rep(0L, n)
         offset <- 0
         need.x <- FALSE
-        }
+    }
     if (!missing(newdata)) {
         tcall <- Call[c(1, match('newdata', names(Call), nomatch=0))]
         names(tcall)[2] <- 'data'  #rename newdata to data
@@ -223,7 +230,7 @@ predict.coxph <- function(object, newdata,
 
     if (missing(newdata)) {
         offset <- offset - mean(offset)
-        if (has.strata) {
+        if (has.strata && reference=="strata") {
             indx <- as.integer(oldstrat)
             xmeans <- rowsum(x*weights, indx)/c(rowsum(weights, indx))
             newx <- x - xmeans[indx,]
@@ -232,7 +239,7 @@ predict.coxph <- function(object, newdata,
         }
     else {
         offset <- newoffset - mean(offset)
-        if (has.strata) {
+        if (has.strata && reference=="strata") {
             indx <- as.integer(oldstrat)
             xmeans <- rowsum(x*weights, indx)/ c(rowsum(weights, indx))
             indx2 <- match(newstrat, levels(oldstrat))

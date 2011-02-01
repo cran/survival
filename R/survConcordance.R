@@ -15,7 +15,6 @@ survConcordance <- function(formula, data,
     n <- nrow(Y)
 
     wt <- model.extract(m, 'weights')
-    if (length(wt) ==0) wt <- rep(1., n)
     offset<- attr(Terms, "offset")
     if (length(offset)>0) stop("Offset terms not allowed")
 
@@ -30,59 +29,19 @@ survConcordance <- function(formula, data,
     x <- model.matrix(Terms, m)[,-1, drop=FALSE]  #remove the intercept
     if (ncol(x) > 1) stop("Only one predictor variable allowed")
 
-    btree <- function(n) {
-       tfun <- function(n, id, power) {
-           if (n==1) id
-           else if (n==2) c(2L *id, id)
-           else if (n==3) c(2L*id, id, 2L*id +1L)
-           else {
-               nleft <- if (n== power*2) power  else min(power-1, n-power/2)
-               c(tfun(nleft, 2L *id, power/2), id,
-                 tfun(n-(nleft+1), 2L*id +1L, power/2))
-               }
-           }
-       tfun(n, 1L, 2^(floor(logb(n-1,2))))
-       }
-
-    docount <- function(stime, risk, wts) {
-        if (attr(stime, 'type') == 'right') {
-            ord <- order(stime[,1], -stime[,2])
-            ux <- sort(unique(risk))
-            n2 <- length(ux)
-            index <- btree(n2)[match(risk[ord], ux)] - 1L
-             .Call('concordance1', stime[ord,], wts[ord], index, length(ux))
-        }
-        else if (attr(stime, 'type') == "counting") {
-            sort.stop <- order(-stime[,2], stime[,3])
-            sort.start <- order(-stime[,1])
-            ux <- sort(unique(risk))
-            n2 <- length(ux)
-            index <- btree(n2)[match(risk, ux)] - 1L
-            .Call('concordance2', stime, wts, index, length(ux),
-                           sort.stop-1L, sort.start-1L)
-        }
-        else stop("Invalid survival type for concordance")
-    }
-        
+    count <- survConcordance.fit(Y, x, strat, wt)
     if (is.null(strat)) {
-        count <- docount(Y, x, wt)
-        names(count) <- c("concordant", "discordant", "tied risk", "tied time")
         concordance <- (count[1] + count[3]/2)/sum(count[1:3])
-    }
-    else {
-        ustrat <- levels(strat)[table(strat) >0]  #some strata may have 0 obs
-        count <- matrix(0., nrow=length(ustrat), ncol=4)
-        for (i in 1:length(ustrat)) {
-            keep <- which(strat == ustrat[i])
-            count[i,] <- docount(Y[keep,,drop=F], x[keep], wt[keep])
+        std.err <- count[5]/(2* sum(count[1:3]))
         }
-        dimnames(count) <- list(ustrat,  c("concordant", "discordant",
-                                           "tied risk", "tied time"))
+    else {
         temp <- colSums(count)
         concordance <- (temp[1] + temp[3]/2)/ sum(temp[1:3])
-    }
-    
-    fit <- list(concordance= concordance, stats=count, n=n, call=Call)
+        std.err <- temp[5]/(2*sum(temp[1:3]))
+        }
+
+    fit <- list(concordance= concordance, stats=count, n=n, 
+                std.err=std.err, call=Call)
     na.action <- attr(m, "na.action")
     if (length(na.action)) fit$na.action <- na.action
 
@@ -100,7 +59,8 @@ print.survConcordance <- function(x, ...) {
     if(length(omit))
         cat("  n=", x$n, " (", naprint(omit), ")\n", sep = "")
     else cat("  n=", x$n, "\n")
-    cat("Concordance= ", format(x$concordance), '\n', sep='')
+    cat("Concordance= ", format(x$concordance), " se= ", format(x$std.err),
+        '\n', sep='')
     print(x$stats)
 
     invisible(x)

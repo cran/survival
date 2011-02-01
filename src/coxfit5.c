@@ -1,4 +1,3 @@
-/* $Id: coxfit5.c 11196 2009-02-02 04:55:23Z therneau $  */
 /* A reentrant version of the Coxfit program, for random effects modeling
 **   with reasonable efficiency (I hope).  The important arrays are saved
 **   from call to call so as to speed up the process.  The x-matrix itself
@@ -235,6 +234,7 @@ S_EVALUATOR
 	zbeta = offset[p];    /* form the term beta*z   (vector mult) */
 	for (i=0; i<nvar; i++)
 	    zbeta += beta[i]*covar[i][p];
+	zbeta = coxsafe(zbeta);
 	risk = exp(zbeta) * weights[p];
 	denom += risk;
 
@@ -358,6 +358,7 @@ S_EVALUATOR
 
 	    for (i=0; i<nvar; i++)
 		zbeta += beta[i]*covar[i][p];
+	    zbeta = coxsafe(zbeta);
 	    score[p] = exp(zbeta);
 	    risk = score[p] * weights[p];
 	    denom += risk;

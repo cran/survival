@@ -1,4 +1,3 @@
-# $Date: 2006-08-28 18:12:46 $ $Id: survfit.formula.S 11430 2010-07-29 22:34:23Z therneau $
 survfit.formula <- function(formula, data, weights, subset, 
 			    na.action, etype, id, ...) {
     Call <- match.call()
@@ -35,15 +34,10 @@ survfit.formula <- function(formula, data, weights, subset,
 
     if (!is.Surv(Y)) stop("y must be a Surv object")
 
-    # Round the survival times.  Otherwise unique() and
-    #  table() can give a different list of unique times, and both are
-    #  used in the subsequent routines.  A test case with times of
-    #  sqrt(2)^2 and 2 revealed this issue.  Normally double.digits is
-    #  53 in base 2, which leads to 15 decimal digits.
-    digits <- floor((.Machine$double.digits -1) * 
-                    logb(.Machine$double.base,10)) #base 10 digits
-    Y[,1] <- signif(Y[,1], digits)
-    if (ncol(Y)==3) Y[,2] <- signif(Y[,2],digits)
+    # At one point there were lines here to round the survival
+    # times to a certain number of digits.  This approach worked
+    # almost all the time, but only almost.  The better logic is
+    # now in the individual compuation routines
 
     if (length(etype) >0)
          temp <- survfitCI(X, Y, weights=casewt, etype=etype, id=id,  ...)

@@ -48,7 +48,7 @@ survfit.coxph <-
             stop("Could not reconstruct the y vector")
         }
 
-    if (is.null(object[['x']])) x <- model.matrix.coxph(object, mf=mf)
+    if (is.null(object[['x']])) x <- model.matrix.coxph(object, data=mf)
     else x <- object[['x']]
 
     n <- nrow(y)
@@ -229,7 +229,7 @@ survfit.coxph <-
             }
         else {
             result$surv =  tfun(temp, function(x) x$surv)
-            if (se.fit) temp$std.err = tfun(temp, function(x) x$std.err)
+            if (se.fit) result$std.err = tfun(temp, function(x) x$std.err)
             }
         }
     else {

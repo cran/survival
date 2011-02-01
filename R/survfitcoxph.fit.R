@@ -111,9 +111,13 @@ survfitcoxph.fit <- function(y, x, wt, x2, risk, newrisk, strata, se.fit,
         }
 
     if (unlist) {
-        if (length(result)==1) # the no strata case
-            result[[1]][c("n", "time", "n.risk", "n.event", "n.censor",
+        if (length(result)==1) { # the no strata case
+            if (se.fit)
+                result[[1]][c("n", "time", "n.risk", "n.event", "n.censor",
                           "surv", "std.err")]
+            else result[[1]][c("n", "time", "n.risk", "n.event", "n.censor",
+                          "surv")]
+        }
         else {
             temp <-list(n   =    unlist(lapply(result, function(x) x$n)),
                         time=    unlist(lapply(result, function(x) x$time)),

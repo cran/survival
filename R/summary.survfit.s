@@ -1,4 +1,3 @@
-# $Id: summary.survfit.S 11427 2010-07-12 15:22:24Z therneau $
 #
 # Version with no C code, using approx() to do the subscript
 #  calculations
@@ -11,10 +10,9 @@ summary.survfit <- function(object, times, censored=FALSE,
     if (!inherits(fit, 'survfit'))
 	    stop("Invalid data")
 
-    # The print.rmean option is depreciated, with the more general
-    #   rmean option taking its place.  But if has it as an option without
-    #   the rmean option, listen to them.
-    if (is.null(rmean)) rmean <- 'none'
+    # The print.rmean option is depreciated, still paid
+    #   attention to in print.survfit, but ignored here
+    if (is.null(rmean)) rmean <- "none"
 
     temp <- survmean(fit, scale=scale, rmean)  
     table <- temp$matrix  #for inclusion in the output list
@@ -211,7 +209,8 @@ summary.survfit <- function(object, times, censored=FALSE,
 	temp$strata <- strata
 	}
     
-    if (length(rmean.endtime) >0) temp$rmean.endtime <- rmean.endtime
+    if (length(rmean.endtime)>0  && !is.na(rmean.endtime)) 
+        temp$rmean.endtime <- rmean.endtime
 
     temp$call <- fit$call
     if (!is.null(fit$na.action)) temp$na.action <- fit$na.action
