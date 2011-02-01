@@ -1,4 +1,3 @@
-# $Id: coxph.fit.S 11166 2008-11-24 22:10:34Z therneau $
 coxph.fit <- function(x, y, strata, offset, init, control,
 			weights, method, rownames)
     {
@@ -119,7 +118,7 @@ coxph.fit <- function(x, y, strata, offset, init, control,
 	resid <- double(n)
 	resid[sorted] <- coxres$resid
 	names(resid) <- rownames
-	coef[which.sing] <- NA
+	if (maxiter > 0) coef[which.sing] <- NA  #leave it be if iter=0 is set
 
 	list(coefficients  = coef,
 		    var    = var,

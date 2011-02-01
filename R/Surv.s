@@ -1,4 +1,4 @@
-# $Id: Surv.S 11391 2010-02-24 19:25:00Z therneau $
+# $Id: Surv.S 11454 2010-12-20 15:05:12Z therneau $
 # Package up surivival type data as a structure
 #
 Surv <- function(time, time2, event,
@@ -196,3 +196,8 @@ Math.Surv <- function(...)  stop("Invalid operation on a survival time")
 Ops.Surv  <- function(...)  stop("Invalid operation on a survival time")
 Summary.Surv<-function(...) stop("Invalid operation on a survival time")
 is.Surv <- function(x) inherits(x, 'Surv')
+as.matrix.Surv <- function(x) {
+    y <- unclass(x)
+    attr(y, 'type') <- NULL
+    y
+    }

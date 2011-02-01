@@ -72,8 +72,8 @@ agsurv <- function(y, x, wt, risk, survtype, vartype) {
                    (xsum/nrisk)*haz,
                    nevent * tsum$xbar)
 
-    result <- list(time=time, n.event=nevent, n.risk=irisk, n.censor=ncens,
-                   hazard=haz, 
+    result <- list(n= nrow(y), time=time, n.event=nevent, n.risk=irisk, 
+                   n.censor=ncens, hazard=haz, 
                    cumhaz=cumsum(haz), varhaz=varhaz, ndeath=ndeath, 
                    xbar=apply(matrix(xbar, ncol=nvar),2, cumsum))
     if (survtype==1) result$surv <- km$inc

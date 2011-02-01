@@ -3,7 +3,7 @@ survfit.coxph <-
   function(formula, newdata, se.fit=TRUE, conf.int=.95, individual=FALSE,
             type, vartype,
             conf.type=c("log", "log-log", "plain", "none"),
-            censor=TRUE, ...) {
+            censor=TRUE, id, ...) {
 
     Call <- match.call()
     Call[[1]] <- as.name("survfit")  #nicer output for the user
@@ -40,9 +40,13 @@ survfit.coxph <-
         mf <- model.frame(object)
         }
     else mf <- NULL  #useful for if statements later
-
-    if (is.null(object[['y']])) y <- model.response(mf)
-    else y <- object[['y']]
+    if (is.null(mf)) y <- object[['y']]
+    else {
+        y <- model.response(mf)
+        y2 <- object[['y']]
+        if (!is.null(y2) && any(as.matrix(y2) != as.matrix(y)))
+            stop("Could not reconstruct the y vector")
+        }
 
     if (is.null(object[['x']])) x <- model.matrix.coxph(object, mf=mf)
     else x <- object[['x']]
@@ -60,6 +64,14 @@ survfit.coxph <-
     type <- attr(y, 'type')
     if (type != 'right' && type != 'counting') 
         stop("Cannot handle \"", type, "\" type survival data")
+    missid <- missing(id) # I need this later, and setting id below makes
+                          # "missing(id)" always false
+    if (!missid) individual <- TRUE
+    else if (missid && individual) id <- rep(0,n)
+    else id <- NULL
+
+    if (individual && type!= 'counting')
+        stop("The individual option is  only valid for start-stop data")
 
     if (is.null(mf)) offset <- 0
     else {
@@ -70,7 +82,16 @@ survfit.coxph <-
     Terms <- object$terms
     temp <- untangle.specials(Terms, 'strata')
     if (length(temp$terms)==0) strata <- rep(0L,n)
-    else strata <- mf[[temp$vars]]
+    else {
+        if (length(temp$vars) ==1) strata <- mf[[temp$vars]]
+        else strata <- strata(mf[, temp$vars], shortlabel=TRUE)
+        }
+    if (!is.null(x) && ncol(x) >0) { #not a ~1 or ~offset(x) model
+        tempf <-attr(Terms, "factors")[-attr(Terms, 'response'),,drop=F] 
+        stype <- ifelse(colSums(tempf[temp$terms,,drop=FALSE]) >0,
+                        attr(Terms, "order"), 0)
+        }
+    else stype <- 0  #dummy value
     if (is.null(x) || ncol(x)==0) { # a model with ~1 on the right hand side
         # Give it a dummy x so the rest of the code goes through
         #  (This case is really rare)
@@ -88,22 +109,62 @@ survfit.coxph <-
             risk <- c(exp(x%*% coef + offset - mean(offset)))
             }
        else {
-           x <- x[,!is.na(match(dimnames(x)[[2]], names(coef))), drop=F]
+           keep <- !is.na(match(dimnames(x)[[2]], names(coef)))
+           x <- x[,keep, drop=F]
+    #       varmat <- varmat[keep,keep]  #coxph already has trimmed it
            risk <- exp(object$linear.predictor)
            x <- scale(x, center=xcenter, scale=FALSE)    
            }
         }
+    if (missing(newdata)) {
+        mf2 <- as.list(object$means)   #create a dummy newdata
+        names(mf2) <- names(object$coefficients)
+        mf2 <- as.data.frame(mf2)
+        }
+    else {
+        if (!is.null(object$frail))
+            stop("Newdata cannot be used when a model has sparse frailty terms")
 
-    if (individual) {
-        if (missing(newdata)) stop("The newdata argument must be present")
-        if (!is.null(object$frail)) 
-            stop("The newdata argument is not supported for sparse frailty terms")
-        if (!is.data.frame(newdata)) stop("Newdata must be a data frame")
         temp <- untangle.specials(Terms, 'cluster')
         if (length(temp$vars)) Terms2 <- Terms[-temp$terms]
         else Terms2 <- Terms
-        mf2 <- model.frame(Terms2, newdata, xlev=object$xlevels)
+        if (!individual) {
+            Terms2 <- delete.response(Terms2)
+            if (any(stype>0)) Terms2 <- Terms2[stype==0] #strata and interactions
+            }
         
+        tcall <- Call[c(1, match(c('newdata', 'id'), names(Call), nomatch=0))]
+        names(tcall)[2] <- 'data'  #rename newdata to data
+        tcall$formula <- Terms2
+        if (!is.null(object$xlevels) &&
+             any(!is.na(match(names(object$xlevels), attr(Terms2, "term.labels")))))
+            tcall$xlev <- object$xlevels[match( attr(Terms2, "term.labels"),
+                                               names(object$xlevels), nomatch=0)]
+        tcall[[1]] <- as.name('model.frame')
+        #mf2 <- eval(tcall)
+
+        if (is.vector(newdata, "numeric")) {
+            if (individual) stop("newdata must be a data frame")
+            if (length(newdata)==length(object$coefficients)) {
+                if (is.null(names(newdata))) {
+                    names(newdata) <- names(object$coefficients)
+                    }
+
+                if (any(is.null(match(names(object$coefficient), names(newdata)))))
+                    stop("newdata names do not match the coxph names")
+                tcall$data <- as.list(newdata)
+                }
+            else stop ("Invalid newdata object")
+            }
+        mf2 <- eval(tcall)
+        }
+    if (individual) {
+        if (missing(newdata)) 
+            stop("The newdata argument must be present when individual=TRUE")
+        if (!missid) {  #grab the id variable
+            id <- model.extract(mf2, "id")
+            if (is.null(id)) stop("id=NULL is an invalid argument")
+            }
         temp <- untangle.specials(Terms2, 'strata')
         if (length(temp$vars) >0) {
             strata2 <- strata(mf2[temp$vars], shortlabel=TRUE)
@@ -112,11 +173,11 @@ survfit.coxph <-
                 stop("New data set has strata levels not found in the original")
             Terms2 <- Terms2[-temp$terms]
             }
-        else strata2 <- rep(0, nrow(mf2))
+        else strata2 <- factor(rep(0, nrow(mf2)))
         
         x2 <- model.matrix(Terms2, mf2)[,-1, drop=FALSE]  #no intercept
-        if (length(x2)==0) x2 <- matrix(0.0, nrow=nrow(mf2), ncol=1)
-        else x2 <- scale(x2, center=xcenter, scale=FALSE)
+        if (length(x2)==0) stop("Individual survival but no variables")
+        x2 <- scale(x2, center=xcenter, scale=FALSE)
 
         offset2 <- model.offset(mf2)
         if (length(offset2) >0) offset2 <- offset2 - mean(offset)
@@ -125,6 +186,51 @@ survfit.coxph <-
         y2 <- model.extract(mf2, 'response')
         if (attr(y2,'type') != type)
             stop("Survival type of newdata does not match the fitted model")
+        if (attr(y2, "type") != "counting")
+            stop("Individual=TRUE is only valid for counting process data")
+        y2 <- y2[,1:2]  #throw away status, it's never used
+
+        newrisk <- exp(c(x2 %*% coef)) + offset2
+        result <- survfitcoxph.fit(y, x, wt, x2, risk, newrisk, strata,
+                                    se.fit, survtype, vartype, varmat, 
+                                    id, y2, strata2)
+       }
+    else if (any(stype==2)){
+        tframe <- mf[match(levels(strata), strata),]
+        temp <- vector('list', nrow(tframe))  #number of strata
+        for (i in 1:nrow(tframe)) {
+            mf3 <- tframe[rep(i, nrow(mf2)),]
+            mf3[names(mf2)] <- mf2
+            attr(mf3, 'terms') <- attr(mf, 'terms')
+            x2 <- model.matrix(Terms[stype!=1], data=mf3,
+                               xlev=object$xlevels)[,-1,drop=FALSE]
+            x2 <- scale(x2, center=xcenter, scale=FALSE)
+            offset2 <- model.offset(mf3)
+            if (is.null(offset2)) offset2 <-0
+            newrisk <- c(exp(x2%*%coef)) + offset2 
+            zed<- survfitcoxph.fit(y, x, wt, x2, risk, newrisk, strata,
+                                               se.fit, survtype, vartype, varmat,
+                                               id=NULL, unlist=FALSE)
+            temp[[i]] <- zed[[i]]
+            }
+        tfun <- function(x, fun) as.vector(unlist(lapply(x,fun))) #no names
+        result <- list(n   =    tfun(temp, function(x) x$n),
+                       time=    tfun(temp, function(x) x$time),
+                       n.risk=  tfun(temp, function(x) x$n.risk),
+                       n.event= tfun(temp, function(x) x$n.event),
+                       n.censor=tfun(temp, function(x) x$n.censor),
+                       strata = sapply(temp, function(x) length(x$time)))
+        names(result$strata) <- levels(strata)
+        if (nrow(x2) >1) {  #matrix result
+            result$surv =  t(matrix(tfun(temp, function(x) t(x$surv)),
+                                    nrow= nrow(x2)))
+            if (se.fit) result$std.err =  t(matrix(tfun(temp,function(x) t(x$std)),
+                                                   nrow= nrow(x2)))
+            }
+        else {
+            result$surv =  tfun(temp, function(x) x$surv)
+            if (se.fit) temp$std.err = tfun(temp, function(x) x$std.err)
+            }
         }
     else {
         if (missing(newdata)) {
@@ -132,134 +238,31 @@ survfit.coxph <-
             offset2 <- 0
             }
         else {
-          if (!is.null(object$frail)) 
-              stop("The newdata argument is not supported for sparse frailty terms")
-            if (!is.data.frame(newdata)) {
-                if (is.list(newdata)) newdata <- data.frame(newdata)
-                else if (is.numeric(newdata) && 
-                         length(newdata)==length(object$coefficients)) {
-                    if (is.null(names(newdata)))
-                        names(newdata) <- names(object$coefficients)
-                    newdata <- data.frame(as.list(newdata))
-                    }
-                else stop("Invalid newdata object")
-                }
-            Terms2 <- delete.response(Terms)
-            temp <- untangle.specials(Terms2, 'cluster')
-            if (length(temp$vars)) Terms2 <- Terms2[-temp$terms]
-            temp <- untangle.specials(Terms2, 'strata')
-            if (length(temp$vars)) Terms2 <- Terms2[-temp$terms]
-            mf2 <- model.frame(Terms2, newdata, xlev=object$xlevels)
-            x2 <- model.matrix(Terms2, mf2)[,-1, drop=FALSE]  #no intercept
-            x2 <- scale(x2, center=xcenter, scale=FALSE)
-            offset2 <- model.offset(mf2)
-            if (length(offset2) >0) offset2 <- offset2 - mean(offset)
-            else offset2 <- 0
-            }
-        }
-    newrisk <- exp(c(x2 %*% coef) + offset2)
-    if (is.factor(strata)) ustrata <- levels(strata)
-    else                   ustrata <- sort(unique(strata))
-    nstrata <- length(ustrata)
-    survlist <- vector('list', nstrata)
-    if (se.fit) varhaz <- vector('list', nstrata)
+           offset2 <- model.offset(mf2)
+           if (length(offset2) >0) offset2 <- offset2 - mean(offset)
+           else offset2 <- 0
+           x2 <- model.matrix(Terms2, mf2)[,-1, drop=FALSE]  #no intercept
+           x2 <- scale(x2, center=xcenter, scale=FALSE)
+           }
 
-    for (i in 1:nstrata) {
-        indx <- which(strata== ustrata[i])
-        survlist[[i]] <- agsurv(y[indx,,drop=F], x[indx,,drop=F], 
-                                      wt[indx], risk[indx],
-                                      survtype, vartype)
-        }
-    if (!individual) {
-        cumhaz <- unlist(lapply(survlist, function(x) x$cumhaz))
-        varhaz <- unlist(lapply(survlist, function(x) cumsum(x$varhaz)))
-        nevent <- unlist(lapply(survlist, function(x) x$n.event)) #weighted
-        ndeath <- unlist(lapply(survlist, function(x) x$ndeath))  #unweighted
-        xbar   <- t(matrix(unlist(lapply(survlist, function(x) t(x$xbar))),
-                         nrow=ncol(x)))
-        hazard <- unlist(lapply(survlist, function(x) x$hazard))
-
-        if (survtype==1) 
-            surv <-unlist(lapply(survlist, function(x) cumprod(x$surv)))
-        else surv <- exp(-cumhaz)
-                                        
-        if (is.matrix(x2) && nrow(x2) >1) {  #more than 1 row in newdata
-            surv <- outer(surv, newrisk, '^')
-            varh <- matrix(0., nrow=length(varhaz), ncol=nrow(x2))
-            for (i in 1:nrow(x2)) {
-                dt <- outer(cumhaz, x2[i,], '*') - xbar
-                varh[,i] <- (varhaz + rowSums((dt %*% varmat)* dt)) *
-                    newrisk[i]^2
-                }
-            }
-        else {
-            surv <- surv^newrisk
-            dt <-  outer(cumhaz, c(x2)) - xbar
-            varh <- (varhaz + rowSums((dt %*% varmat)* dt)) * 
-                newrisk^2
-            }
-        result <- list(n=as.vector(table(strata)), 
-                       time=unlist(lapply(survlist, function(x) x$time)),
-                       n.risk= unlist(lapply(survlist, function(x) x$n.risk)),
-                       n.event=nevent,
-                       n.censor=unlist(lapply(survlist, function(x) x$n.censor)),
-                       surv=surv,
-                       type=type)
-    if (nstrata >1) {
-            result$strata <- unlist(lapply(survlist, function(x) length(x$n.risk)))
-            names(result$strata) <- ustrata
-            }
-        }
-    else {
-        ntarget <- nrow(x2)  #number of different time intervals
-        surv <- vector('list', ntarget)
-        n.event <- n.risk <- n.censor <- varh1 <- varh2 <-  time <- surv
-        stemp <- match(strata2, ustrata)
-        timeforward <- 0
-        for (i in 1:ntarget) {
-            slist <- survlist[[stemp[i]]]
-            indx <- which(slist$time > y2[i,1] & slist$time <= y2[i,2])
-            time[[i]] <- diff(c(y2[i,1], slist$time[indx])) #time increments
-            time[[i]][1] <- time[[i]][1] + timeforward
-            timeforward <- y2[i,2] - max(slist$time[indx])
-                              
-            if (survtype==1) surv[[i]] <- slist$surv[indx]^newrisk[i]
-            else             surv[[i]] <- slist$hazard[indx]*newrisk[i]
-            n.event[[i]] <- slist$n.event[indx]
-            n.risk[[i]]  <- slist$n.risk[indx]
-            n.censor[[i]]<- slist$n.censor[indx]
-            dt <-  outer(slist$cumhaz[indx], x2[i,]) - slist$xbar[indx,,drop=F]
-            varh1[[i]] <- slist$varhaz[indx] *newrisk[i]^2
-            varh2[[i]] <- rowSums((dt %*% varmat)* dt) * newrisk[i]^2
-            }
-        varh <- cumsum(unlist(varh1)) + unlist(varh2)
-        
-        if (survtype==1) surv <- cumprod(unlist(surv))  #increments
-        else surv <- exp(-cumsum(unlist(surv)))         #hazards
-
-        result <- list(n=as.vector(table(strata)[stemp[1]]),
-                       time=cumsum(unlist(time)),
-                       n.risk = unlist(n.risk),
-                       n.event= unlist(n.event),
-                       n.censor= unlist(n.censor),
-                       surv = surv, type=type)
+        newrisk <- exp(c(x2 %*% coef)) + offset2
+        result <- survfitcoxph.fit(y, x, wt, x2, risk, newrisk, strata,
+                                    se.fit, survtype, vartype, varmat, 
+                                    id, y2, strata2)
         }
     if (!censor) {
         kfun <- function(x, keep){ if (is.matrix(x)) x[keep,,drop=F] 
                                   else if (length(x)==length(keep)) x[keep]
                                   else x}
         keep <- (result$n.event > 0)
-        if (nstrata >1) {
-            temp <- rep(ustrata, each=result$strata)
+        if (!is.null(result$strata)) {
+            temp <- rep(names(result$strata), result$strata)
             result$strata <- c(table(temp[keep]))
             }
         result <- lapply(result, kfun, keep)
-        if (se.fit) varh <- kfun(varh, keep)
         }
 
     if (se.fit) {
-        result$std.err <- sqrt(varh)
-        
         zval <- qnorm(1- (1-conf.int)/2, 0,1)
         if (conf.type=='plain') {
             temp1 <- result$surv + zval* result$std.err * result$surv
@@ -287,7 +290,12 @@ survfit.coxph <-
                             conf.type='log-log', conf.int=conf.int))
             }
         }
+
     result$call <- Call
+
+    # The "type" component is in the middle -- match history
+    indx <- match('surv', names(result))
+    result <- c(result[1:indx], type=attr(y, 'type'), result[-(1:indx)])
     if (is.R()) class(result) <- c('survfit.cox', 'survfit')
     else        oldClass(result) <- 'survfit.cox'
     result

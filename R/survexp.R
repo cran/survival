@@ -19,7 +19,6 @@ survexp <- function(formula, data,
     rate <- attr(Terms, "specials")$ratetable                   
     if(length(rate) > 1)
             stop("Can have only 1 ratetable() call in a formula")
-            
     if(length(rate) == 1) {
         if (!missing(rmap)) 
             stop("The ratetable() call in the formula is depreciated")
@@ -95,7 +94,8 @@ survexp <- function(formula, data,
         }
     else conditional <- FALSE
     ovars <- attr(Terms, 'term.labels')
-    rdata <- data.frame(eval(rcall, m))  # the variables matching the ratetable
+    # rdata contains the variables matching the ratetable
+    rdata <- data.frame(eval(rcall, m), stringsAsFactors=TRUE)  
     if (is.ratetable(ratetable)) {
         israte <- TRUE
         if (no.Y) {

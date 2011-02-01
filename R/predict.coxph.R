@@ -6,6 +6,7 @@ predict.coxph <- function(object, newdata,
     if (!inherits(object, 'coxph'))
         stop("Primary argument much be a coxph object")
 
+    Call <- match.call()
     type <-match.arg(type)
     n <- object$n
     Terms <-  object$terms
@@ -20,24 +21,23 @@ predict.coxph <- function(object, newdata,
            stop("a name given in the terms argument not found in the model")
         }
 
-    #Do I have strata or a cluster statment?  Don't conflict names with the strata()
-    #  function
-    strat <- attr(Terms, 'specials')$strata
-    dropx <- NULL
-    if (length(strat)) {
-        stemp <- untangle.specials(Terms, 'strata', 1)
-        dropx <- stemp$terms
-        }
+    # I will never need the cluster argument, if present delete it.
+    #  Terms2 are terms I need for the newdata (if present), y is only
+    #  needed there if type == 'expected'
     if (length(attr(Terms, 'specials')$cluster)) {
         temp <- untangle.specials(Terms, 'cluster', 1)
-        dropx <- c(dropx, temp$terms)
+        Terms  <- object$terms[-temp$terms]
         }
-    if (length(dropx)) Terms2 <- Terms[-dropx]
-    else  Terms2 <- Terms
-    if (type != 'expected') Terms2 <- delete.response(Terms2)
+    else Terms <- object$terms
 
-    na.action.used <- object$na.action
+    if (type != 'expected') Terms2 <- delete.response(Terms)
+    else Terms2 <- Terms
+
+    has.strata <- !is.null(attr(Terms, 'specials')$strata)
     has.offset <- !is.null(attr(Terms, 'offset'))
+    has.weights <- any(names(object$call) == 'weights')
+    na.action.used <- object$na.action
+    n <- length(object$residuals)
     if (type == 'expected') {
         y <- object[['y']]
         if (is.null(y)) {  # very rare case
@@ -46,57 +46,85 @@ predict.coxph <- function(object, newdata,
             }
         }
 
-    if (se.fit || !missing(newdata) || type=='terms' || length(strat)) {
+    if (se.fit || !missing(newdata) || type=='terms' || has.strata) {
         need.x <- TRUE
-        if (is.null(object[['x']])) {
+        if (is.null(object[['x']]) || has.strata || has.weights || has.offset) {
+            # I need the original model frame
             mf <- model.frame(object)
-            x <- model.matrix(delete.response(Terms2), mf,
-                          contr=object$contrasts)[,-1,drop=FALSE]
-            if (length(strat)) {
+            if (nrow(mf) != n)
+                stop("Data is not the same size as it was in the original fit")
+
+            if (has.strata) {
+                stemp <- untangle.specials(Terms, 'strata')
                 if (length(stemp$vars)==1) oldstrat <- mf[[stemp$vars]]
                 else oldstrat <- strata(mf[,stemp$vars], shortlabel=TRUE)
+                # A model with x:strata(grp) will have stemp$terms of length 0
+                if (length(stemp$terms))
+                    x <- model.matrix(Terms[-stemp$terms], mf,
+                                  contr=object$contrasts)[,-1,drop=FALSE]
+                else x<- model.matrix(Terms, mf,
+                                  contr=object$contrasts)[,-1,drop=FALSE]
                 }
-            else oldstrat <- rep(0L, nrow(mf))
+            else {
+                x <- model.matrix(Terms, mf,
+                          contr=object$contrasts)[,-1,drop=FALSE]
+                oldstrat <- rep(0L, n)
+                }
             weights <- model.weights(mf)
+            if (is.null(weights)) weights <- rep(1.0, n)
             offset <- model.offset(mf)
-            }
+            if (is.null(offset))  offset  <- 0
+             }
         else {
             x <- object[['x']]
-            oldstrat <- object$strata
-            weights <- object$weights
-            offset <-  object$offset
+            oldstrat <- rep(0, n)
+            weights <-  rep(1.,n)
+            offset <-   0
             }
-        if (is.null(weights)) weights <- rep(1.0, nrow(x))
-        if (is.null(offset))  offset  <- rep(0.0, nrow(x))
-        if (length(oldstrat)==0) oldstrat <- rep(0L, nrow(x))
         }
     else {
         oldstrat <- rep(0L, n)
         offset <- 0
         need.x <- FALSE
         }
-
     if (!missing(newdata)) {
-        mf <- model.frame(Terms2, data=newdata, xlev=object$xlevels,
-                          na.action=na.action)
-        newx <- model.matrix(Terms2, mf,
-                             contr=object$contrasts)[,-1,drop=FALSE]
-        if (length(strat)) {
-            if (length(stemp$vars)==1) newstrat <- mf[[stemp$vars]]
-            else newstrat <- strata(mf[,stemp$vars], shortlabel=TRUE)
+        indx <- match(c("formula", "weights", "subset", "na.action"),
+                      names(object$call), nomatch=0) 
+        temp <- object$call[c(1,indx)]  # only keep the arguments we wanted
+        temp[[1]] <- as.name('model.frame')  # change the function called
+
+        temp$formula <- Terms2  #version with no response
+        temp$data <- Call$newdata #add the new data
+        temp$xlev <- object$xlevels  #remember factor levels
+        if (is.R()) mf2 <- eval(temp, parent.frame())
+        else        mf2 <- eval(temp, sys.parent())
+
+        if (has.strata) {
+            if (length(stemp$vars)==1) newstrat <- mf2[[stemp$vars]]
+            else newstrat <- strata(mf2[,stemp$vars], shortlabel=TRUE)
             if (any(is.na(match(newstrat, oldstrat)))) 
                 stop("New data has a strata not found in the original model")
+            else newstrat <- factor(newstrat, levels=levels(oldstrat)) #give it all
+            if (length(stemp$terms))
+                newx <- model.matrix(Terms2[-stemp$terms], mf2,
+                             contr=object$contrasts)[,-1,drop=FALSE]
+            else newx <- model.matrix(Terms2, mf2,
+                             contr=object$contrasts)[,-1,drop=FALSE]
+             }
+        else {
+            newx <- model.matrix(Terms2, mf2,
+                             contr=object$contrasts)[,-1,drop=FALSE]
+            newstrat <- rep(0L, nrow(mf))
             }
-        else newstrat <- rep(0L, nrow(mf))
 
-        newoffset <- model.offset(mf) 
-        if (is.null(newoffset)) newoffset <- rep(0.0, nrow(newx))
-        na.action.used <- attr(mf, 'na.action')
+        newoffset <- model.offset(mf2) 
+        if (is.null(newoffset)) newoffset <- 0
         if (type== 'expected') {
-            newy <- model.response(mf)
+            newy <- model.response(mf2)
             if (attr(newy, 'type') != attr(y, 'type'))
                 stop("New data has a different survival type than the model")
             }
+        na.action.used <- attr(mf2, 'na.action')
         }  
     if (type=='expected') {
         if (missing(newdata))
@@ -104,7 +132,7 @@ predict.coxph <- function(object, newdata,
         if (!missing(newdata) || se.fit) {
             ustrata <- unique(oldstrat)
             risk <- exp(object$linear.predictors)
-            x <- scale(x, center=object$means, scale=FALSE)
+            x <- x - rep(object$means, each=nrow(x))  #subtract from each column
             if (se.fit) { 
                 se <- double(nrow(mf))
                 }
@@ -113,10 +141,11 @@ predict.coxph <- function(object, newdata,
             if (!missing(newdata)) {
                 se <- double(nrow(mf))
                 pred <- se
-                newx <- scale(newx, center=object$means, scale=FALSE)
+                newx <- newx - rep(object$means, each=nrow(newx))
                 newrisk <- c(exp(newx %*% object$coef))
                 }
-            survtype= ifelse(fit$method=='efron', 3,2)
+
+            survtype<- ifelse(object$method=='efron', 3,2)
             for (i in ustrata) {
                 indx <- which(oldstrat == i)
                 afit <- agsurv(y[indx,,drop=F], x[indx,,drop=F], 
@@ -199,32 +228,22 @@ predict.coxph <- function(object, newdata,
 
     if (missing(newdata)) {
         offset <- offset - mean(offset)
-        if (length(strat)) {
-            for (i in unique(oldstrat)) {
-                j <- which(oldstrat==i)
-                if (length(j)==1) x[j,] <- 0   # only 1 subject in the strata
-                else if (length(j) >1) {
-                    xmean <- colSums(x[j,] * weights[j]) / sum(weights[j])
-                    x[j,]  <- scale(x[j,], center=xmean, scale=FALSE)
-                    }
-                }
-            newx <- x
+        if (has.strata) {
+            indx <- as.integer(oldstrat)
+            xmeans <- rowsum(x*weights, indx)/c(rowsum(weights, indx))
+            newx <- x - xmeans[indx,]
             }
-        else if (need.x) newx <- scale(x, center=object$means, scale=FALSE)
+        else if (need.x) newx <- x - rep(object$means, each=nrow(x))
         }
     else {
         offset <- newoffset - mean(offset)
-        if (length(strat)) {
-            for (i in unique(oldstrat)) {
-                j <- which(newstrat==i)    #no matches is a possibility
-                if (length(j) ==1) newx[j,] <- 0
-                else if (length(j) >1) { 
-                    xmean <- colSums(x[j,,drop=FALSE] * weights[j]) / sum(weights[j])
-                    newx[j,]  <- scale(newx[j,], center=xmean, scale=FALSE)
-                    }
-                }
+        if (has.strata) {
+            indx <- as.integer(oldstrat)
+            xmeans <- rowsum(x*weights, indx)/ c(rowsum(weights, indx))
+            indx2 <- match(newstrat, levels(oldstrat))
+            newx <- newx - xmeans[indx2,]
             }
-        else newx <- scale(newx, center=object$means, scale=FALSE)
+        else newx <- newx - rep(object$means, each=nrow(newx))
         }
 
     if (type=='lp' || type=='risk') {
@@ -263,10 +282,10 @@ predict.coxph <- function(object, newdata,
         }
 
     if (!is.null(na.action.used)) {
-        pred <- naresid(na.action.used, pred)
+        pred <- napredict(na.action.used, pred)
         if (is.matrix(pred)) n <- nrow(pred)
         else               n <- length(pred)
-        if(se.fit) se <- naresid(na.action.used, se)
+        if(se.fit) se <- napredict(na.action.used, se)
         }
 
     if (!missing(collapse)) {
@@ -281,5 +300,4 @@ predict.coxph <- function(object, newdata,
 
     if (se.fit) list(fit=pred, se.fit=se)
     else pred
-
     }
