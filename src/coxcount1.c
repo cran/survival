@@ -3,8 +3,8 @@
 SEXP coxcount1(SEXP y2, SEXP strat2) {
     int ntime, nrow;
     int i, j, n;
-    int stratastart;  /* start row for this strata */
-    int nrisk;  /* number at risk */
+    int stratastart=0;  /* start row for this strata */
+    int nrisk=0;  /* number at risk (=0 to stop -Wall complaint)*/
     double *time, *status;
     int *strata;
     double dtime;
@@ -85,7 +85,7 @@ SEXP coxcount1(SEXP y2, SEXP strat2) {
 SEXP coxcount2(SEXP y2, SEXP isort1, SEXP isort2, SEXP strat2) {
     int ntime, nrow;
     int i, j, istart, n;
-    int nrisk, *atrisk;
+    int nrisk=0, *atrisk;
     double *time1, *time2, *status;
     int *strata;
     double dtime;
@@ -109,7 +109,7 @@ SEXP coxcount2(SEXP y2, SEXP isort1, SEXP isort2, SEXP strat2) {
     */
     ntime=0; nrow=0;
     istart =0;  /* walks along the sort1 vector (start times) */
-    for (i=0; i<n; i++) {
+        for (i=0; i<n; i++) {
         iptr = sort2[i];
         if (strata[i]==1) nrisk=0;
         nrisk++;

@@ -98,7 +98,8 @@ SEXP concordance2(SEXP y,     SEXP wt2,  SEXP indx2, SEXP ntree2,
     double *time1, *time2, *status, dtime;
     double *twt, *nwt, *count;
     int *sort1, *sort2;
-    double vss, myrank, wsum1, wsum2, wsum3; /*sum of wts below, tied, above*/
+    double vss, myrank;
+    double wsum1, wsum2, wsum3; /*sum of wts below, tied, above*/
     double lmean, umean, oldmean, newmean;
     double ndeath;
     SEXP count2;
@@ -121,6 +122,7 @@ SEXP concordance2(SEXP y,     SEXP wt2,  SEXP indx2, SEXP ntree2,
     nwt = twt + ntree;
     for (i=0; i< 2*ntree; i++) twt[i] =0.0;
     for (i=0; i<5; i++) count[i]=0.0;
+    vss =0;
     istart = 0;  /* where we are with start times */
     for (i=0; i<n; ) {
         iptr = sort2[i];  /* In  reverse death time order */
