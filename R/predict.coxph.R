@@ -90,16 +90,13 @@ predict.coxph <- function(object, newdata,
         need.x <- FALSE
         }
     if (!missing(newdata)) {
-        indx <- match(c("formula", "weights", "subset", "na.action"),
-                      names(object$call), nomatch=0) 
-        temp <- object$call[c(1,indx)]  # only keep the arguments we wanted
-        temp[[1]] <- as.name('model.frame')  # change the function called
-
-        temp$formula <- Terms2  #version with no response
-        temp$data <- Call$newdata #add the new data
-        temp$xlev <- object$xlevels  #remember factor levels
-        if (is.R()) mf2 <- eval(temp, parent.frame())
-        else        mf2 <- eval(temp, sys.parent())
+        tcall <- Call[c(1, match('newdata', names(Call), nomatch=0))]
+        names(tcall)[2] <- 'data'  #rename newdata to data
+        tcall$formula <- Terms2  #version with no response
+        tcall[[1]] <- as.name('model.frame')  # change the function called
+        tcall$xlev <- object$xlevels
+        if (is.R()) mf2 <- eval(tcall, parent.frame())
+        else        mf2 <- eval(tcall, sys.parent())
 
         if (has.strata) {
             if (length(stemp$vars)==1) newstrat <- mf2[[stemp$vars]]
