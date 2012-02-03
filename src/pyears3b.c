@@ -1,29 +1,27 @@
-/* $Id: pyears3.c 11357 2009-09-04 15:22:46Z therneau $
-**
+/*
 **  Person-years calculations, leading to expected survival for a cohort.
 **    The output table depends only on factors, not on continuous.
+**    This version converted to .Call syntax for memory savings
 **
 **  Input:
 **      death        1=conditional surv, 0=cohort
-**      n            number of subjects
 **
-**    expected table
-**      edim        number of dimensions of the expected table
+**    expected table, a multi-way array
 **      efac[edim]  1=is a factor, 0=continuous (time based)
-**      edims[edim] the number of rows, columns, etc
+**      edims[edim] the dimension vector of the table; edim is its length
 **      ecut[sum(edims)]  the starting point (label) for each dimension.
 **                          if it is a factor dim, will be 1:edims[i]
 **      expect      the actual table of expected rates
 **
 **    subject data
-**      x[edim +1, n]  the first column is the group, the rest are where each
-**                      subject indexes into the expected table, at time 0
+**      grpx[n]     how patients are grouped into curves
+**      x[edim, n]  where each subject indexes into the expected table 
+**                       at time 0, n= number of subjects
 **      y[n]         the time at risk for each subject
 **
 **    control over output
-**      ntime           the number of time points desired
-**      ngrp            the number of patient groups
-**      times           the list of output times
+**      ngrp  number of output groups (the max value of grpx)
+**      times[ntime]    the list of output times
 **
 **    Output
 **      esurv[ntime,ngrp]   conditional survival
@@ -33,14 +31,14 @@
 #include "survS.h"
 #include "survproto.h"
 
-/* names that begin with "s" will be re-declared in the main body */
-void pyears3(Sint   *sdeath,    Sint   *sn,    Sint   *sedim, 
-	     Sint   *efac,      Sint   *edims, double *secut, 
-	     double *expect,    double *sx,    double *y, 
-	     Sint   *sntime,    Sint   *sngrp, double *times,
-	     double *esurv,     Sint   *nsurv)
-    {
-S_EVALUATOR
+/* my habit is to name a S object "charlie2" and the pointer
+**  to the contents of the object "charlie"; the latter is
+**  used in the computations
+*/
+SEXP pyears3b(SEXP   death2,    SEXP   efac2,   SEXP edims2,
+	      SEXP   ecut2,     SEXP   expect2, SEXP grpx2,
+	      SEXP   x2, 	SEXP   y2,      SEXP times2,
+	      SEXP   ngrp2) {
     int i,j,k;
     int     n,
 	    death,
@@ -49,12 +47,13 @@ S_EVALUATOR
 	    ntime;
     double  **x;
     double  *data2;
-    double  **ecut;
+    double  **ecut, *etemp;
     double  hazard,   /*cum hazard over an interval */
 	    cumhaz;   /*total hazard to date for the subject */
     double  timeleft,
 	    thiscell,
 	    etime,
+	    time,
 	    et2;
     int     index,
 	    indx,
@@ -62,36 +61,68 @@ S_EVALUATOR
     double  wt;
     double  *wvec;    /* vector of weights needed for unconditional surv */
     int     group;
-    double  time;
 
-    death = *sdeath;
-    n = *sn;
-    edim = *sedim;
-    ntime = *sntime;
-    ngrp  = *sngrp;
-    x     = dmatrix(sx, n, edim+1);
+    int	    *efac, *edims, *grpx;
+    double  *expect, *y, *times;
+    SEXP    esurv2, nsurv2, rlist, rlistnames;
+    double  *esurv;
+    int     *nsurv;
+    
+
+    /* 
+    ** copies of input arguments
+    */
+    death = asInteger(death2);
+    ngrp  = asInteger(ngrp2);
+    efac  = INTEGER(efac2);
+    edims = INTEGER(edims2);
+    edim  = LENGTH(edims2);
+    expect= REAL(expect2);
+    grpx  = INTEGER(grpx2);
+    
+    n     = LENGTH(y2);
+    x     = dmatrix(REAL(x2), n, edim);
+    y     = REAL(y2);
+    times = REAL(times2);
+    ntime = LENGTH(times2);
+
+    /* scratch space */
     data2 = (double *)ALLOC(edim+1, sizeof(double));
     wvec  = (double *)ALLOC(ntime*ngrp, sizeof(double));
     for (j=0; j<ntime*ngrp; j++) wvec[j] =0;
 
     /*
-    ** ecut will be a ragged array
+    ** Set up ecut index as a ragged array
     */
     ecut = (double **)ALLOC(edim, sizeof(double *));
+    etemp = REAL(ecut2);
     for (i=0; i<edim; i++) {
-	ecut[i] = secut;
-	if (efac[i]==0)     secut += edims[i];
-	else if(efac[i] >1) secut += 1 + (efac[i]-1)*edims[i];
+	ecut[i] = etemp;
+	if (efac[i]==0)     etemp += edims[i];
+	else if(efac[i] >1) etemp += 1 + (efac[i]-1)*edims[i];
 	}
 
+    /* 
+    ** Create output arrays
+    */
+    PROTECT(esurv2 = allocVector(REALSXP, ntime*ngrp));
+    esurv = REAL(esurv2);
+    PROTECT(nsurv2 = allocVector(INTSXP, ntime*ngrp));
+    nsurv = INTEGER(nsurv2);
+    for (i=0; i<(ntime*ngrp); i++) {
+	esurv[i] =0.;
+	nsurv[i] =0;
+	}
+
+    /* compute */
     for (i=0; i<n; i++) {
 	/*
 	** initialize
 	*/
 	cumhaz =0;
-	for (j=0; j<edim; j++) data2[j] = x[j+1][i];
+	for (j=0; j<edim; j++) data2[j] = x[j][i];
 	timeleft = y[i];
-	group = x[0][i] -1;
+	group = grpx[i] -1;
 	time =0;      /*change this later to an input paramter, i.e., start */
 
 	/*
@@ -155,4 +186,19 @@ printf("i=%3d, esurv=%6e, wvec=%6e, death=%d\n", i, esurv[i], wvec[i], death);
 	    }
 	else if (death!=0) esurv[i] = exp(-esurv[i]);
 	}
+    
+    /*
+    ** package the output
+    */
+    PROTECT(rlist = allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(rlist,0, esurv2);
+    SET_VECTOR_ELT(rlist,1, nsurv2);
+    
+    PROTECT(rlistnames= allocVector(STRSXP, 2));
+    SET_STRING_ELT(rlistnames, 0, mkChar("surv"));
+    SET_STRING_ELT(rlistnames, 1, mkChar("n"));
+    setAttrib(rlist, R_NamesSymbol, rlistnames);
+
+    unprotect(4);
+    return(rlist);
     }

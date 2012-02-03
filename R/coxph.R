@@ -182,7 +182,10 @@ coxph <- function(formula, data, weights, subset, na.action,
             if (type== 'right')  fitter <- get("coxph.fit")
             else                 fitter <- get("agreg.fit")
         }
-        else if (method=='exact') fitter <- get("agexact.fit")
+        else if (method=='exact') {
+            if (type== "right")  fitter <- get("coxexact.fit")
+            else  fitter <- get("agexact.fit")
+        }
         else stop(paste ("Unknown method", method))
 
         fit <- fitter(X, Y, strats, offset, init, control, weights=weights,

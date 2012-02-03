@@ -50,8 +50,9 @@ predict.coxph <- function(object, newdata,
             }
         }
 
-    if (se.fit || !missing(newdata) || type=='terms' || has.strata) {
-        need.x <- TRUE
+    if (se.fit || type=='terms' || 
+        (has.strata && (reference=="strata" || type=="expected"))) {
+        use.x <- TRUE
         if (is.null(object[['x']]) || has.weights || has.offset ||
              (has.strata && is.null(object$strata))) {
             # I need the original model frame
@@ -92,14 +93,22 @@ predict.coxph <- function(object, newdata,
         }
     }
     else {
+        # I won't need strata in this case either
+        if (has.strata) {
+            stemp <- untangle.specials(Terms, 'strata', 1)
+            Terms2  <- Terms2[-stemp$terms]
+            has.strata <- FALSE  #remaining routine never needs to look
+        }
         oldstrat <- rep(0L, n)
         offset <- 0
-        need.x <- FALSE
+        use.x <- FALSE
     }
     if (!missing(newdata)) {
-        tcall <- Call[c(1, match('newdata', names(Call), nomatch=0))]
+        use.x <- TRUE  #we do use an X matrix later
+        tcall <- Call[c(1, match("newdata", names(Call), nomatch=0))]
         names(tcall)[2] <- 'data'  #rename newdata to data
         tcall$formula <- Terms2  #version with no response
+        tcall$na.action <- na.action #always present, since there is a default
         tcall[[1]] <- as.name('model.frame')  # change the function called
         tcall$xlev <- object$xlevels
         if (is.R()) mf2 <- eval(tcall, parent.frame())
@@ -182,6 +191,7 @@ predict.coxph <- function(object, newdata,
 
                 else {
                     #there is new data
+                    use.x <- TRUE
                     indx2 <- which(newstrat == i)
                     j1 <- approx(afit$time, 1:afit.n, newy[indx2,1], 
                                  method='constant', f=0, yleft=0, yright=afit.n)$y
@@ -235,7 +245,7 @@ predict.coxph <- function(object, newdata,
             xmeans <- rowsum(x*weights, indx)/c(rowsum(weights, indx))
             newx <- x - xmeans[indx,]
             }
-        else if (need.x) newx <- x - rep(object$means, each=nrow(x))
+        else if (use.x) newx <- x - rep(object$means, each=nrow(x))
         }
     else {
         offset <- newoffset - mean(offset)
@@ -249,7 +259,7 @@ predict.coxph <- function(object, newdata,
         }
 
     if (type=='lp' || type=='risk') {
-        if (need.x) pred <- newx %*% coef + offset
+        if (use.x) pred <- drop(newx %*% coef) + offset
         else pred <- object$linear.predictors
         if (se.fit) se <- sqrt(rowSums((newx %*% object$var) *newx))
 
