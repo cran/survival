@@ -197,11 +197,11 @@ pyears <- function(formula, data,
             #    byear <- month.day.year(bdate)$year
             #    offset <- bdate - julian(1,1,byear)
             #    }
-            else if (exists('date.mdy')) { # Therneau's date class is available
-                bdate <- as.date(R[,cols[2]] - R[,cols[1]])
-                byear <- date.mdy(bdate)$year
-                offset <- bdate - mdy.date(1,1,byear)
-                }
+            #else if (exists('date.mdy')) { # Therneau's date class is available
+            #    bdate <- as.date(R[,cols[2]] - R[,cols[1]])
+            #    byear <- date.mdy(bdate)$year
+            #    offset <- bdate - mdy.date(1,1,byear)
+            #    }
             else stop("Can't find an appropriate date class\n") 
             R[,cols[2]] <- R[,cols[2]] - offset
 

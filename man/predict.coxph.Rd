@@ -75,9 +75,13 @@ Use of \code{reference="sample"} will use the overall means, and agrees
 with the \code{linear.predictors} component of the coxph object (which
 uses the overall mean for backwards compatability with older code).
 
-Predictions of type "expected" incorportate the baseline hazard and are
+Predictions of type "expected" incorporate the baseline hazard and are
 thus absolute instead of relative; the
 \code{reference} option has no effect on these.
+
+Models that contain a \code{frailty} term are a special case: due
+to the technical difficulty, when there is a \code{newdata} argument the
+predictions will always be for a random effect of zero.  
 }
 
 \seealso{

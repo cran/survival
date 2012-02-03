@@ -1,11 +1,11 @@
 # Automatically generated from all.nw using noweb
 tt <- function(x) x
 coxph <- function(formula, data, weights, subset, na.action,
-        init, control, method= c("efron", "breslow", "exact"),
+        init, control, ties= c("efron", "breslow", "exact"),
         singular.ok =TRUE, robust=FALSE,
-        model=FALSE, x=FALSE, y=TRUE,  tt, ...) {
+        model=FALSE, x=FALSE, y=TRUE,  tt, method=ties, ...) {
 
-    method <- match.arg(method)
+    ties <- match.arg(ties)
     Call <- match.call()
 
     # create a call to model.frame() that contains the formula (required)
@@ -18,8 +18,7 @@ coxph <- function(formula, data, weights, subset, na.action,
     temp[[1]] <- as.name('model.frame')  # change the function called
 
     special <- c("strata", "cluster", "tt")
-    temp$formula <- if(missing(data)) terms(formula, special)
-                    else              terms(formula, special, data=data)
+    temp$formula <- terms(formula, specials=special)
     if (is.R()) m <- eval(temp, parent.frame())
     else        m <- eval(temp, sys.parent())
 
@@ -127,13 +126,17 @@ coxph <- function(formula, data, weights, subset, na.action,
 
     cluster<- attr(Terms, "specials")$cluster
     if (length(cluster)) {
-        if (missing(robust)) robust <- TRUE
+        robust <- TRUE  #flag to later compute a robust variance
         tempc <- untangle.specials(Terms2, 'cluster', 1:10)
         ord <- attr(Terms2, 'order')[tempc$terms]
         if (any(ord>1)) stop ("Cluster can not be used in an interaction")
         cluster <- strata(m[,tempc$vars], shortlabel=TRUE)  #allow multiples
         Terms2 <- Terms2[-tempc$terms]
         }
+    else {
+        if (!missing(robust)) warning("The robust option is depricated")
+        else robust <- FALSE
+    }
 
     attr(Terms2, 'intercept') <- 1  #baseline hazard is always present
     X <- model.matrix(Terms2, m)

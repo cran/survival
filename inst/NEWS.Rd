@@ -1,5 +1,61 @@
 \name{NEWS}
-\title{NEWS file for the surival package}
+\title{NEWS file for the survival package}
+\section{Changes in version 2.36-13}{
+  \itemize{
+    \item Add the anova.coxmelist function.  This is in the survival
+    package rather than in coxme since "anova(fit1, fit2)" is valid when
+    fit1 is a coxph and fit2 a coxme object, a case which will cause this
+    function to be called by way of anova.coxph.
+    
+    \item More work on "predvars" handling for the pspline function,
+    when used in predict calls.  Add a new test of this to the suite,
+    and the makepredictcall method to the namespace.
+    Fixes a bug pointed out by C Crowson.  
+
+    \item Deprecate the "robust" option of coxph.  When there are
+    multiple observations per subject it is almost surely the wrong
+    thing to do, while adding a "cluster(id)" term does the correct
+    thing. When there is only one obs per subject both methods work
+    correctly.
+
+    \item Add documentation of the output structure to the aareg help
+    file.
+
+    \item Change ratetableDate so that it still allows use of chron
+    objects, but doesn't need the chron library.  This eliminates a
+    warning messge from the package checks, but is also a reasonable
+    support strategy for a moribund package.  (Some of the local users keep
+    datasets for a long long time.)
+
+    \item Fix a bug in summary.survfit for a multiple-strata survival
+    object.  If one of the curves had no data after application of the
+    times argument, an output label was the wrong length.
+    
+    \item Fix a bug pointed out by Charles Berry: predict for a Cox
+    model which has strata, and the strata is a factor with not all its
+    levels represented in the data.  I had a mistake in the subscripting
+    logic: number of groups is not equal to max(as.integer(strata)).
+    
+    \item Changes to avoid overflow in the exponent made in 2.36-6
+    caused failure for one special usage: in case-cohort designs a dummy
+    offset of -100 could be added to some observations.  This was being
+    rounded away.  The solution is to 1: have coxsafe not truncate small
+    exponents and 2: do not recenter user provided offset values.
+
+    \item Fix bug in survfit.coxph.  Due to an indexing error I would
+    sometimes create a huge scratch vector midway through the
+    calculations (size = max value of "id"); the final result was always
+    correct however.  Data set provided by Cindy Crowson which had a
+    user id in the billions.
+
+    \item Fix bug pointed out by Nicholas Horton: predictions of
+    type expected, with newdata, from a Cox model without a strata
+    statement would fail with "x not found".  A misplaced parenthesis
+    from an earlier update caused it to not recreate the X matrix even
+    though it was needed later.  Also add some further information to
+    the predict manual page to clarify an issue when there is a frailty term.
+    }}
+
 \section{Changes in version 2.36-12}{
   \itemize{
     \item Fix a bug in the new fast subsets code.  The test suite had no
