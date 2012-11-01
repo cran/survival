@@ -39,7 +39,9 @@ predict.coxph <- function(object, newdata,
     has.weights <- any(names(object$call) == 'weights')
     na.action.used <- object$na.action
     n <- length(object$residuals)
-    reference <- match.arg(reference)
+
+    if (missing(reference) && type=="terms") reference <- "sample"
+    else reference <- match.arg(reference)
     have.mf <- FALSE
     if (type == 'expected') {
         y <- object[['y']]
