@@ -1,5 +1,56 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 2.37-4}{
+  \itemize{
+    \item Subscripting error in predict.coxph for type=expected, se=T,
+    strata in the model, newdata, and multiple strata in the new data
+    set.  Pointed out by Chris Andrews.  The test program has been
+    tweaked to include multiple strata in newdata.
+}}
+    
+
+\section{Changes in version 2.37-3}{
+  \itemize{
+    \item Minor flaw in [.survfit.  If "fit" had multiple curves, and
+    fit$surv was a matrix, and one of those curves had only a single observation
+    time, fit[i,] would collapse columns when "i" selected that curve,
+    though it shouldn't.  
+
+    \item Changed all of the .C and .Call statements to make use of
+    "registered native routines", per R-core request. Add file src/init.c 
+
+    \item Error in plot.survfit pointed out by K Hoggart -- the "+"
+    signs for censored observations were printing one survival time to
+    the left of the proper spot.  Eik Vettorazi found another error if
+    mark.time is a vector of numerics.  These are the results of merging
+    the code for plot, lines and points due to some discrepancies between
+    them, plus not having any graphical checks in the test suite.
+    
+    \item Repair an error in using double subscripts for the survfitms
+    objects.
+    
+    \item Add the US population data set, with yearly totals by age and sex 
+    for 2000 onward.  It is named uspop2, since there is already a "uspop" 
+    data set containing decennial totals from 1790 to 1970.
+    
+    \item Not all combinations of strata Y/N and CI Y/N worked in the
+    quantile.survfit function, pointed out by Daniel Wallschlaeger
+    (missing a function argument in one if-else combination).
+    Added a new test routine that verifies all paths.
+
+    \item The first example in predict.survreg help file needed to have
+    \code{I(age^2)} instead of \code{age^2} in the model: R ignores the
+    second form. (I'm almost sure this worked at one time, perhaps in Splus).
+    It also needed different plot symbols to actually match the
+    referenced figure.  Pointed out by Evan Newell.
+
+    \item Fix a long-standing problem with cch pointed out by Ornulf Borgan
+    leading to incorrect standard errors.  A check in the underlying
+    coxph routines to deal with out of bounds exponents, added in
+    version 2.36-6, interacted badly with the -100 offset used in cch.
+    It only affected models using (start, stop) survival times. 
+}}
+
 \section{Changes in version 2.37-2}{
   \itemize{
     \item Two bugs were turned up by running tests for all the

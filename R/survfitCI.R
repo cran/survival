@@ -12,6 +12,12 @@ survfitCI <- function(X, Y, weights, id, istate,
 #        warning("Only the infinetesimal jackknife error is supported for CI curves")
     conf.type <- match.arg(conf.type)
     conf.lower<- match.arg(conf.lower)
+    if (is.logical(conf.int)) {
+        # A common error is for users to use "conf.int = FALSE"
+        #  it's illegal per documentation, but be kind
+        if (!conf.int) conf.type <- "none"
+        conf.int <- .95
+    }
 
     type <- attr(Y, "type")
     if (type !='mright' && type!='mcounting' && 
@@ -61,7 +67,7 @@ survfitCI <- function(X, Y, weights, id, istate,
         storage.mode(cstate) <- "integer"
         storage.mode(status) <- "integer"
         # C code has 0 based subscripts
-        fit <- .Call("survfitci", ftime, 
+        fit <- .Call(Csurvfitci, ftime, 
                      order(ftime[,1]) - 1L,
                      order(ftime[,2]) - 1L,
                      length(timeset),
@@ -139,7 +145,6 @@ survfitCI <- function(X, Y, weights, id, istate,
             who <-  1 + min(which(same & weights[indx1] != weights[indx2]))
             stop("subject changes case weights, id ", (id[indx1])[who])
         }
-
         # We only want to pay attention to the istate variable for the very first
         #  observation of any given subject, but the program logic does better with
         #  a full one.  So construct one that will do this

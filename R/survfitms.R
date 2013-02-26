@@ -411,18 +411,20 @@ summary.survfitms <- function(object, times, censored=FALSE,
     if (is.null(x$strata)) {
         if (is.matrix(x$prev)) {
             # No strata, but a matrix of prevalence values
-            indx <- nmatch(i, x$states)
+            #  In this case, allow them to use a single i subscript as well
+            if (is.null(j) && !is.null(i)) j <- i
+            indx <- nmatch(j, x$states)
             if (any(is.na(indx)))
-                stop("unmatched subscript", i[is.na(indx)])
-            else i <- as.vector(indx)
-            x$states <- x$states[i]
+                stop("unmatched subscript", j[is.na(indx)])
+            else j <- as.vector(indx)
+            x$states <- x$states[j]
             
-            if (nrow(x$prev)==1 && length(i) > 1) drop<- FALSE
-            x$prev <- x$prev[,i,drop=drop]
-            x$cumhaz <- x$cumhaz[i,i,, drop=drop]
-            if (!is.null(x$std.err)) x$std.err <- x$std.err[,i,drop=drop]
-            if (!is.null(x$upper)) x$upper <- x$upper[,i,drop=drop]
-            if (!is.null(x$lower)) x$lower <- x$lower[,i,drop=drop]
+            if (nrow(x$prev)==1 && length(j) > 1) drop<- FALSE
+            x$prev <- x$prev[,j,drop=drop]
+            x$cumhaz <- x$cumhaz[j,j,, drop=drop]
+            if (!is.null(x$std.err)) x$std.err <- x$std.err[,j,drop=drop]
+            if (!is.null(x$upper)) x$upper <- x$upper[,j,drop=drop]
+            if (!is.null(x$lower)) x$lower <- x$lower[,j,drop=drop]
             }
         else warning("Survfit object has only a single survival curve")
         }
@@ -446,7 +448,8 @@ summary.survfitms <- function(object, times, censored=FALSE,
             x$n.censor<- x$n.censor[keep]
             }
         if (is.matrix(x$prev)) { 
-            if (length(keep) <2) drop <- FALSE
+            # If [i,] selected only 1 row, don't collapse the columns
+            if (length(keep) <2 && (is.null(j) || length(j) >1)) drop <- FALSE
             if (is.null(j)) {  #only subscript rows (strata)
                 x$prev <- x$prev[keep,,drop=drop]
                 x$cumhaz <- x$cumhaz[,,keep, drop=drop]

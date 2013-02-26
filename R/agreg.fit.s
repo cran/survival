@@ -43,14 +43,14 @@ agreg.fit <- function(x, y, strata, offset, init, control,
 	if (length(init) != nvar) stop("Wrong length for inital values")
 	}
 
-    agfit <- .C("agfit3", iter= as.integer(maxiter),
+    agfit <- .C(Cagfit3, iter= as.integer(maxiter),
 		as.integer(n),
 		as.integer(nvar), 
 		as.double(start), 
 		as.double(stopp),
 		as.integer(event),
 		as.double(x),
-		as.double(offset - mean(offset)),
+		as.double(offset),
 		as.double(weights),
 		as.integer(length(newstrat)),
 		as.integer(newstrat),
@@ -87,7 +87,7 @@ agreg.fit <- function(x, y, strata, offset, init, control,
     lp  <- as.vector(x %*% coef + offset - sum(coef *agfit$means))
     score <- as.double(exp(lp))
 
-    agres <- .C("agmart2",
+    agres <- .C(Cagmart2,
 		as.integer(n),
 		as.integer(method=='efron'),
 		as.double(start), 

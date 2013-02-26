@@ -103,7 +103,7 @@ coxph <- function(formula, data, weights, subset, na.action,
                 newstrat <-  as.integer(c(1, 1*(diff(strats[sorted])!=0))) 
                 }
             if (storage.mode(Y) != "double") storage.mode(Y) <- "double"
-            counts <- .Call("coxcount1", Y[sorted,], 
+            counts <- .Call(Ccoxcount1, Y[sorted,], 
                             as.integer(newstrat))
             tindex <- sorted[counts$index]
         }
@@ -119,7 +119,7 @@ coxph <- function(formula, data, weights, subset, na.action,
                 newstrat  <- c(1L, as.integer(diff(strats[sort.end])!=0))
             }
             if (storage.mode(Y) != "double") storage.mode(Y) <- "double"
-            counts <- .Call("coxcount2", Y, 
+            counts <- .Call(Ccoxcount2, Y, 
                             as.integer(sort.start -1L),
                             as.integer(sort.end -1L), 
                             as.integer(newstrat))

@@ -2,8 +2,8 @@ Title: Survival Analysis
 Maintainer: Terry Therneau <therneau.terry@mayo.edu>
 Priority: recommended
 Package: survival
-Version: 2.37-2
-Date: 2012-11-01
+Version: 2.37-4
+Date: 2013-02-26
 Depends: stats, utils, graphics, splines, R (>= 2.13.0)
 LazyData: Yes
 LazyLoad: Yes
@@ -19,6 +19,7 @@ Description: survival analysis: descriptive statistics, two-sample
         censoring for parametric models. Case-cohort designs.
 License: LGPL (>= 2)
 URL: http://r-forge.r-project.org
-Packaged: 2012-12-07 19:06:27 UTC; therneau
+Packaged: 2013-03-27 06:10:20 UTC; ripley
+NeedsCompilation: yes
 Repository: CRAN
-Date/Publication: 2012-12-08 06:19:50
+Date/Publication: 2013-03-27 07:14:17

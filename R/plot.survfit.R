@@ -256,7 +256,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
         }
         else { #interpolate
             xx <- mark.time
-            yy <- approx(x, y, xx, method="constant", f=0)
+            yy <- approx(x, y, xx, method="constant", f=0)$y
         }
         points(xx, yy, ...)
             
@@ -268,15 +268,16 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 
     for (i in unique(stemp)) {  #for each strata
         who <- which(stemp==i)
-        xx <- c(firstx, stime[who])
         censor <- if (is.null(x$n.censor))
             (x$n.event[who] ==0)  else (x$n.censor[who] >0) #places with a censoring
+        xx <- c(firstx, stime[who])
+        censor <- c(FALSE, censor)  #no mark at firstx
         for (j in 1:ncol(ssurv)) {
             yy <- c(firsty, ssurv[who,j])
             if (plot.surv) {
                 lines(dostep(xx, yy), lty=lty[c2], col=col[c2], lwd=lwd[c2]) 
-                if (mark.time) drawmark(xx, yy, mark.time, censor, 
-                                  pch=mark[c1], col=mcol[c1])
+                if (is.numeric(mark.time) || mark.time) 
+                    drawmark(xx, yy, mark.time, censor, pch=mark[c1], col=mcol[c1])
             }
             xend[c1] <- max(xx)
             yend[c1] <- yy[length(yy)]
@@ -480,7 +481,7 @@ lines.survfit <- function(x, type='s',
         }
         else { #interpolate
             xx <- mark.time
-            yy <- approx(x, y, xx, method="constant", f=0)
+            yy <- approx(x, y, xx, method="constant", f=0)$y
         }
         points(xx, yy, ...)
             
@@ -491,15 +492,16 @@ lines.survfit <- function(x, type='s',
 
     for (i in unique(stemp)) {  #for each strata
         who <- which(stemp==i)
-        xx <- c(firstx, stime[who])
         censor <- if (is.null(x$n.censor))
             (x$n.event[who] ==0)  else (x$n.censor[who] >0) #places with a censoring
+        xx <- c(firstx, stime[who])
+        censor <- c(FALSE, censor)  #no mark at firstx
         for (j in 1:ncol(ssurv)) {
             yy <- c(firsty, ssurv[who,j])
             if (plot.surv) {
                 lines(dostep(xx, yy), lty=lty[c2], col=col[c2], lwd=lwd[c2]) 
-                if (mark.time) drawmark(xx, yy, mark.time, censor, 
-                                  pch=mark[c1], col=mcol[c1])
+                if (is.numeric(mark.time) || mark.time) 
+                    drawmark(xx, yy, mark.time, censor, pch=mark[c1], col=mcol[c1])
             }
             xend[c1] <- max(xx)
             yend[c1] <- yy[length(yy)]
