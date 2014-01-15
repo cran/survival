@@ -66,8 +66,7 @@ pyears <- function(formula, data,
         newvar <- all.vars(rcall)
         if (length(newvar) > 0) {
             tform <- paste(deparse(Terms), paste(newvar, collapse='+'), sep='+')
-            if (is.R()) m$formula <- as.formula(tform, environment(Terms))
-            else m$formula <- as.formula(tform)
+            m$formula <- as.formula(tform, environment(Terms))
             }
         }
     else has.ratetable <- FALSE

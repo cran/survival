@@ -3,7 +3,7 @@ survfit.coxph <-
   function(formula, newdata, se.fit=TRUE, conf.int=.95, individual=FALSE,
             type, vartype,
             conf.type=c("log", "log-log", "plain", "none"),
-            censor=TRUE, id, newstrata=missing(id),
+            censor=TRUE, id,
             na.action=na.pass, ...) {
 
     Call <- match.call()
@@ -36,9 +36,10 @@ survfit.coxph <-
 
     if (!se.fit) conf.type <- "none"
     else conf.type <- match.arg(conf.type)
+    has.strata <- !is.null(attr(object$terms, 'specials')$strata) 
     if (is.null(object$y) || is.null(object[['x']]) ||
         !is.null(object$call$weights) || 
-        !is.null(attr(object$terms, 'specials')$strata) ||
+        (has.strata && is.null(object$strata)) ||
         !is.null(attr(object$terms, 'offset'))) {
         
         mf <- model.frame(object)
@@ -71,22 +72,15 @@ survfit.coxph <-
     missid <- missing(id) # I need this later, and setting id below makes
                           # "missing(id)" always false
     if (!missid) individual <- TRUE
-    else if (missid && individual) id <- rep(0,n)
+    else if (missid && individual) id <- rep(0,n)  #dummy value
     else id <- NULL
 
     if (individual && missing(newdata)) {
-        warning("the id and/or individual options only make sense with new data")
-        individual <- FALSE
+        stop("the id and/or individual options only make sense with new data")
     }
 
     if (individual && type!= 'counting')
         stop("The individual option is  only valid for start-stop data")
-    if (!missing(newstrata)) {
-        if (!is.logical(newstrata)) stop("newstrata must be TRUE/FALSE")
-        if (individual && !newstrata)
-            stop("newstrata must be TRUE for the individual or id options")
-    }
-    else newstrata <- individual
 
     if (is.null(mf)) offset <- 0
     else {
@@ -95,18 +89,20 @@ survfit.coxph <-
         }
         
     Terms <- object$terms
-    temp <- untangle.specials(Terms, 'strata')
-    if (length(temp$terms)==0) strata <- rep(0L,n)
+    if (!has.strata)  strata <- rep(0L,n)
     else {
-        if (length(temp$vars) ==1) strata <- mf[[temp$vars]]
-        else strata <- strata(mf[, temp$vars], shortlabel=TRUE)
+        stangle <- untangle.specials(Terms, 'strata') # used multiple times
+        strata <- object$strata #try this first
+        if (is.null(strata)){
+            if (length(stangle$vars) ==1) strata <- mf[[stangle$vars]]
+            else strata <- strata(mf[, stangle$vars], shortlabel=TRUE)
         }
-    if (!is.null(x) && ncol(x) >0) { #not a ~1 or ~offset(x) model
-        tempf <-attr(Terms, "factors")[-attr(Terms, 'response'),,drop=F] 
-        stype <- ifelse(colSums(tempf[temp$terms,,drop=FALSE]) >0,
-                        attr(Terms, "order"), 0)
-        }
-    else stype <- 0  #dummy value
+    }
+    if (has.strata) {
+        temp <- attr(Terms, "specials")$strata
+        factors <- attr(Terms, "factors")[temp,]
+        strata.interaction <- any(t(factors)*attr(Terms, "order") >1)
+    }
     if (is.null(x) || ncol(x)==0) { # a model with ~1 on the right hand side
         # Give it a dummy x so the rest of the code goes through
         #  (This case is really rare)
@@ -131,44 +127,36 @@ survfit.coxph <-
            x <- scale(x, center=xcenter, scale=FALSE)    
            }
         }
-    subterms <- function(x, i) {
-        dataClasses <- attr(x, "dataClasses")
-        predvars <- attr(x, "predvars")
-        x <- x[i]
-        if (!is.null(predvars)) 
-            attr(x, "predvars") <- attr(x, "variables")
-        if (!is.null(dataClasses)){
-            temp <- dimnames(attr(x, 'factors'))[[1]]
-            attr(x, "dataClasses") <- dataClasses[temp]
-        }
-        x
+    subterms <- function(tt, i) {
+        dataClasses <- attr(tt, "dataClasses")
+        predvars <- attr(tt, "predvars")
+        oldnames <-  dimnames(attr(tt, 'factors'))[[1]]
+        tt <- tt[i]
+        index <- match(dimnames(attr(tt, 'factors'))[[1]], oldnames)
+        if (length(index) >0) {
+            if (!is.null(predvars)) 
+                attr(tt, "predvars") <- predvars[c(1, index+1)]
+            if (!is.null(dataClasses))
+                attr(tt, "dataClasses") <- dataClasses[index]
+            }
+        tt
     }
     temp <- untangle.specials(Terms, 'cluster')
-    if (length(temp$vars)) {
-        ptemp <- attr(temp, "predvars")
+    if (length(temp$vars)) 
         Terms <- subterms(Terms, -temp$terms)
-        stype <- stype[-temp$terms]
-    }
+
     if (missing(newdata)) {
         mf2 <- as.list(object$means)   #create a dummy newdata
         names(mf2) <- names(object$coefficients)
         mf2 <- as.data.frame(mf2)
-        }
+        found.strata <- FALSE  
+    }
     else {
         if (!is.null(object$frail))
-            stop("Newdata cannot be used when a model has sparse frailty terms")
+            stop("Newdata cannot be used when a model has frailty terms")
 
         Terms2 <- Terms 
         if (!individual)  Terms2 <- delete.response(Terms)
-        if (!newstrata && (any(stype>0))) 
-            Terms2 <- subterms(Terms2,stype==0) #remove strata and interactions
-        if (!is.null(object$xlevels)) { 
-            myxlev <- object$xlevels[match(attr(Terms2, "term.labels"),
-                                           names(object$xlevels), nomatch=0)]
-            if (length(myxlev)==0) myxlev <- NULL
-            }
-        else myxlev <- NULL
-         
         if (is.vector(newdata, "numeric")) {
             if (individual) stop("newdata must be a data frame")
             if (is.null(names(newdata))) {
@@ -176,28 +164,61 @@ survfit.coxph <-
             }
             newdata <- data.frame(as.list(newdata))
         }
-        if (newstrata && missid) 
-            mf2 <- model.frame(Terms2, data=newdata, na.action=na.action, xlev=myxlev)
+        if (missid) {
+            if (has.strata && !strata.interaction) {
+                found.strata <- TRUE
+                tempenv <- new.env(, parent=emptyenv())
+                assign("strata", function(..., na.group, shortlabel, sep)
+                               list(...), envir=tempenv)
+                assign("list", list, envir=tempenv)
+                for (svar in stangle$vars) {
+                    temp <- try(eval(parse(text=svar), newdata, tempenv),
+                                        silent=TRUE)
+                    if (!is.list(temp) || 
+                        any(unlist(lapply(temp, class))== "function"))
+                        found.strata <- FALSE
+                }
+
+                if (found.strata) mf2 <- model.frame(Terms2, data=newdata, 
+                                       na.action=na.action, xlev=object$xlevels)
+                else {
+                    Terms2 <- subterms(Terms2, -attr(Terms2, 'specials')$strata)
+                    if (!is.null(object$xlevels)) { 
+                        myxlev <- object$xlevels[match(attr(Terms2, "term.labels"),
+                                           names(object$xlevels), nomatch=0)]
+                        if (length(myxlev)==0) myxlev <- NULL
+                    }
+                    else myxlev <- NULL
+                    mf2 <- model.frame(Terms2, data=newdata, na.action=na.action, 
+                                       xlev=myxlev)
+                    }
+                }
+            else {
+                mf2 <- model.frame(Terms2, data=newdata, na.action=na.action, 
+                                    xlev=object$xlevels)
+                found.strata <- has.strata  #would have failed otherwise
+                }
+            }
         else {
-            tcall <- Call[c(1, match(c('id', "na.action"), names(Call), nomatch=0))]
+            tcall <- Call[c(1, match(c('id', "na.action"), 
+                                     names(Call), nomatch=0))]
             tcall$data <- newdata
             tcall$formula <- Terms2
-            if (!is.null(object$xlevels)) tcall$xlev <- myxlev
+            tcall$xlev <- object$xlevels
             tcall[[1]] <- as.name('model.frame')
             mf2 <- eval(tcall)
+            found.strata <- has.strata # would have failed otherwise
         }
         }
-    if (newstrata) {
+    if (has.strata && found.strata) { #pull them off
         temp <- untangle.specials(Terms2, 'strata')
-        if (length(temp$vars) >0) {
-            strata2 <- strata(mf2[temp$vars], shortlabel=TRUE)
-            strata2 <- factor(strata2, levels=levels(strata))
-            if (any(is.na(strata2)))
-                stop("New data set has strata levels not found in the original")
-            Terms2 <- Terms2[-temp$terms]
-            }
-        else strata2 <- factor(rep(0, nrow(mf2)))
+        strata2 <- strata(mf2[temp$vars], shortlabel=TRUE)
+        strata2 <- factor(strata2, levels=levels(strata))
+        if (any(is.na(strata2)))
+            stop("New data set has strata levels not found in the original")
+        Terms2 <- Terms2[-temp$terms]
     }
+    else strata2 <- factor(rep(0, nrow(mf2)))
 
     if (individual) {
         if (missing(newdata)) 
@@ -206,6 +227,7 @@ survfit.coxph <-
             id <- model.extract(mf2, "id")
             if (is.null(id)) stop("id=NULL is an invalid argument")
             }
+        else id <- rep(1, nrow(mf2))
         
         x2 <- model.matrix(Terms2, mf2)[,-1, drop=FALSE]  #no intercept
         if (length(x2)==0) stop("Individual survival but no variables")
@@ -227,45 +249,10 @@ survfit.coxph <-
                                     se.fit, survtype, vartype, varmat, 
                                     id, y2, strata2)
        }
-    else if (any(stype==2)){
-        tframe <- mf[match(levels(strata), strata),]
-        temp <- vector('list', nrow(tframe))  #number of strata
-        for (i in 1:nrow(tframe)) {
-            mf3 <- tframe[rep(i, nrow(mf2)),]
-            mf3[names(mf2)] <- mf2
-            attr(mf3, 'terms') <- attr(mf, 'terms')
-            x2 <- model.matrix(Terms[stype!=1], data=mf3,
-                               xlev=object$xlevels)[,-1,drop=FALSE]
-            x2 <- scale(x2, center=xcenter, scale=FALSE)
-            offset2 <- model.offset(mf3)
-            if (is.null(offset2)) offset2 <-0
-            newrisk <- c(exp(x2%*%coef) + offset2)
-            zed<- survfitcoxph.fit(y, x, wt, x2, risk, newrisk, strata,
-                                               se.fit, survtype, vartype, varmat,
-                                               id=NULL, unlist=FALSE)
-            temp[[i]] <- zed[[i]]
-            }
-        tfun <- function(x, fun) as.vector(unlist(lapply(x,fun))) #no names
-        result <- list(n   =    tfun(temp, function(x) x$n),
-                       time=    tfun(temp, function(x) x$time),
-                       n.risk=  tfun(temp, function(x) x$n.risk),
-                       n.event= tfun(temp, function(x) x$n.event),
-                       n.censor=tfun(temp, function(x) x$n.censor),
-                       strata = sapply(temp, function(x) length(x$time)))
-        names(result$strata) <- levels(strata)
-        if (nrow(x2) >1) {  #matrix result
-            result$surv =  t(matrix(tfun(temp, function(x) t(x$surv)),
-                                    nrow= nrow(x2)))
-            if (se.fit) result$std.err =  t(matrix(tfun(temp,function(x) t(x$std)),
-                                                   nrow= nrow(x2)))
-            }
-        else {
-            result$surv =  tfun(temp, function(x) x$surv)
-            if (se.fit) result$std.err = tfun(temp, function(x) x$std.err)
-            }
-        }
     else {
         if (missing(newdata)) {
+            if (has.strata && strata.interaction)
+                stop ("Models with strata by covariate interaction terms require newdata")
             x2 <- matrix(0.0, nrow=1, ncol=ncol(x))
             offset2 <- 0
         }
@@ -279,10 +266,31 @@ survfit.coxph <-
 
         newrisk <- exp(c(x2 %*% coef) + offset2)
         result <- survfitcoxph.fit(y, x, wt, x2, risk, newrisk, strata,
-                                    se.fit, survtype, vartype, varmat, 
-                                    id, y2, strata2)
-        if (newstrata) {
-            warning("newstrata argument under construction, value ignored")
+                                    se.fit, survtype, vartype, varmat)
+        if (has.strata && found.strata) {
+            if (is.matrix(result$surv)) {
+                nr <- nrow(result$surv)  #a vector if newdata had only 1 row
+                indx1 <- split(1:nr, rep(1:length(result$strata), result$strata))
+                rows <- indx1[as.numeric(strata2)]  #the rows for each curve
+
+                indx2 <- unlist(rows)  #index for time, n.risk, n.event, n.censor
+                indx3 <- as.integer(strata2) #index for n and strata
+
+                for(i in 2:length(rows)) rows[[i]] <- rows[[i]]+ (i-1)*nr #linear subscript
+                indx4 <- unlist(rows)   #index for surv and std.err
+                temp <- result$strata[indx3]
+                names(temp) <- row.names(mf2)
+                new <- list(n = result$n[indx3],
+                            time= result$time[indx2],
+                            n.risk= result$n.risk[indx2],
+                            n.event=result$n.event[indx2],
+                            n.censor=result$n.censor[indx2],
+                            strata = temp,
+                            surv= result$surv[indx4],
+                            cumhaz = result$cumhaz[indx4])
+                if (se.fit) new$std.err <- result$std.err[indx4]
+                result <- new
+                }
         }
     }
     if (!censor) {
@@ -291,7 +299,8 @@ survfit.coxph <-
                                   else x}
         keep <- (result$n.event > 0)
         if (!is.null(result$strata)) {
-            temp <- rep(names(result$strata), result$strata)
+            temp <- factor(rep(names(result$strata), result$strata),
+                           levels=names(result$strata))
             result$strata <- c(table(temp[keep]))
             }
         result <- lapply(result, kfun, keep)

@@ -34,7 +34,10 @@ survfitCI <- function(X, Y, weights, id, istate,
     else if (is.factor(istate) || is.character(istate)) {
         # Match levels with the survival variable
         temp <- as.factor(istate)
-        state.names <- unique(c(attr(Y, "states"), levels(istate)))
+        # append any starting states not found in Y, but remember that
+        #  if istate was a factor then not all its levels might appear
+        appear <- (levels(istate))[unique(as.numeric(istate))]
+        state.names <- unique(c(attr(Y, "states"), appear))
         istate <- as.numeric(factor(as.character(istate), levels=state.names))
     }
     else if (!is.numeric(istate) || any(istate != floor(istate)))
@@ -76,14 +79,15 @@ survfitCI <- function(X, Y, weights, id, istate,
                      wt,
                      match(id, uid) -1L,
                      P, as.integer(se.fit))
+        prev0 <- table(factor(cstate, levels=states), exclude=NA)/length(cstate)
         if (se.fit) 
             list(time=timeset, pmat=t(fit$p), std=sqrt(t(fit$var)),
                  n.risk = colSums(fit$nrisk),n.event = fit$nevent, 
-                 n.censor=fit$ncensor, 
+                 n.censor=fit$ncensor, prev0 = prev0,
                  cumhaz=array(fit$cumhaz, dim=c(nstate,nstate, length(timeset))))
         else list(time=timeset, pmat=t(fit$p),
                  n.risk = colSums(fit$nrisk),n.event = fit$nevent, 
-                 n.censor=fit$ncensor, 
+                 n.censor=fit$ncensor,  prev0=prev0,
                  cumhaz=array(fit$cumhaz, dim=c(nstate,nstate, length(timeset))))
     }
     if (any(states==0)) {
@@ -100,7 +104,7 @@ survfitCI <- function(X, Y, weights, id, istate,
     if (ncol(Y)==2) {  # 1 transition per subject
         indx <- which(status == istate & status!=0)
         if (length(indx)) {
-            warning("an observation transitions to it's starting state, ignored")
+            warning("an observation transitions to it's starting state, transition ignored")
             status[indx] <- 0
         }
         if (length(id) && any(duplicated(id)))
@@ -139,7 +143,7 @@ survfitCI <- function(X, Y, weights, id, istate,
 
         if (any(same & Y[indx1,3] == Y[indx2,3] & Y[indx1,3] !=0)) {
             who <-  1 + min(which(same & Y[indx1,1] != Y[indx2,2]))
-            stop("subject changes to the same state, id ", (id[indx1])[who])
+            warning("subject changes to the same state, id ", (id[indx1])[who])
         }
         if (any(same & weights[indx1] != weights[indx2])) {
             who <-  1 + min(which(same & weights[indx1] != weights[indx2]))
@@ -171,14 +175,19 @@ survfitCI <- function(X, Y, weights, id, istate,
             matrix(unlist(lapply(clist, function(x) t(x[[element]]))),
                             byrow=T, ncol=nc)
             }
-        else as.vector(unlist(lapply(clist, function(x) x[element])))
+        else {
+            xx <- as.vector(unlist(lapply(clist, function(x) x[element])))
+            if (class(temp)=="table") matrix(xx, byrow=T, ncol=length(temp))
+            else xx
         }
+    }
     kfit <- list(n =      as.vector(table(X)),
                  time =   grabit(curves, "time"),
                  n.risk=  grabit(curves, "n.risk"),
                  n.event= grabit(curves, "n.event"),
                  n.censor=grabit(curves, "n.censor"),
-                 prev   = grabit(curves, "pmat"))
+                 prev   = grabit(curves, "pmat"),
+                 prev0  = grabit(curves, "prev0"))
     nstate <- length(states)
     kfit$cumhaz <- array(unlist(lapply(curves, function(x) x$cumhaz)),
                                dim=c(nstate, nstate, length(kfit$time)))
@@ -190,6 +199,7 @@ survfitCI <- function(X, Y, weights, id, istate,
     if (state0) {
         kfit$prev <- kfit$prev[,-1]
         if (se.fit) kfit$std.err <- kfit$std.err[,-1]
+        kfit$prev0 <- kfit$prev0[,-1]
     }
     #       
     # Last bit: add in the confidence bands:

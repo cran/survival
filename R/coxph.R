@@ -1,5 +1,5 @@
 # Automatically generated from all.nw using noweb
-tt <- function(x) x
+#tt <- function(x) x
 coxph <- function(formula, data, weights, subset, na.action,
         init, control, ties= c("efron", "breslow", "exact"),
         singular.ok =TRUE, robust=FALSE,
@@ -20,11 +20,16 @@ coxph <- function(formula, data, weights, subset, na.action,
     special <- c("strata", "cluster", "tt")
     temp$formula <- if(missing(data)) terms(formula, special)
                     else              terms(formula, special, data=data)
-    if (is.R()) m <- eval(temp, parent.frame())
-    else        m <- eval(temp, sys.parent())
+    # Make "tt" visible for coxph formulas, without making it visible elsewhere
+    if (!is.null(attr(temp$formula, "specials")$tt)) {
+        coxenv <- new.env(parent= environment(formula))
+        assign("tt", function(x) x, env=coxenv)
+        environment(temp$formula) <- coxenv
+    }
 
-    if (nrow(m) ==0) stop("No (non-missing) observations")
-    Terms <- terms(m)
+    mf <- eval(temp, parent.frame())
+    if (nrow(mf) ==0) stop("No (non-missing) observations")
+    Terms <- terms(mf)
 
     
     ## We want to pass any ... args to coxph.control, but not pass things
@@ -40,148 +45,168 @@ coxph <- function(formula, data, weights, subset, na.action,
     }
     if (missing(control)) control <- coxph.control(...)
 
-    Y <- model.extract(m, "response")
+    Y <- model.extract(mf, "response")
     if (!inherits(Y, "Surv")) stop("Response must be a survival object")
     type <- attr(Y, "type")
     if (type!='right' && type!='counting')
         stop(paste("Cox model doesn't support \"", type,
                           "\" survival data", sep=''))
-    weights <- model.weights(m)
+    weights <- model.weights(mf)
     data.n <- nrow(Y)   #remember this before any time transforms
     
-    strats <- attr(Terms, "specials")$strata
-    if (length(strats)) {
-        stemp <- untangle.specials(Terms, 'strata', 1)
-        if (length(stemp$terms) >0) #beware strata by covariate interactions
-            Terms2 <- Terms[-stemp$terms] #not needed for model.matrix later
-        else Terms2 <- Terms  
-        if (length(stemp$vars)==1) strata.keep <- m[[stemp$vars]]
-        else strata.keep <- strata(m[,stemp$vars], shortlabel=TRUE)
-        strats <- as.numeric(strata.keep)
-        }
-    else Terms2 <- Terms
-    
-    timetrans <- attr(Terms, "specials")$tt
-    if (length(timetrans)) {
-        timetrans <- untangle.specials(Terms, 'tt')
-        ntrans <- length(timetrans$terms)
-
-        if (missing(tt) || is.null(tt)) {
-            tt <- function(x, time, riskset, weights){ #default to O'Brien's logit rank
-                obrien <- function(x) {
-                    r <- rank(x)
-                    (r-.5)/(.5+length(r)-r)
-                }
-                unlist(tapply(x, riskset, obrien))
-            }
-        }
-        if (is.function(tt)) tt <- list(tt)  #single function becomes a list
-            
-        if (is.list(tt)) {
-            if (any(!sapply(tt, is.function))) 
-                stop("The tt argument must contain function or list of functions")
-            if (length(tt) != ntrans) {
-                if (length(tt) ==1) {
-                    temp <- vector("list", ntrans)
-                    for (i in 1:ntrans) temp[[i]] <- tt[[1]]
-                    tt <- temp
-                }
-                else stop("Wrong length for tt argument")
-            }
-        }
-        else stop("The tt argument must contain function or list of functions")
-
-        if (ncol(Y)==2) {
-            if (length(strats)==0) {
-                sorted <- order(-Y[,1], Y[,2])
-                newstrat <- rep.int(0L, nrow(Y))
-                newstrat[1] <- 1L
-                }
-            else {
-                sorted <- order(strats, -Y[,1], Y[,2])
-                #newstrat marks the first obs of each strata
-                newstrat <-  as.integer(c(1, 1*(diff(strats[sorted])!=0))) 
-                }
-            if (storage.mode(Y) != "double") storage.mode(Y) <- "double"
-            counts <- .Call(Ccoxcount1, Y[sorted,], 
-                            as.integer(newstrat))
-            tindex <- sorted[counts$index]
-        }
-        else {
-            if (length(strats)==0) {
-                sort.end  <- order(-Y[,2], Y[,3])
-                sort.start<- order(-Y[,1])
-                newstrat  <- c(1L, rep(0, nrow(Y) -1))
-            }
-            else {
-                sort.end  <- order(strats, -Y[,2], Y[,3])
-                sort.start<- order(strats, -Y[,1])
-                newstrat  <- c(1L, as.integer(diff(strats[sort.end])!=0))
-            }
-            if (storage.mode(Y) != "double") storage.mode(Y) <- "double"
-            counts <- .Call(Ccoxcount2, Y, 
-                            as.integer(sort.start -1L),
-                            as.integer(sort.end -1L), 
-                            as.integer(newstrat))
-            tindex <- counts$index
-        }
-        m <- m[tindex,]
-        Y <- Surv(rep(counts$time, counts$nrisk), counts$status)
-        type <- 'right'  # new Y is right censored, even if the old was (start, stop]
-        strats <- factor(rep(1:length(counts$nrisk), counts$nrisk)) 
-        weights <- model.weights(m)
-        for (i in 1:ntrans) 
-            m[[timetrans$var[i]]] <- (tt[[i]])(m[[timetrans$var[i]]], Y[,1], strats, 
-                                               weights)
-        }
-
-    offset <- model.offset(m)
-    if (is.null(offset) | all(offset==0)) offset <- rep(0., nrow(m))
-
     cluster<- attr(Terms, "specials")$cluster
     if (length(cluster)) {
         robust <- TRUE  #flag to later compute a robust variance
-        tempc <- untangle.specials(Terms2, 'cluster', 1:10)
-        ord <- attr(Terms2, 'order')[tempc$terms]
+        tempc <- untangle.specials(Terms, 'cluster', 1:10)
+        ord <- attr(Terms, 'order')[tempc$terms]
         if (any(ord>1)) stop ("Cluster can not be used in an interaction")
-        cluster <- strata(m[,tempc$vars], shortlabel=TRUE)  #allow multiples
-        Terms2 <- Terms2[-tempc$terms]
-        }
+        cluster <- strata(mf[,tempc$vars], shortlabel=TRUE)  #allow multiples
+        dropterms <- tempc$terms  #we won't want this in the X matrix
+        dropcon <- tempc$vars
+        # Save away xlevels after removing cluster (we don't want to save upteen
+        #  levels of that variable, which we will never need).
+        xlevels <- .getXlevels(Terms[-tempc$terms], mf)
+    }
     else {
-        if (!missing(robust)) warning("The robust option is depricated")
-        else robust <- FALSE
+        dropterms <- dropcons <- NULL
+        if (missing(robust)) robust <- FALSE
+        xlevels <- .getXlevels(Terms, mf)
     }
 
-    attr(Terms2, 'intercept') <- 1  #baseline hazard is always present
-    X <- model.matrix(Terms2, m)
-    # Attributes of X need to be saved away before the X <- X[,-1] line removes the
-    #  intercept, since subscripting removes some of them!
-    Xatt <- attributes(X)
-    if (is.R()) {
-         assign <- lapply(attrassign(X, Terms2)[-1], function(x) x-1)
-         xlevels <- .getXlevels(Terms2, m)
-         contr.save <- attr(X, 'contrasts')
-         }
-    else {
-        assign <- lapply(attr(X, 'assign')[-1], function(x) x -1)
-        xvars <- as.character(attr(Terms2, 'variables'))
-        xvars <- xvars[-attr(Terms2, 'response')]
-        if (length(xvars) >0) {
-                xlevels <- lapply(m[xvars], levels)
-                xlevels <- xlevels[!unlist(lapply(xlevels, is.null))]
-                if(length(xlevels) == 0)
-                        xlevels <- NULL
-                }
-        else xlevels <- NULL
-        contr.save <- attr(X, 'contrasts')
+    strats <- attr(Terms, "specials")$strata
+    if (length(strats)) {
+        stemp <- untangle.specials(Terms, 'strata', 1)
+        if (length(stemp$vars)==1) strata.keep <- mf[[stemp$vars]]
+        else strata.keep <- strata(mf[,stemp$vars], shortlabel=TRUE)
+        strats <- as.numeric(strata.keep)
         }
+    
+    timetrans <- attr(Terms, "specials")$tt
+    if (missing(tt)) tt <- NULL
+    if (length(timetrans)) {
+         timetrans <- untangle.specials(Terms, 'tt')
+         ntrans <- length(timetrans$terms)
 
-    X <- X[,-1, drop=F]  #remove the intercept column
+         if (is.null(tt)) {
+             tt <- function(x, time, riskset, weights){ #default to O'Brien's logit rank
+                 obrien <- function(x) {
+                     r <- rank(x)
+                     (r-.5)/(.5+length(r)-r)
+                 }
+                 unlist(tapply(x, riskset, obrien))
+             }
+         }
+         if (is.function(tt)) tt <- list(tt)  #single function becomes a list
+             
+         if (is.list(tt)) {
+             if (any(!sapply(tt, is.function))) 
+                 stop("The tt argument must contain function or list of functions")
+             if (length(tt) != ntrans) {
+                 if (length(tt) ==1) {
+                     temp <- vector("list", ntrans)
+                     for (i in 1:ntrans) temp[[i]] <- tt[[1]]
+                     tt <- temp
+                 }
+                 else stop("Wrong length for tt argument")
+             }
+         }
+         else stop("The tt argument must contain a function or list of functions")
 
+         if (ncol(Y)==2) {
+             if (length(strats)==0) {
+                 sorted <- order(-Y[,1], Y[,2])
+                 newstrat <- rep.int(0L, nrow(Y))
+                 newstrat[1] <- 1L
+                 }
+             else {
+                 sorted <- order(strats, -Y[,1], Y[,2])
+                 #newstrat marks the first obs of each strata
+                 newstrat <-  as.integer(c(1, 1*(diff(strats[sorted])!=0))) 
+                 }
+             if (storage.mode(Y) != "double") storage.mode(Y) <- "double"
+             counts <- .Call(Ccoxcount1, Y[sorted,], 
+                             as.integer(newstrat))
+             tindex <- sorted[counts$index]
+         }
+         else {
+             if (length(strats)==0) {
+                 sort.end  <- order(-Y[,2], Y[,3])
+                 sort.start<- order(-Y[,1])
+                 newstrat  <- c(1L, rep(0, nrow(Y) -1))
+             }
+             else {
+                 sort.end  <- order(strats, -Y[,2], Y[,3])
+                 sort.start<- order(strats, -Y[,1])
+                 newstrat  <- c(1L, as.integer(diff(strats[sort.end])!=0))
+             }
+             if (storage.mode(Y) != "double") storage.mode(Y) <- "double"
+             counts <- .Call(Ccoxcount2, Y, 
+                             as.integer(sort.start -1L),
+                             as.integer(sort.end -1L), 
+                             as.integer(newstrat))
+             tindex <- counts$index
+         }
+         mf <- mf[tindex,]
+         Y <- Surv(rep(counts$time, counts$nrisk), counts$status)
+         type <- 'right'  # new Y is right censored, even if the old was (start, stop]
+         strats <- rep(1:length(counts$nrisk), counts$nrisk)
+         weights <- model.weights(mf)
+         for (i in 1:ntrans) 
+             mf[[timetrans$var[i]]] <- (tt[[i]])(mf[[timetrans$var[i]]], Y[,1], strats, 
+                                                weights)
+         }
+    
+    contrast.arg <- NULL  #due to shared code with model.matrix.coxph
+    attr(Terms, "intercept") <- TRUE
+    adrop <- 0  #levels of "assign" to be dropped; 0= intercept
+    stemp <- untangle.specials(Terms, 'strata', 1)
+    if (length(stemp$vars) > 0) {  #if there is a strata statement
+        hasinteractions <- FALSE
+        for (i in stemp$vars) {  #multiple strata terms are allowed
+            # The factors att has one row for each variable in the frame, one
+            #   col for each term in the model.  Pick rows for each strata
+            #   var, and find if it participates in any interactions.
+            if (any(attr(Terms, 'order')[attr(Terms, "factors")[i,] >0] >1))
+                hasinteractions <- TRUE  
+            }
+        if (!hasinteractions) 
+            dropterms <- c(dropterms, stemp$terms)
+        else adrop <- c(0, match(stemp$var, colnames(attr(Terms, 'factors'))))
+    }
+
+    if (length(dropterms)) {
+        temppred <- attr(terms, "predvars")
+        Terms2 <- Terms[ -dropterms]
+        if (!is.null(temppred)) {
+            # subscripting a Terms object currently drops predvars, in error
+            attr(Terms2, "predvars") <- temppred[-(1+dropterms)] # "Call" object
+        }
+        X <- model.matrix(Terms2, mf, constrasts=contrast.arg)
+        # we want to number the terms wrt the original model matrix
+        # Do not forget the intercept, which will be a zero
+        renumber <- match(colnames(attr(Terms2, "factors")), 
+                          colnames(attr(Terms,  "factors")))
+        attr(X, "assign") <- c(0, renumber)[1+attr(X, "assign")]
+    }
+    else X <- model.matrix(Terms, mf, contrasts=contrast.arg)
+
+    # drop the intercept after the fact, and also drop strata if necessary
+    Xatt <- attributes(X) 
+    xdrop <- Xatt$assign %in% adrop  #columns to drop (always the intercept)
+    X <- X[, !xdrop, drop=FALSE]
+    attr(X, "assign") <- Xatt$assign[!xdrop]
+    #if (any(adrop>0)) attr(X, "contrasts") <- Xatt$contrasts[-adrop]
+    #else attr(X, "contrasts") <- Xatt$contrasts
+    attr(X, "contrasts") <- Xatt$contrasts
+    offset <- model.offset(mf)
+    if (is.null(offset) | all(offset==0)) offset <- rep(0., nrow(mf))
+
+    assign <- attrassign(X, Terms)
+    contr.save <- attr(X, "contrasts")
     if (missing(init)) init <- NULL
-    pterms <- sapply(m, inherits, 'coxph.penalty')
+    pterms <- sapply(mf, inherits, 'coxph.penalty')
     if (any(pterms)) {
-        pattr <- lapply(m[pterms], attributes)
+        pattr <- lapply(mf[pterms], attributes)
         pname <- names(pterms)[pterms]
         # 
         # Check the order of any penalty terms
@@ -192,7 +217,7 @@ coxph <- function(formula, data, weights, subset, na.action,
         fit <- coxpenal.fit(X, Y, strats, offset, init=init,
                             control,
                             weights=weights, method=method,
-                            row.names(m), pcols, pattr, assign)
+                            row.names(mf), pcols, pattr, assign)
     }
     else {
         if( method=="breslow" || method =="efron") {
@@ -206,12 +231,11 @@ coxph <- function(formula, data, weights, subset, na.action,
         else stop(paste ("Unknown method", method))
 
         fit <- fitter(X, Y, strats, offset, init, control, weights=weights,
-                      method=method, row.names(m))
+                      method=method, row.names(mf))
     }
     if (is.character(fit)) {
         fit <- list(fail=fit)
-        if (is.R()) class(fit) <- 'coxph'
-        else oldClass(fit) <- 'coxph'
+        class(fit) <- 'coxph'
     }
     else {
         if (!is.null(fit$coefficients) && any(is.na(fit$coefficients))) {
@@ -225,8 +249,8 @@ coxph <- function(formula, data, weights, subset, na.action,
         fit$nevent <- sum(Y[,ncol(Y)])
         fit$terms <- Terms
         fit$assign <- assign
-        if (is.R()) class(fit) <- fit$method        
-        else       oldClass(fit) <-  fit$method[1]
+        class(fit) <- fit$method        
+
         if (robust) {
             fit$naive.var <- fit$var
             fit$method    <- method
@@ -265,22 +289,18 @@ coxph <- function(formula, data, weights, subset, na.action,
             fit$wald.test <-  coxph.wtest(fit$var[nabeta,nabeta], temp,
                                           control$toler.chol)$test
         }
-        na.action <- attr(m, "na.action")
+        na.action <- attr(mf, "na.action")
         if (length(na.action)) fit$na.action <- na.action
         if (model) {
             if (length(timetrans)) {
                 # Fix up the model frame -- still in the thinking stage
-                m[[".surv."]]   <- Y
-                m[[".strata."]] <- strats
+                mf[[".surv."]]   <- Y
+                mf[[".strata."]] <- strats
                 stop("Time transform + model frame: code incomplete")
             }
-            fit$model <- m
+            fit$model <- mf
         }
         if (x)  {
-            Xatt$dim <- attr(X, 'dim')
-            Xatt$dimnames <- attr(X, 'dimnames')
-            Xatt$assign <- Xatt$assign[-1]
-            attributes(X) <- Xatt
             fit$x <- X
             if (length(strats)) {
                 if (length(timetrans)) fit$strata <- strats

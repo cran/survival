@@ -61,26 +61,17 @@ predict.coxph <- function(object, newdata,
             if (!have.mf) mf <- model.frame(object)
             if (nrow(mf) != n)
                 stop("Data is not the same size as it was in the original fit")
-
+            x <- model.matrix(object, data=mf)
             if (has.strata) {
                 if (!is.null(object$strata)) oldstrat <- object$strata
                 else {
                     stemp <- untangle.specials(Terms, 'strata')
                     if (length(stemp$vars)==1) oldstrat <- mf[[stemp$vars]]
                     else oldstrat <- strata(mf[,stemp$vars], shortlabel=TRUE)
-                    # A model with x:strata(grp) will have stemp$terms of length 0
-                    if (length(stemp$terms))
-                        x <- model.matrix(Terms[-stemp$terms], mf,
-                                          contr=object$contrasts)[,-1,drop=FALSE]
-                    else x<- model.matrix(Terms, mf,
-                                          contr=object$contrasts)[,-1,drop=FALSE]
-                }
+                  }
             }
-            else {
-                x <- model.matrix(Terms, mf,
-                          contr=object$contrasts)[,-1,drop=FALSE]
-                oldstrat <- rep(0L, n)
-            }
+            else oldstrat <- rep(0L, n)
+
             weights <- model.weights(mf)
             if (is.null(weights)) weights <- rep(1.0, n)
             offset <- model.offset(mf)
@@ -107,15 +98,23 @@ predict.coxph <- function(object, newdata,
     }
     if (!missing(newdata)) {
         use.x <- TRUE  #we do use an X matrix later
-        tcall <- Call[c(1, match("newdata", names(Call), nomatch=0))]
+        tcall <- Call[c(1, match(c("newdata", "collapse"), names(Call), nomatch=0))]
         names(tcall)[2] <- 'data'  #rename newdata to data
         tcall$formula <- Terms2  #version with no response
         tcall$na.action <- na.action #always present, since there is a default
         tcall[[1]] <- as.name('model.frame')  # change the function called
-        tcall$xlev <- object$xlevels
-        if (is.R()) mf2 <- eval(tcall, parent.frame())
-        else        mf2 <- eval(tcall, sys.parent())
+        
+        if (!is.null(attr(Terms, "specials")$strata) && !has.strata) {
+           temp.lev <- object$xlevels
+           temp.lev[[stemp$vars]] <- NULL
+           tcall$xlev <- temp.lev
+        }
+        else tcall$xlev <- object$xlevels
+        mf2 <- eval(tcall, parent.frame())
 
+        collapse <- model.extract(mf2, "collapse")
+        n2 <- nrow(mf2)
+        
         if (has.strata) {
             if (length(stemp$vars)==1) newstrat <- mf2[[stemp$vars]]
             else newstrat <- strata(mf2[,stemp$vars], shortlabel=TRUE)
@@ -142,7 +141,8 @@ predict.coxph <- function(object, newdata,
                 stop("New data has a different survival type than the model")
             }
         na.action.used <- attr(mf2, 'na.action')
-        }  
+        } 
+    else n2 <- n
     if (type=="expected") {
         if (missing(newdata))
             pred <- y[,ncol(y)] - object$residuals
@@ -304,8 +304,8 @@ predict.coxph <- function(object, newdata,
         if(se.fit) se <- napredict(na.action.used, se)
         }
 
-    if (!missing(collapse)) {
-        if (length(collapse) != n) stop("Collapse vector is the wrong length")
+    if (!missing(collapse) && !is.null(collapse)) {
+        if (length(collapse) != n2) stop("Collapse vector is the wrong length")
         pred <- rowsum(pred, collapse)  # in R, rowsum is a matrix, always
         if (se.fit) se <- sqrt(rowsum(se^2, collapse))
         if (type != 'terms') {

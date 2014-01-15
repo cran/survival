@@ -9,10 +9,9 @@
 #include "survproto.h"
 
 static const R_CMethodDef Centries[] = {
-    {"Cagfit3",     (DL_FUNC) &agfit3,    23},
-    {"Cagfit5a",    (DL_FUNC) &agfit5_a,  20},
-    {"Cagfit5b",    (DL_FUNC) &agfit5_b,  19},
-    {"Cagfit5c",    (DL_FUNC) &agfit5_c,   5},
+    {"Cagfit5a",    (DL_FUNC) &agfit5a,  20},
+    {"Cagfit5b",    (DL_FUNC) &agfit5b,  19},
+    {"Cagfit5c",    (DL_FUNC) &agfit5c,   5},
     {"Cagsurv3",    (DL_FUNC) &agsurv3,   19},
     {"Cagsurv4",    (DL_FUNC) &agsurv4,    6},
     {"Cagsurv5",    (DL_FUNC) &agsurv5,   10},
@@ -37,6 +36,7 @@ static const R_CMethodDef Centries[] = {
 };
 
 static const R_CallMethodDef Callentries[] = {
+    {"Cagfit4",       (DL_FUNC) &agfit4,      12},
     {"Cconcordance1", (DL_FUNC) &concordance1, 4}, 
     {"Cconcordance2", (DL_FUNC) &concordance2, 6}, 
     {"Ccoxcount1",    (DL_FUNC) &coxcount1,    2},

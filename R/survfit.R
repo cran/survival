@@ -3,7 +3,27 @@ survfit <- function(formula, ...) {
     UseMethod("survfit", formula)
 }
 
+dim.survfit <- function(x) {
+    if (is.null(x$strata)) {
+        if (is.matrix(x$surv)) ncol(x$surv)
+        else 1
+    }
+    else {
+        nr <- length(x$strata)
+        if (is.matrix(x$xurv)) c(nr, ncol(x$surv))
+        else nr
+    }
+}
+
 "[.survfit" <- function(x, ..., drop=TRUE) {
+    nmatch <- function(indx, target) { 
+        # This function lets R worry about character, negative, or logical subscripts
+        #  It always returns a set of positive integer indices
+        temp <- 1:length(target)
+        names(temp) <- target
+        temp[indx]
+    }
+
     if (missing(..1)) i<- NULL  else i <- ..1
     if (missing(..2)) j<- NULL  else j <- ..2
     if (is.null(i) && is.null(j)) return (x) #no subscripts present!
@@ -17,30 +37,28 @@ survfit <- function(formula, ...) {
             if (!is.null(x$std.err)) x$std.err <- x$std.err[,j,drop=drop]
             if (!is.null(x$upper)) x$upper <- x$upper[,j,drop=drop]
             if (!is.null(x$lower)) x$lower <- x$lower[,j,drop=drop]
+            if (!is.null(x$cumhaz)) x$cumhaz <- x$cumhaz[,j,drop=drop]
         }
         else warning("survfit object has only a single survival curve")
     }
     else {
         if (is.null(i)) keep <- seq(along.with=x$time)
         else {
-            if (!is.numeric(i)) {  #character subscripts
-                indx  <- match(i, names(x$strata))
-                if (any(is.na(indx))) {
-                    stop(paste("subscript(s)", 
+            indx <- nmatch(i, names(x$strata)) #strata to keep
+            if (any(is.na(indx))) 
+                stop(paste("strata", 
                                paste(i[is.na(indx)], collapse=' '),
                                'not matched'))
-                }
-                else i <- indx
-            }
-            # Now, i may not be in order, hence the list/unlist construct
-            #  which will reorder the data in the curves
+ 
+            # Now, indx may not be in order: some can use curve[3:2] to reorder
+            #  The list/unlist construct will reorder the data
             temp <- rep(1:length(x$strata), x$strata)
-            keep <- unlist(lapply(i, function(x) which(temp==x)))
+            keep <- unlist(lapply(indx, function(x) which(temp==x)))
 
-            if (length(i) <=1 && drop) x$strata <- NULL
+            if (length(indx) <=1 && drop) x$strata <- NULL
             else               x$strata  <- x$strata[i]
 
-            x$n       <- x$n[i]
+            x$n       <- x$n[indx]
             x$time    <- x$time[keep]
             x$n.risk  <- x$n.risk[keep]
             x$n.event <- x$n.event[keep]
@@ -57,6 +75,7 @@ survfit <- function(formula, ...) {
                         x$std.err <- x$std.err[keep,,drop=drop]
                 if (!is.null(x$upper)) x$upper <-x$upper[keep,,drop=drop]
                 if (!is.null(x$lower)) x$lower <-x$lower[keep,,drop=drop]
+                if (!is.null(x$cumhaz)) x$cumhaz <-x$cumhaz[keep,,drop=drop]
             }
             else {
                 x$surv <- x$surv[keep,j, drop=drop]
@@ -64,6 +83,7 @@ survfit <- function(formula, ...) {
                     x$std.err <- x$std.err[keep,j, drop=drop]
                 if (!is.null(x$upper)) x$upper <- x$upper[keep,j, drop=drop]
                 if (!is.null(x$lower)) x$lower <- x$lower[keep,j, drop=drop]
+                if (!is.null(x$cumhaz)) x$cumhaz <- x$cumhaz[keep,j, drop=drop]
                 }
         }
         else {
@@ -71,6 +91,7 @@ survfit <- function(formula, ...) {
             if (!is.null(x$std.err)) x$std.err <- x$std.err[keep]
             if (!is.null(x$upper)) x$upper <- x$upper[keep]
             if (!is.null(x$lower)) x$lower <- x$lower[keep]
+            if (!is.null(x$cumhaz)) x$cumhaz <- x$cumhaz[keep]
         }
     }
     x

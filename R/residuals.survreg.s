@@ -11,6 +11,9 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
     Terms <- object$terms
     if(!inherits(Terms, "terms"))
             stop("invalid terms component of  object")
+    
+    # If the variance wasn't estimated then it has no error
+    if (nrow(object$var) == length(object$coefficients)) rsigma <- FALSE
 
     # If there was a cluster directive in the model statment then remove
     #  it.  It does not correspond to a coefficient, and would just confuse

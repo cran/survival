@@ -8,8 +8,8 @@ summary.survfit <- function(object, times, censored=FALSE,
     if (!inherits(fit, 'survfit'))
             stop("summary.survfit can only be used for survfit objects")
 
-    # The print.rmean option is depreciated, still paid
-    #   attention to in print.survfit, but ignored here
+    # The print.rmean option is depreciated, it is still listened
+    #   to in print.survfit, but ignored here
     if (is.null(rmean)) rmean <- "none"
 
     temp <- survmean(fit, scale=scale, rmean)  
@@ -365,7 +365,7 @@ summary.survfitms <- function(object, times, censored=FALSE,
         if (is.matrix(fit$prev)) {
             temp$prev <- rbind(0, fit$prev)[indx1,,drop=FALSE]
             zz <- ifelse(indx1==1, NA, indx1-1)
-            temp$cumhaz <- fit$cumhaz(,,zz, drop=FALSE)
+            temp$cumhaz <- fit$cumhaz[,,zz, drop=FALSE]
             temp$cumhaz <- ifelse(is.na(temp$cumhaz), 0, temp$cumhaz)
             if (!is.null(fit$std.err)) 
                 temp$std.err <- rbind(0, fit$std.err)[indx1,,drop=FALSE]
@@ -400,7 +400,9 @@ summary.survfitms <- function(object, times, censored=FALSE,
     temp
 }
 "[.survfitms" <- function(x, ..., drop=TRUE) {
-    nmatch <- function(indx, target) {
+    nmatch <- function(indx, target) { 
+        # This function lets R worry about character, negative, or logical subscripts
+        #  It always returns a set of positive integer indices
         temp <- 1:length(target)
         names(temp) <- target
         temp[indx]
@@ -435,11 +437,15 @@ summary.survfitms <- function(object, times, censored=FALSE,
             if (any(is.na(indx))) 
                 stop(paste("strata", 
                                paste(i[is.na(indx)], collapse=' '),
-                               'not matched'))
-            strat <- rep(names(x$strata), x$strata)
-            keep <- seq(along.with=strat)[strat %in% names(indx)]
-            if (length(indx) <=1) x$strata <- NULL
-            else                  x$strata  <- x$strata[indx]
+                           'not matched'))
+
+            # Now, i may not be in order: a user has curve[3:2] to reorder a plot
+            # Hence the list/unlist construct which will reorder the data in the curves
+            temp <- rep(1:length(x$strata), x$strata)
+            keep <- unlist(lapply(i, function(x) which(temp==x)))
+
+            if (length(i) <=1 && drop) x$strata <- NULL
+            else               x$strata  <- x$strata[indx]
 
             x$n       <- x$n[indx]
             x$time    <- x$time[keep]

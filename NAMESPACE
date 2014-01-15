@@ -1,23 +1,28 @@
 useDynLib(survival, .registration = TRUE)
 importFrom(splines, ns, spline.des)
 import(stats,graphics)
-export("Surv", "aareg", "attrassign", 
-     "basehaz", "cch", "clogit", "cluster", "cox.zph", 
-     "coxph", "coxph.control", "coxph.detail", "coxph.fit",
-     "format.Surv", 
-     "frailty",  "frailty.gamma", 
-     "frailty.gaussian", "frailty.t", "is.Surv", 
-     "is.na.Surv", "is.na.coxph.penalty", 
-     "is.na.ratetable",  "is.ratetable", 
-     "labels.survreg", "match.ratetable", 
-     "psurvreg", "qsurvreg", "dsurvreg",
-     "pspline", "pyears", "ratetable", "ratetableDate", 
-     "ridge", "strata", "survConcordance",
-     "survSplit", "survdiff", "survexp",  "survfit" ,
-     "survfitcoxph.fit",
-     "survobrien",  "survreg", "survreg.control", "survreg.fit",
-     "survreg.distributions", "survregDtest", "tcut", "tt",
-     "untangle.specials")
+export("Surv", "aareg", "agreg.fit",
+       "agexact.fit", "attrassign", 
+       "basehaz", "cch", "clogit", "cluster", "cox.zph", 
+       "coxph", "coxph.control", "coxph.detail", "coxph.fit",
+       "coxph.wtest", "format.Surv", 
+       "frailty",  "frailty.gamma", 
+       "frailty.gaussian", "frailty.t", "is.Surv", 
+       "is.na.Surv", "is.na.coxph.penalty", 
+       "is.na.ratetable",  "is.ratetable", 
+       "labels.survreg", "match.ratetable", 
+       "psurvreg", "qsurvreg", "dsurvreg",
+       "pspline", "pyears", "ratetable", "ratetableDate", 
+       "ridge", "strata", "survConcordance",
+       "survSplit", "survdiff", "survexp",  "survfit" ,
+       "survfit.formula",
+       "survfitcoxph.fit", "survfitKM", "survfitCI",
+       "survobrien",  
+       "survpenal.fit", "survConcordance.fit",
+       "survreg", "survreg.control", "survreg.fit",
+       "survreg.distributions", "survregDtest", "tcut",
+       "untangle.specials")
+S3method('[', aareg)
 S3method('[', Surv)
 S3method('[', cox.zph)
 S3method('[', coxph.penalty)
@@ -44,8 +49,13 @@ S3method(as.matrix, Surv)
 S3method(attrassign, default)
 S3method(attrassign, lm)
 S3method(extractAIC,coxph.penal)
+S3method(dim, survfit)
+S3method(levels, tcut)
 S3method(lines, aareg)
+S3method(lines, survexp)
 S3method(lines, survfit)
+S3method(logLik, coxph)
+S3method(logLik, survreg)
 S3method(makepredictcall, pspline)
 S3method(model.frame, coxph)
 S3method(model.frame, survreg)
@@ -71,6 +81,7 @@ S3method(print, coxph.penal)
 S3method(print, ratetable)
 S3method(print, summary.cch)
 S3method(print, summary.coxph)
+S3method(print, summary.coxph.penal)
 S3method(print, summary.survfit)
 S3method(print, summary.survfitms)
 S3method(print, summary.survreg)
@@ -86,6 +97,7 @@ S3method(ratetableDate, POSIXt)
 S3method(ratetableDate, Date)
 S3method(ratetableDate, date)
 S3method(ratetableDate, chron)
+S3method(rep, Surv)
 S3method(residuals, coxph)
 S3method(residuals, coxph.null)
 S3method(residuals, coxph.penal)
@@ -96,6 +108,7 @@ S3method(summary, coxph)
 S3method(summary, coxph.penal)
 S3method(summary, ratetable)
 S3method(summary, pyears)
+S3method(summary, survexp)
 S3method(summary, survfit)
 S3method(summary, survfitms)
 S3method(summary, survreg)

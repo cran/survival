@@ -17,9 +17,19 @@ Surv <- function(time, time2, event,
     # "Surv(a,b)" has the variable b matched to event rather than time2.
     #
     mtype <- match.arg(type)
+    # Retain any attributes of the input arguments. Originally requested
+    #  by the rms package
+    inputAttributes <- list()
+    if (!is.null(attributes(time)))
+        inputAttributes$time  <-attributes(time)
+    if (!missing(time2) && !is.null(attributes(time2)))
+        inputAttributes$time2 <- attributes(time2)
+    if (!missing(event) && !is.null(attributes(event)))
+        inputAttributes$event <- attributes(event)
+
 
     # If type is missing or it is "mstate", I need to figure out for myself
-    #  whether I have (time1, time2, status) or (time, status) data
+    #  whether I have (time, time2, status) or (time, status) data
     if (missing(type) || mtype=="mstate") {
 	if (ng==1 || ng==2) type <- 'right'
 	else if (ng==3)     type <- 'counting'
@@ -43,7 +53,7 @@ Surv <- function(time, time2, event,
 	if (missing(event))   event <- time2  # treat time2 as event
         if (length(event) != nn) stop ("Time and status are different lengths")
         if (mtype=="mstate" || (is.factor(event) && length(levels(event))>2)) {
-             mstat <- as.factor(event)
+            mstat <- as.factor(event)
             status <- as.numeric(mstat) -1
             type <- "mright"
         }
@@ -98,11 +108,21 @@ Surv <- function(time, time2, event,
 	    # convert to "interval" type, infer the event code
 	    if (!is.numeric(time2)) stop("Time2 must be numeric")
 	    if (length(time2) !=nn) 
-		    stop ("Time1 and time2 are different lengths")
-	    status <- ifelse(is.na(time), 2,
-		      ifelse(is.na(time2),0,
+		    stop ("time and time2 are different lengths")
+            time  <- ifelse(time==Inf, NA, time)    #allow Inf for upper/lower
+            time2 <- ifelse(time2== -Inf, NA, time2)  
+            backwards <- (!is.na(time) & !is.na(time2) & time > time2)
+            unknown <-  (is.na(time) & is.na(time2))
+ 	    status <- ifelse(is.na(time),  2,
+		      ifelse(is.na(time2), 0,
 		      ifelse(time==time2, 1,3)))
 	    time <- ifelse(status!=2, time, time2)
+
+            if (any(backwards)) {
+                warning("Invalid interval: start > stop, NA created")
+                status[backwards] <- NA
+            }
+            if (any(unknown)) status[unknown] <- NA
 	    type <- 'interval'
 	    }
 	else {  #check legality of event code
@@ -118,25 +138,27 @@ Surv <- function(time, time2, event,
 	    if (any(event==3, na.rm=T)) {
 		if (!is.numeric(time2)) stop("Time2 must be numeric")
 		if (length(time2) !=nn) 
-		    stop ("Time1 and time2 are different lengths")
-		}
+		    stop ("time and time2 are different lengths")
+                temp <- (status==3 & time>time2)
+                if (any(temp & !is.na(temp))) {
+                    status[temp] <- NA
+                    warning("Invalid interval: start > stop, NA created")
+                }
+            }
 	    else time2 <- 1  #dummy value, time2 is never used
-	    }
-
-	temp <- (status==3 & time>time2)
-	if (any(temp & !is.na(temp))) {
-	    time[temp] <- NA
-	    warning("Invalid interval: start > stop, NA created")
-	    }
+        }
 
 	ss <- cbind(time1=time-origin, 
 		    time2=ifelse(!is.na(status) & status==3, time2-origin, 1),
 		    status=status)
-	}
+    }
 
     dimnames(ss) <- list(NULL, dimnames(ss)[[2]]) #kill any tag-along row names
     attr(ss, "type")  <- type
-    if (type=="mright" || type=="mcounting") attr(ss, "states") <- levels(mstat)[-1]
+    if (type=="mright" || type=="mcounting") 
+        attr(ss, "states") <- levels(mstat)[-1]
+    if (length(inputAttributes) > 0) 
+        attr(ss, "inputAttributes") <- inputAttributes
     class(ss) <- 'Surv'
     ss
     }
@@ -192,17 +214,22 @@ as.character.Surv <- function(x, ...) {
     #   and the drop argument is ignored.
     # I would argue that x[3:4,,drop=FALSE] should return a matrix, since
     #  the user has implicitly specified that they want a matrix.
-    #  However, [.dataframe calls [.Surv with the extra comma; it's
+    #  However, [.dataframe calls [.Surv with the extra comma; its
     #  behavior drives the choice of default.
     if (missing(j)) {
-        type <- attr(x, 'type')
-        states <- attr(x, 'states')
-        ctemp <- class(x)
-        class(x) <- 'matrix'
-        x <- x[i,, drop=FALSE]
-        class(x) <- ctemp
-        attr(x, 'type') <- type
-        if (!is.null(states)) attr(x, "states") <- states
+        xattr <- attributes(x)
+        x <- unclass(x)[i,, drop=FALSE] # treat it as a matrix: handles dimnames
+        attr(x, 'type') <- xattr$type
+        if (!is.null(xattr$states)) attr(x, "states") <- xattr$states
+        if (!is.null(xattr$inputAttributes)) {
+            # If I see "names" subscript it, leave all else alone
+            attr(x, 'inputAttributes') <- 
+                lapply(xattr$inputAttributes, function(z) {
+                       if (any(names(z)=="names")) z$names <- z$names[i]
+                       z
+                   })
+        }
+        class(x) <- "Surv"  #restore the class
         x
     }
     else { # return  a matrix or vector
@@ -224,5 +251,6 @@ as.matrix.Surv <- function(x, ...) {
     y <- unclass(x)
     attr(y, "type") <- NULL
     attr(y, "states") <- NULL
+    attr(y, "inputAttributes") <- NULL
     y
     }

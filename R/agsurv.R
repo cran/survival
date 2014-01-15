@@ -32,7 +32,7 @@ agsurv <- function(y, x, wt, risk, survtype, vartype) {
     ndeath <- rowsum(status, dtime)  #unweighted death count
     dtimes <- which(nevent >0)
     ntime  <- length(time)        
-    if (survtype ==1) {
+    if (survtype ==1) {  #Kalbfleisch-Prentice
         indx <- (which(status==1))[order(dtime[status==1])] #deaths
         km <- .C(Cagsurv4,
              as.integer(ndeath),
@@ -43,7 +43,7 @@ agsurv <- function(y, x, wt, risk, survtype, vartype) {
              inc = double(ntime))
         }
 
-    if (survtype==3 || vartype==3) {
+    if (survtype==3 || vartype==3) {  # Efron approx
         xsum2 <- rowsum((wrisk*death) *x, dtime)
         erisk <- rowsum(wrisk*death, dtime)  #risk score sums at each death
         tsum  <- .C(Cagsurv5, 

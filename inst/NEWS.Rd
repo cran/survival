@@ -1,5 +1,101 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 2.37-6}{
+  \itemize{
+    \item The plot for competing risk curves could have a spurious
+    segment.  (Found within 3 hours of submitting 2.37-5 to CRAN.)
+
+    \item The lines method for survexp objects was defaulting to a
+    step function, restore the documented default of a connected
+    line.
+    \item Add a levels method for tcut objects. 14Jan2014
+  }
+}  
+\section{Changes in version 2.37-5}{
+  \itemize{
+    \item Add vignette on adjusted survival curves.
+    \item Add vignette concerning "type 3" tests.
+    
+    \item Make the tt() function invisible outside of a coxph formula.
+    There was a complaint about conflicts with another package, and
+    there is not really a good reason to have it be a global name.
+    An R-devel discussion just over 1 year ago showed how to accomplish this.
+   
+    \item The modeling routines are set in two parts, e.g., coxph sets
+    up the model and coxph.fit does the work.  Export more of the ".fit"
+    routines to make it easier for other packages to build on top of
+    this one.
+    
+    \item Updates to the model.matrix and model.frame logic for
+    coxph.  A note from F Harrell showed that I was not correctly
+    dealing with the "assign" attribute when there are strata * factor
+    interactions.  This led to cleanup in other cases that I had missed
+    but which never had proven fatal.  Also added support for tt() terms
+    to the stand alone model.matrix and model.frame functions.
+    (Residuals for tt models are still not available, but this was a
+    necessary first step to that end.) 26Dec13
+    
+    \item The Surv function now remembers attributes of the input
+    variables that were passed to it; they are saved as
+    "inputAttributes".  This allows the rms package, for instance, to
+    retain labels and units through the call.
+    
+    \item Update summary.coxph.penal to produce an object, which in turn
+    has a print method, i.e., make it a "standard" summary function.
+    
+    \item Add a logLik method for coxph and survfit objects.
+    
+    \item Allow for Inf as the end of the time interval, for interval
+    censored data in the Surv function.
+    
+    \item The predict.coxph function would fail if it had both a newdata
+    and a collapse argument.  Pointed out by Julian Bothe.  25Sep13
+    
+    \item Survexp can now produce expecteds based on a stratified Cox
+    model.  Add the 'individual.s' and 'individual.h' options to return
+    indivudual survival and cumulative hazard estimates, respectively.
+    The result of survfit now (sometimes) includes the cumulative
+    hazard.  This will be expanded. 29Jul13
+    
+    \item Change code in the coxpenal.fit routine: the use of a vector of
+    symbols as arguments to my .C calls was confusing to a new CRAN
+    consistency check.  Both the old and new are legal R; but the old
+    was admittedly an unusual construction and it was simpler to change it.
+    
+    \item Fix a bug in survfit.coxph pointed out by Chris Andrews, whose
+    root cause was incorrect curve labels when the id option is used. 27Jun13
+    
+    \item Add rsurvreg routine.
+    
+    \item Change survfit.coxph routine so that it detects whether
+    newdata contains or does not contain strata variables, and acts
+    accordingly. If newdata does containe strata then  the output will
+    contain only those data-value and strata combinations specified by the
+    user. Retain strata levels in the coxph routine for use
+    in the survfit routine, to correctly reconstruct strata levels.
+    Warn about curves with interactions.  18Ju13
+
+    \item Add a dim method for survival curves.
+    
+    \item For competing risks curves that use the istate option, the
+    plotted curves now start with the correct (initial) prevalence of
+    each state.  22May13
+    
+    \item The survreg function failed with the "robust=T"
+    option. Pointed out by Jon Peck.  Test case added.  6May13
+    
+    \item Kazuki Yoshida pointed out that rep() had no method for Surv
+    objects.  This caused the survSplit routine to fail if the data
+    frame contained a Surv object.  3May13
+    
+    \item Per a request from Milan Bouchet-Valet fix an issue in survfit
+    that arose when the OutDec option is set to ',': it did not
+    correctly convert times back from character to numeric.
+
+    \item The plot.survfit function now obeys "cex" for the size of the
+      marks used for censored observations.
+}}
+
 \section{Changes in version 2.37-4}{
   \itemize{
     \item Subscripting error in predict.coxph for type=expected, se=T,

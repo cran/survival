@@ -1,10 +1,10 @@
 # Automatically generated from all.nw using noweb
-if (!is.R()) setOldClass(c('survexp', 'survfit'))  #set up inheritance
-
 survexp <- function(formula, data,
-        weights, subset, na.action, rmap, 
-        times,  cohort=TRUE,  conditional=FALSE,
-        ratetable=survexp.us, scale=1, npoints, se.fit,
+        weights, subset, na.action, rmap, times,
+        method=c("ederer", "hakulinen", "conditional", "individual.h", 
+                 "individual.s"),
+        cohort=TRUE,  conditional=FALSE,
+        ratetable=survexp.us, scale=1, se.fit,
         model=FALSE, x=FALSE, y=FALSE) {
     call <- match.call()
     m <- match.call(expand.dots=FALSE)
@@ -62,16 +62,19 @@ survexp <- function(formula, data,
     newvar <- all.vars(rcall)
     if (length(newvar) > 0) {
         tform <- paste(deparse(Terms), paste(newvar, collapse='+'), sep='+')
-        if (is.R()) m$formula <- as.formula(tform, environment(Terms))
-        else m$formula <- as.formula(tform)
+        m$formula <- as.formula(tform, environment(Terms))
         }
 
-    if (is.R())  m <- eval(m, parent.frame())
-    else         m <- eval(m, sys.parent())
+    m <- eval(m, parent.frame())
     n <- nrow(m)
     if (n==0) stop("Data set has 0 rows")
+    if (!missing(se.fit) && se.fit)
+        warning("se.fit value ignored")
+
     weights <- model.extract(m, 'weights')
-    if (!is.null(weights)) warning("Weights ignored")
+    if (length(weights) ==0) weights <- rep(1.0, n)
+    if (class(ratetable)=='ratetable' && any(weights !=1))
+        warning("weights ignored")
 
     if (any(attr(Terms, 'order') >1))
             stop("Survexp cannot have interaction terms")
@@ -82,58 +85,73 @@ survexp <- function(formula, data,
         }
     Y <- model.extract(m, 'response')
     no.Y <- is.null(Y)
-    if (!no.Y) {
+    if (no.Y) {
+        if (missing(times)) {
+            if (is.ratetable(ratetable)) 
+                stop("either a times argument or a response is needed")
+            }
+        else newtime <- times
+        }
+    else {
         if (is.matrix(Y)) {
             if (is.Surv(Y) && attr(Y, 'type')=='right') Y <- Y[,1]
             else stop("Illegal response value")
             }
         if (any(Y<0)) stop ("Negative follow up time")
-        if (missing(npoints)) temp <- unique(Y)
-        else                  temp <- seq(min(Y), max(Y), length=npoints)
+    #    if (missing(npoints)) temp <- unique(Y)
+    #    else                  temp <- seq(min(Y), max(Y), length=npoints)
+        temp <- unique(Y)
         if (missing(times)) newtime <- sort(temp)
         else  newtime <- sort(unique(c(times, temp[temp<max(times)])))
         }
-    else conditional <- FALSE
+
+    if (!missing(method)) method <- match.arg(method)
+    else {
+        # the historical defaults and older arguments
+        if (!missing(conditional) && conditional) method <- "conditional"
+        else {
+            if (no.Y) method <- "ederer"
+            else method <- "hakulinen"
+            }
+        if (!missing(cohort) && !cohort) method <- "individual.s"
+        }
+    if (no.Y && (method!="ederer")) 
+        stop("a response is required in the formula unless method='ederer'")
     ovars <- attr(Terms, 'term.labels')
     # rdata contains the variables matching the ratetable
     rdata <- data.frame(eval(rcall, m), stringsAsFactors=TRUE)  
     if (is.ratetable(ratetable)) {
         israte <- TRUE
         if (no.Y) {
-            if (missing(times))
-               stop("There is no times argument, and no follow-up times are given in the formula")
-            else newtime <- sort(unique(times))
             Y <- rep(max(times), n)
             }
-        se.fit <- FALSE
         rtemp <- match.ratetable(rdata, ratetable)
         R <- rtemp$R
         }
     else if (inherits(ratetable, 'coxph')) {
         israte <- FALSE
         Terms <- ratetable$terms
-        if (!is.null(attr(Terms, 'offset')))
-            stop("Cannot deal with models that contain an offset")
-        strats <- attr(Terms, "specials")$strata
-        if (length(strats))
-            stop("survexp cannot handle stratified Cox models")
-
+    #    if (!is.null(attr(Terms, 'offset')))
+    #        stop("Cannot deal with models that contain an offset")
+    #    strats <- attr(Terms, "specials")$strata
+    #    if (length(strats))
+    #        stop("survexp cannot handle stratified Cox models")
+    #
         if (any(names(m[,rate]) !=  attr(ratetable$terms, 'term.labels')))
              stop("Unable to match new data to old formula")
-        R <- model.matrix.coxph(ratetable, data=rdata)
-
-        if (no.Y) {
-            if (missing(se.fit)) se.fit <- TRUE
-            }
-        else se.fit <- FALSE
         }
     else stop("Invalid ratetable")
-    if (!cohort) { #individual survival
-        if (no.Y) stop("For non-cohort, an observation time must be given")
+    if (substring(method, 1, 10) == "individual") { #individual survival
+        if (no.Y) stop("for individual survival an observation time must be given")
         if (israte)
              temp <- survexp.fit (1:n, R, Y, max(Y), TRUE, ratetable)
-        else temp<- survexp.cfit(1:n, R, Y, FALSE, TRUE, ratetable, FALSE)
-        xx <- temp$surv
+        else {
+            rmatch <- match(names(data), names(rdata))
+            if (any(is.na(rmatch))) rdata <- cbind(rdata, data[,is.na(rmatch)])
+            temp <- survexp.cfit(1:n, rdata, Y, 'individual', ratetable)
+        }
+        if (method == "individual.s") xx <- temp$surv
+        else xx <- -log(temp$surv)
         names(xx) <- row.names(m)
         na.action <- attr(m, "na.action")
         if (length(na.action)) return(naresid(na.action, xx))
@@ -154,53 +172,47 @@ survexp <- function(formula, data,
     #do the work
     if (israte)
         temp <- survexp.fit(as.numeric(X), R, Y, newtime,
-                           conditional, ratetable)
+                           method=="conditional", ratetable)
     else {
-        temp <- survexp.cfit(as.numeric(X), R, Y, conditional, FALSE,
-                           ratetable, se.fit=se.fit)
-        newtime <- temp$times
+        temp <- survexp.cfit(as.numeric(X), rdata, Y, method, ratetable, weights)
+        newtime <- temp$time
         }
     if (missing(times)) {
         n.risk <- temp$n
         surv <- temp$surv
-        if (se.fit) err <- temp$se
         }
     else {
         if (israte) keep <- match(times, newtime)
         else {
             # The result is from a Cox model, and it's list of
             #  times won't match the list requested in the user's call
-            # Interpolate the step function, giving survival of 1 and
-            #  se of 0 for requested points that precede the Cox fit's
+            # Interpolate the step function, giving survival of 1
+            #  for requested points that precede the Cox fit's
             #  first downward step.  The code is like summary.survfit.
-            n <- length(newtime)
-            keep <- approx(c(0, newtime), 0:n, xout=times,
+            n <- length(temp$time)
+            keep <- approx(temp$time, 1:n, xout=times, yleft=0,
                            method='constant', f=0, rule=2)$y
             }
 
         if (is.matrix(temp$surv)) {
             surv <- (rbind(1,temp$surv))[keep+1,,drop=FALSE]
             n.risk <- temp$n[pmax(1,keep),,drop=FALSE]
-            if (se.fit) err <- (rbind(0,temp$se))[keep+1,,drop=FALSE]
-            }
+             }
         else {
             surv <- (c(1,temp$surv))[keep+1]
             n.risk <- temp$n[pmax(1,keep)]
-            if (se.fit) err <- (c(0,temp$se))[keep+1]
             }
         newtime <- times
         }
     newtime <- newtime/scale
     if (is.matrix(surv)) {
         dimnames(surv) <- list(NULL, levels(X))
-        out <- list(call=call, surv=surv, n.risk=c(n.risk[,1]),
+        out <- list(call=call, surv= drop(surv), n.risk=drop(n.risk),
                         time=newtime)
-        if (se.fit) out$std.err <- err
         }
     else {
          out <- list(call=call, surv=c(surv), n.risk=c(n.risk),
                        time=newtime)
-         if (se.fit) out$std.err <- c(err)
          }
     if (model) out$model <- m
     else {
@@ -211,7 +223,6 @@ survexp <- function(formula, data,
     if (no.Y) out$method <- 'Ederer'
     else if (conditional) out$method <- 'conditional'
     else                  out$method <- 'cohort'
-    if (is.R()) class(out) <- c('survexp', 'survfit')
-    else        oldClass(out) <- c('survexp')
+    class(out) <- c('survexp', 'survfit')
     out
 }

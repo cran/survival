@@ -20,18 +20,30 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
         }
         if (missing(fun)) fun <- "event"
     }
+    if (missing(firsty) && !is.null(x$prev0)) firsty <- 1-x$prev0
     if (is.logical(log)) {
-        logy <- log
-        logx <- FALSE
-        if (logy) logax <- 'y'
+        ylog <- log
+        xlog <- FALSE
+        if (ylog) logax <- 'y'
         else      logax <- ""
     }
     else {
-        logy <- (log=='y' || log=='xy')
-        logx <- (log=='x' || log=='xy')
+        ylog <- (log=='y' || log=='xy')
+        xlog <- (log=='x' || log=='xy')
         logax  <- log
     }
 
+    if (!missing(fun)) {
+        if (is.character(fun)) {
+            if (fun=='log'|| fun=='logpct') ylog <- TRUE
+            if (fun=='cloglog') {
+                xlog <- TRUE
+                if (ylog) logax <- 'xy'
+                else logax <- 'x'
+            }
+        }
+    }
+        
     # The special x axis style only applies when firstx is not given
     if (missing(xaxs) && (firstx!=0 || !missing(fun) ||
                           (missing(fun) && inherits(x, "survfitms"))))
@@ -42,7 +54,10 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
         supper <- as.matrix(x$upper)
         slower <- as.matrix(x$lower)
     }
-    else conf.int=FALSE
+    else {
+        conf.int <- FALSE
+        supper <- NULL  #marker for later code
+    }
 
     # Two cases where we don't put marks at the censoring times
     if (inherits(x, 'survexp') || inherits(x, 'survfit.coxph')) {
@@ -59,12 +74,12 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
         stemp <- rep(1:nstrat, x$strata) # same length as stime
     }
     ncurve <- nstrat * ncol(ssurv)
+    firsty <- matrix(firsty, nrow=nstrat, ncol=ncol(ssurv))
     if (!missing(xmax) && any(x$time>xmax)) {
         # prune back the survival curves
         # I need to replace x's over the limit with xmax, and y's over the
-        #  limit with either the prior y value or firsty
+        #  limit with either the prior y value  or firsty
         keepx <- keepy <- NULL  # lines to keep
-        yzero <- NULL           # if all points on a curve are < xmax
         tempn <- table(stemp)
         offset <- cumsum(c(0, tempn))
         for (i in 1:nstrat) {
@@ -75,9 +90,11 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
             }
             else {
                 bad <- min((1:tempn[i])[ttime>xmax])
-                if (bad==1)  {
-                    keepy <- c(keepy, 1+offset[i])
-                    yzero <- c(yzero, 1+offset[i])
+                if (bad==1)  {  #lost them all
+                    if (!is.na(firstx)) { # and we are plotting lines
+                        keepy <- c(keepy, 1+offset[i])
+                        ssurv[1+offset[i],] <- firsty[i,]
+                    }
                     } 
                 else  keepy<- c(keepy, c(1:(bad-1), bad-1) + offset[i])
                 keepx <- c(keepx, (1:bad)+offset[i])
@@ -91,12 +108,8 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
         stemp <- stemp[keepx]
         x$n.event <- x$n.event[keepx]
         if (!is.null(x$n.censor)) x$n.censor <- x$n.censor[keepx]
-
-        if (length(yzero))
-            ssurv[yzero,] <- firsty
         ssurv <- ssurv[keepy,,drop=FALSE]
         if (!is.null(supper)) {
-            if (length(yzero)) supper[yzero,] <- slower[yzero,] <- firsty
             supper <- supper[keepy,,drop=FALSE]
             slower <- slower[keepy,,drop=FALSE]
         }
@@ -125,23 +138,25 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
             }
         firsty <- tfun(firsty)
     }
-    if (missing(firsty) && (is.null(x$type) || 
-                            x$type=="mright" || x$type=="mcounting")) {
-        firsty <- NA
-        firstx <- min(stime)
-    }
-    else if (missing(firstx)) {
+    if (missing(firstx)) {
         if (!is.null(x$start.time)) 
             firstx <- x$start.time
         else {
-            if (logx || (!missing(fun) && is.character(fun) && fun=='cloglog'))
-                firstx <- min(stime[stime>0])
+            if (xlog) firstx <- min(stime[stime>0])
             else      firstx <- min(0, stime)
         }
     }
 
-    #The default for plot is to add confidence limits if there is only one curve
+    # The default for plot and lines is to add confidence limits
+    #  if there is only one curve
     if (missing(conf.int)) conf.int <- (ncurve==1)
+    if (is.logical(conf.int)) plot.surv <- TRUE
+    else {
+        temp <- match.arg(conf.int, c("both", "only", "none"))
+        if (is.na(temp)) stop("invalid value for conf.int")
+        if (temp=="none") conf.int <- FALSE  else conf.int <- TRUE
+        if (temp=="only") plot.surv <- FALSE  else plot.surv <- TRUE
+    }
     # Marks are not placed on confidence bands
     mark <- rep(mark, length.out=ncurve)
     mcol <- rep(col,  length.out=ncurve)
@@ -174,14 +189,6 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
     }
     #axis setting parmaters that depend on the fun argument
     if (!missing(fun)) {
-        if (is.character(fun)) {
-            if (fun=='log'|| fun=='logpct') logy <- TRUE
-            if (fun=='cloglog') {
-                logx <- TRUE
-                if (logy) logax <- 'xy'
-                else logax <- 'x'
-            }
-        }
         ymin <- tfun(ymin)  #lines routine doesn't have it
     }
 
@@ -194,7 +201,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
     else tempx <- max(stime)
     tempx <- c(firstx, tempx, firstx)
 
-    if (logy) {
+    if (ylog) {
         tempy <-  range(ssurv[is.finite(ssurv)& ssurv>0])
         if (tempy[2]==1) tempy[2] <- .99
         if (any(ssurv==0)) {
@@ -217,11 +224,11 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
     #
     # Draw the basic box
     #
-    plot(tempx, tempy*yscale, type='n', log=logax,
+    plot(range(tempx), range(tempy)*yscale, type='n', log=logax,
          xlab=xlab, ylab=ylab, xaxs=xaxs,...)
 
     if(yscale != 1) {
-        if (logy) par(usr =par("usr") -c(0, 0, log10(yscale), log10(yscale))) 
+        if (ylog) par(usr =par("usr") -c(0, 0, log10(yscale), log10(yscale))) 
         else par(usr =par("usr")/c(1, 1, yscale, yscale))   
     }
     # Create a step function, removing redundancies that sometimes occur in
@@ -249,7 +256,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
         }
     }
 
-    drawmark <- function(x, y, mark.time, censor, ...) {
+    drawmark <- function(x, y, mark.time, censor, cex, ...) {
         if (!is.numeric(mark.time)) {
             xx <- x[censor]
             yy <- y[censor]
@@ -258,10 +265,11 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
             xx <- mark.time
             yy <- approx(x, y, xx, method="constant", f=0)$y
         }
-        points(xx, yy, ...)
+        points(xx, yy, cex=cex, ...)
             
     }
     plot.surv <- TRUE
+    type <- 's'
     c1 <- 1  # keeps track of the curve number
     c2 <- 1  # keeps track of the lty, col, etc
     xend <- yend <- double(ncurve)
@@ -273,11 +281,14 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
         xx <- c(firstx, stime[who])
         censor <- c(FALSE, censor)  #no mark at firstx
         for (j in 1:ncol(ssurv)) {
-            yy <- c(firsty, ssurv[who,j])
+            yy <- c(firsty[i,j], ssurv[who,j])
             if (plot.surv) {
-                lines(dostep(xx, yy), lty=lty[c2], col=col[c2], lwd=lwd[c2]) 
+                if (type=='s')
+                    lines(dostep(xx, yy), lty=lty[c2], col=col[c2], lwd=lwd[c2]) 
+                else lines(xx, yy, type=type, lty=lty[c2], col=col[c2], lwd=lwd[c2])
                 if (is.numeric(mark.time) || mark.time) 
-                    drawmark(xx, yy, mark.time, censor, pch=mark[c1], col=mcol[c1])
+                    drawmark(xx, yy, mark.time, censor, pch=mark[c1], col=mcol[c1],
+                             cex=cex)
             }
             xend[c1] <- max(xx)
             yend[c1] <- yy[length(yy)]
@@ -285,13 +296,23 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
             c2 <- c2 +1
 
             if (conf.int) {
-                lines(dostep(xx, c(firsty, slower[who,j])), lty=lty[c2], col=col[c2],
-                      lwd=lwd[c2])
-                c2 <- c2 +1
-                lines(dostep(xx, c(firsty, supper[who,j])), lty=lty[c2], col=col[c2],
-                      lwd= lwd[c2])
-                c2 <- c2 + 1
-            }
+                if (type == 's') {
+                    lines(dostep(xx, c(firsty[i,j], slower[who,j])), lty=lty[c2], 
+                          col=col[c2],lwd=lwd[c2])
+                    c2 <- c2 +1
+                    lines(dostep(xx, c(firsty[i,j], supper[who,j])), lty=lty[c2], 
+                          col=col[c2], lwd= lwd[c2])
+                    c2 <- c2 + 1
+                }
+                else {
+                    lines(xx, c(firsty[i,j], slower[who,j]), lty=lty[c2], 
+                          col=col[c2],lwd=lwd[c2], type=type) 
+                    c2 <- c2 +1
+                    lines(xx, c(firsty[i,j], supper[who,j]), lty=lty[c2], 
+                          col=col[c2], lwd= lwd[c2], type= type)
+                    c2 <- c2 + 1
+                }
+             }
         }
     }
     invisible(list(x=xend, y=yend))
@@ -299,9 +320,11 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 
 lines.survfit <- function(x, type='s', 
                           mark=3, col=1, lty=1, lwd=1,
+                          cex=1,
                           mark.time=TRUE, xscale=1, 
                           firstx=0, firsty=1, xmax,
                           fun,  conf.int=FALSE, ...) {
+    xlog <- par("xlog")
     if (inherits(x, "survfitms")) {
         x$surv <- 1- x$prev
         if (is.matrix(x$surv)) dimnames(x$surv) <- list(NULL, x$states)
@@ -311,13 +334,17 @@ lines.survfit <- function(x, type='s',
         }
         if (missing(fun)) fun <- "event"
     }
+    if (missing(firsty) && !is.null(x$prev0)) firsty <- 1-x$prev0
     ssurv <- as.matrix(x$surv)
     stime <- x$time
     if( !is.null(x$upper)) {
         supper <- as.matrix(x$upper)
         slower <- as.matrix(x$lower)
     }
-    else conf.int=FALSE
+    else {
+        conf.int <- FALSE
+        supper <- NULL  #marker for later code
+    }
 
     # Two cases where we don't put marks at the censoring times
     if (inherits(x, 'survexp') || inherits(x, 'survfit.coxph')) {
@@ -334,12 +361,12 @@ lines.survfit <- function(x, type='s',
         stemp <- rep(1:nstrat, x$strata) # same length as stime
     }
     ncurve <- nstrat * ncol(ssurv)
+    firsty <- matrix(firsty, nrow=nstrat, ncol=ncol(ssurv))
     if (!missing(xmax) && any(x$time>xmax)) {
         # prune back the survival curves
         # I need to replace x's over the limit with xmax, and y's over the
-        #  limit with either the prior y value or firsty
+        #  limit with either the prior y value  or firsty
         keepx <- keepy <- NULL  # lines to keep
-        yzero <- NULL           # if all points on a curve are < xmax
         tempn <- table(stemp)
         offset <- cumsum(c(0, tempn))
         for (i in 1:nstrat) {
@@ -350,9 +377,11 @@ lines.survfit <- function(x, type='s',
             }
             else {
                 bad <- min((1:tempn[i])[ttime>xmax])
-                if (bad==1)  {
-                    keepy <- c(keepy, 1+offset[i])
-                    yzero <- c(yzero, 1+offset[i])
+                if (bad==1)  {  #lost them all
+                    if (!is.na(firstx)) { # and we are plotting lines
+                        keepy <- c(keepy, 1+offset[i])
+                        ssurv[1+offset[i],] <- firsty[i,]
+                    }
                     } 
                 else  keepy<- c(keepy, c(1:(bad-1), bad-1) + offset[i])
                 keepx <- c(keepx, (1:bad)+offset[i])
@@ -366,12 +395,8 @@ lines.survfit <- function(x, type='s',
         stemp <- stemp[keepx]
         x$n.event <- x$n.event[keepx]
         if (!is.null(x$n.censor)) x$n.censor <- x$n.censor[keepx]
-
-        if (length(yzero))
-            ssurv[yzero,] <- firsty
         ssurv <- ssurv[keepy,,drop=FALSE]
         if (!is.null(supper)) {
-            if (length(yzero)) supper[yzero,] <- slower[yzero,] <- firsty
             supper <- supper[keepy,,drop=FALSE]
             slower <- slower[keepy,,drop=FALSE]
         }
@@ -400,24 +425,24 @@ lines.survfit <- function(x, type='s',
             }
         firsty <- tfun(firsty)
     }
+    if (missing(firstx)) {
+        if (!is.null(x$start.time)) 
+            firstx <- x$start.time
+        else {
+            if (xlog) firstx <- min(stime[stime>0])
+            else      firstx <- min(0, stime)
+        }
+    }
 
+    # The default for plot and lines is to add confidence limits
+    #  if there is only one curve
+    if (missing(conf.int)) conf.int <- (ncurve==1)
     if (is.logical(conf.int)) plot.surv <- TRUE
     else {
-        temp <- pmatch(conf.int, c("both", "only", "none"))
+        temp <- match.arg(conf.int, c("both", "only", "none"))
         if (is.na(temp)) stop("invalid value for conf.int")
         if (temp=="none") conf.int <- FALSE  else conf.int <- TRUE
         if (temp=="only") plot.surv <- FALSE  else plot.surv <- TRUE
-    }
-    
-    if (missing(firsty) && (is.null(x$type) || 
-                            x$type=="mright" || x$type=="mcounting")) {
-        firsty <- NA
-        firstx <- min(stime)
-    }
-    else if (missing(firstx)) {
-        if (!is.null(x$start.time)) 
-            firstx <- x$start.time
-        else  firstx <- min(0, stime)
     }
     # Marks are not placed on confidence bands
     mark <- rep(mark, length.out=ncurve)
@@ -474,7 +499,7 @@ lines.survfit <- function(x, type='s',
         }
     }
 
-    drawmark <- function(x, y, mark.time, censor, ...) {
+    drawmark <- function(x, y, mark.time, censor, cex, ...) {
         if (!is.numeric(mark.time)) {
             xx <- x[censor]
             yy <- y[censor]
@@ -483,7 +508,7 @@ lines.survfit <- function(x, type='s',
             xx <- mark.time
             yy <- approx(x, y, xx, method="constant", f=0)$y
         }
-        points(xx, yy, ...)
+        points(xx, yy, cex=cex, ...)
             
     }
     c1 <- 1  # keeps track of the curve number
@@ -497,11 +522,14 @@ lines.survfit <- function(x, type='s',
         xx <- c(firstx, stime[who])
         censor <- c(FALSE, censor)  #no mark at firstx
         for (j in 1:ncol(ssurv)) {
-            yy <- c(firsty, ssurv[who,j])
+            yy <- c(firsty[i,j], ssurv[who,j])
             if (plot.surv) {
-                lines(dostep(xx, yy), lty=lty[c2], col=col[c2], lwd=lwd[c2]) 
+                if (type=='s')
+                    lines(dostep(xx, yy), lty=lty[c2], col=col[c2], lwd=lwd[c2]) 
+                else lines(xx, yy, type=type, lty=lty[c2], col=col[c2], lwd=lwd[c2])
                 if (is.numeric(mark.time) || mark.time) 
-                    drawmark(xx, yy, mark.time, censor, pch=mark[c1], col=mcol[c1])
+                    drawmark(xx, yy, mark.time, censor, pch=mark[c1], col=mcol[c1],
+                             cex=cex)
             }
             xend[c1] <- max(xx)
             yend[c1] <- yy[length(yy)]
@@ -509,13 +537,23 @@ lines.survfit <- function(x, type='s',
             c2 <- c2 +1
 
             if (conf.int) {
-                lines(dostep(xx, c(firsty, slower[who,j])), lty=lty[c2], col=col[c2],
-                      lwd=lwd[c2])
-                c2 <- c2 +1
-                lines(dostep(xx, c(firsty, supper[who,j])), lty=lty[c2], col=col[c2],
-                      lwd= lwd[c2])
-                c2 <- c2 + 1
-            }
+                if (type == 's') {
+                    lines(dostep(xx, c(firsty[i,j], slower[who,j])), lty=lty[c2], 
+                          col=col[c2],lwd=lwd[c2])
+                    c2 <- c2 +1
+                    lines(dostep(xx, c(firsty[i,j], supper[who,j])), lty=lty[c2], 
+                          col=col[c2], lwd= lwd[c2])
+                    c2 <- c2 + 1
+                }
+                else {
+                    lines(xx, c(firsty[i,j], slower[who,j]), lty=lty[c2], 
+                          col=col[c2],lwd=lwd[c2], type=type) 
+                    c2 <- c2 +1
+                    lines(xx, c(firsty[i,j], supper[who,j]), lty=lty[c2], 
+                          col=col[c2], lwd= lwd[c2], type= type)
+                    c2 <- c2 + 1
+                }
+             }
         }
     }
     invisible(list(x=xend, y=yend))
@@ -532,13 +570,18 @@ points.survfit <- function(x, xscale=1,
         }
         if (missing(fun)) fun <- "event"
     }
+    firstx <- NA  # flag used in the common args
+    conf.int <- FALSE
     ssurv <- as.matrix(x$surv)
     stime <- x$time
     if( !is.null(x$upper)) {
         supper <- as.matrix(x$upper)
         slower <- as.matrix(x$lower)
     }
-    else conf.int=FALSE
+    else {
+        conf.int <- FALSE
+        supper <- NULL  #marker for later code
+    }
 
     # Two cases where we don't put marks at the censoring times
     if (inherits(x, 'survexp') || inherits(x, 'survfit.coxph')) {
@@ -555,12 +598,12 @@ points.survfit <- function(x, xscale=1,
         stemp <- rep(1:nstrat, x$strata) # same length as stime
     }
     ncurve <- nstrat * ncol(ssurv)
+    firsty <- matrix(firsty, nrow=nstrat, ncol=ncol(ssurv))
     if (!missing(xmax) && any(x$time>xmax)) {
         # prune back the survival curves
         # I need to replace x's over the limit with xmax, and y's over the
-        #  limit with either the prior y value or firsty
+        #  limit with either the prior y value  or firsty
         keepx <- keepy <- NULL  # lines to keep
-        yzero <- NULL           # if all points on a curve are < xmax
         tempn <- table(stemp)
         offset <- cumsum(c(0, tempn))
         for (i in 1:nstrat) {
@@ -571,9 +614,11 @@ points.survfit <- function(x, xscale=1,
             }
             else {
                 bad <- min((1:tempn[i])[ttime>xmax])
-                if (bad==1)  {
-                    keepy <- c(keepy, 1+offset[i])
-                    yzero <- c(yzero, 1+offset[i])
+                if (bad==1)  {  #lost them all
+                    if (!is.na(firstx)) { # and we are plotting lines
+                        keepy <- c(keepy, 1+offset[i])
+                        ssurv[1+offset[i],] <- firsty[i,]
+                    }
                     } 
                 else  keepy<- c(keepy, c(1:(bad-1), bad-1) + offset[i])
                 keepx <- c(keepx, (1:bad)+offset[i])
@@ -587,12 +632,8 @@ points.survfit <- function(x, xscale=1,
         stemp <- stemp[keepx]
         x$n.event <- x$n.event[keepx]
         if (!is.null(x$n.censor)) x$n.censor <- x$n.censor[keepx]
-
-        if (length(yzero))
-            ssurv[yzero,] <- firsty
         ssurv <- ssurv[keepy,,drop=FALSE]
         if (!is.null(supper)) {
-            if (length(yzero)) supper[yzero,] <- slower[yzero,] <- firsty
             supper <- supper[keepy,,drop=FALSE]
             slower <- slower[keepy,,drop=FALSE]
         }
