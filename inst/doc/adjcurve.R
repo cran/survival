@@ -192,21 +192,17 @@ legend(2,.4, levels(fdata$group), lty=1, col=c(1,2,4),
 
 
 ###################################################
-### code chunk number 14: adjcurve.Rnw:495-508
+### code chunk number 14: adjcurve.Rnw:498-507
 ###################################################
 id <- 1:nrow(fdata)
 cfit <- coxph(Surv(futime, death) ~ group + cluster(id), data=fdata, 
               weight=rwt)
 summary(cfit)$robscore
 
-require(survey)
-sdes <- svydesign(id = ~0, weights=~rwt, data=fdata)
-dfit <- svykm(Surv(futime, death) ~ group, design=sdes)
-# the next line is painfully slow for this large a data set
-#dfit <- svykm(Surv(futime, death) ~ group, design=sdes, se=TRUE)
-# coming in a future survival release
-#sfit3 <- survfit(Surv(futime, death) ~ group + cluster(id), 
-#                 data=fdata, weight=rwt)
+if (exists("svykm")) { #true if the survey package is loaded
+    sdes <- svydesign(id = ~0, weights=~rwt, data=fdata)
+    dfit <- svykm(Surv(futime, death) ~ group, design=sdes, se=TRUE)
+}
 
 
 ###################################################
@@ -265,7 +261,7 @@ axis(1, 1:8, levels(fdata$age2))
 
 
 ###################################################
-### code chunk number 17: adjcurve.Rnw:639-649
+### code chunk number 17: adjcurve.Rnw:638-648
 ###################################################
 # compute new weights
 wtscale <- table(fdata$group)/ tapply(fdata$rwt, fdata$group, sum)
@@ -312,7 +308,7 @@ lines(sfit1, mark.time=F, lty=2, col=c(1,2,4), xscale=365.25)
 
 
 ###################################################
-### code chunk number 20: adjcurve.Rnw:774-775
+### code chunk number 20: adjcurve.Rnw:773-774
 ###################################################
 survdiff(Surv(futime, death) ~ group + strata(age2, sex), fdata)
 
@@ -353,7 +349,7 @@ legend(2,.4, c("FLC low", "FLC med", "FLC high"), lty=1, col=c(1,2,4),
 
 
 ###################################################
-### code chunk number 23: adjcurve.Rnw:886-893
+### code chunk number 23: adjcurve.Rnw:885-892
 ###################################################
 tfit <- survfit(cfit4a, newdata=tdata, se.fit=FALSE)
 curves <- vector('list', 3)
@@ -392,7 +388,7 @@ abline(0, 1, lty=2, col=4)
 
 
 ###################################################
-### code chunk number 25: adjcurve.Rnw:964-972
+### code chunk number 25: adjcurve.Rnw:963-971
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 obs <- with(fdata, tapply(death, list(age2, sex, group), sum))
@@ -406,7 +402,7 @@ round(excess, 1)
 
 
 ###################################################
-### code chunk number 26: adjcurve.Rnw:988-1000
+### code chunk number 26: adjcurve.Rnw:987-999
 ###################################################
 cfit5a <- coxph(Surv(futime, death) ~ group:age +sex + 
                 strata(group), fdata) 

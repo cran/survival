@@ -124,7 +124,8 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
                            'cumhaz'=function(x) -log(x),
                            'cloglog'=function(x) log(-log(x)),
                            'pct' = function(x) x*100,
-                           'logpct'= function(x) 100*x,
+                           'logpct'= function(x) 100*x,  #special case further below
+                       'identity'= function(x) x,
                            stop("Unrecognized function argument")
                            )
         }
@@ -214,7 +215,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
         }
         tempy <- c(tempy, firsty)
     }
-    else tempy <- c(range(ssurv[is.finite(ssurv)] ), firsty)
+    else tempy <- range(ssurv, firsty, finite=TRUE, na.rm=TRUE)
         
     if (missing(fun)) {
         tempx <- c(tempx, firstx)
@@ -224,8 +225,9 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
     #
     # Draw the basic box
     #
-    plot(range(tempx), range(tempy)*yscale, type='n', log=logax,
-         xlab=xlab, ylab=ylab, xaxs=xaxs,...)
+    plot(range(tempx, finite=TRUE, na.rm=TRUE), 
+         range(tempy, finite=TRUE, na.rm=TRUE)*yscale, 
+         type='n', log=logax, xlab=xlab, ylab=ylab, xaxs=xaxs,...)
 
     if(yscale != 1) {
         if (ylog) par(usr =par("usr") -c(0, 0, log10(yscale), log10(yscale))) 
@@ -411,7 +413,8 @@ lines.survfit <- function(x, type='s',
                            'cumhaz'=function(x) -log(x),
                            'cloglog'=function(x) log(-log(x)),
                            'pct' = function(x) x*100,
-                           'logpct'= function(x) 100*x,
+                           'logpct'= function(x) 100*x,  #special case further below
+                       'identity'= function(x) x,
                            stop("Unrecognized function argument")
                            )
         }
@@ -648,7 +651,8 @@ points.survfit <- function(x, xscale=1,
                            'cumhaz'=function(x) -log(x),
                            'cloglog'=function(x) log(-log(x)),
                            'pct' = function(x) x*100,
-                           'logpct'= function(x) 100*x,
+                           'logpct'= function(x) 100*x,  #special case further below
+                       'identity'= function(x) x,
                            stop("Unrecognized function argument")
                            )
         }
