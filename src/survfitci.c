@@ -225,7 +225,7 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
             temp=0;
             if (sefit >0) {
                 for (k=0; k<nperson; k++) 
-                    temp += wtp[k] * umat[k][j]*umat[k][j];
+                    temp += wtp[k]* umat[k][j]*umat[k][j];
                 *vmat++ = temp;
             }
          }

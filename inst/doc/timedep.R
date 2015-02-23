@@ -12,66 +12,122 @@ library(survival)
 
 
 ###################################################
-### code chunk number 2: timedep.Rnw:75-77 (eval = FALSE)
+### code chunk number 2: timedep.Rnw:118-120 (eval = FALSE)
 ###################################################
 ## fit <- coxph(Surv(time1, time2, status) ~ age + creatinine, 
 ##              data=mydata)
 
 
 ###################################################
-### code chunk number 3: timedep.Rnw:155-158
+### code chunk number 3: rep (eval = FALSE)
 ###################################################
-cgd[1:10, c("id", "tstart", "tstop", "status", "enum", "treat")]
-cfit <- coxph(Surv(tstart, tstop, status) ~ treat + sex + age +
-               inherit + cluster(id), data=cgd)
-
-
-###################################################
-### code chunk number 4: timedep.Rnw:228-236
-###################################################
-load('raheart.rda')
-age2 <- tcut(raheart$agechf*365.25, 0:110* 365.25, labels=0:109)
-rowid <- 1:nrow(raheart)
-pfit <- pyears(Surv(startday, stopday, hospevt) ~ age2 + rowid,
-               data=raheart, data.frame=TRUE, scale=1)
-print(pfit$offtable)
-pdata <- pfit$data
-print(pdata[1:6,])
+## newd <- tmerge(data1=base, data2=timeline, id=repid, tstart=age1, 
+##                tstop=age2, options(id="repid"))
+## newd <- tmerge(newd, outcome, id=repid, mtype = cumevent(age))
+## newd <- with(subset(outcome, event='diabetes'), 
+##              tmerge(newd, id=repid, diabetes= tdc(age)))
+## newd <- with(subset(outcome, event='arthritis'),
+##              tmerge(newd, id=repid, event =tdc(age)))
 
 
 ###################################################
-### code chunk number 5: timedep.Rnw:265-282
+### code chunk number 4: cgd1
 ###################################################
-index <- as.integer(pdata$rowid)
-lagtime <- c(0, pdata$pyears[-nrow(pdata)])
-lagtime[1+ which(diff(index)==0)] <- 0 #starts at 0 for each subject
-temp <- raheart$startday[index] + lagtime  #start of each new interval
-data2 <- data.frame(raheart[index,], 
-                    time1= temp,
-                    time2= temp + pdata$pyears,
-                    event= pdata$event,
-                    age2=  1+ as.numeric(pdata$age2) )
-
-afit1 <- coxph(Surv(startday, stopday, hospevt) ~ male + pspline(agechf), 
-               data=raheart)
-afit2 <- coxph(Surv(time1, time2, event) ~ male + pspline(age2), data2)
-#termplot(afit1, terms=2, se=TRUE, xlab="Age at Diagnosis of CHF")
-#termplot(afit2, terms=2, se=TRUE, xlab="Current Age")
-
-table(with(raheart, tapply(hospevt, patid, sum)))
+newcgd <- tmerge(cgd0[, 1:13], cgd0, id=id, tstop=futime)
+newcgd <- tmerge(newcgd, cgd0, id=id, infect = event(etime1))
+newcgd <- with(cgd0, tmerge(newcgd, id=id, infect = event(etime2)))
+newcgd <- tmerge(newcgd, cgd0, id=id, infect = event(etime3)) 
+newcgd <- tmerge(newcgd, cgd0, id=id, infect = event(etime4), 
+                 infect= event(etime5), infect=event(etime6),
+                 infect= event(etime7))
+attr(newcgd, "tcount")
+newcgd <- tmerge(newcgd, newcgd, id, enum=cumtdc(tstart))
+all.equal(newcgd[, c("id", "tstart", "tstop", "infect")], 
+          cgd   [, c("id", "tstart", "tstop", "status")], 
+          check.attributes=FALSE)
 
 
 ###################################################
-### code chunk number 6: timedep.Rnw:298-302
+### code chunk number 5: stanford
 ###################################################
-afit2b <- coxph(Surv(startday, stopday, hospevt) ~ male + tt(agechf),
-                data=raheart, 
-                tt=function(x, t, ...) pspline(x + t/365.25))
-afit2b
+tdata <- jasa[, -(1:4)]  #leave off the dates, temporary data set
+tdata$futime <- pmax(.5, tdata$futime)  # the death on day 0
+indx <- with(tdata, which(wait.time == futime))
+tdata$wait.time[indx] <- tdata$wait.time[indx] - .5  #the tied transplant
+sdata <- tmerge(tdata, tdata, id=1:nrow(tdata), 
+                death = event(futime, fustat), 
+                trans = tdc(wait.time))
+attr(sdata, "tcount")
+coxph(Surv(tstart, tstop, death) ~ age + trans, sdata)
 
 
 ###################################################
-### code chunk number 7: timedep.Rnw:328-335
+### code chunk number 6: pbc
+###################################################
+temp <- subset(pbc, id <= 312, select=c(id:sex, stage))
+pbc2 <- tmerge(temp, temp, id=id, status = event(time, status))
+pbc2 <- tmerge(pbc2, pbcseq, id=id, ascites = tdc(day, ascites),
+               bili = tdc(day, bili), albumin = tdc(day, albumin),
+               protime = tdc(day, protime), alkphos = tdc(day, alk.phos))
+coef(coxph(Surv(time, status==2) ~ log(bili) + log(protime), pbc))
+coef(coxph(Surv(tstart, tstop, status==2) ~ log(bili) + log(protime), pbc2))
+
+
+###################################################
+### code chunk number 7: timedep.Rnw:432-433
+###################################################
+attr(pbc2, "tcount")
+
+
+###################################################
+### code chunk number 8: veteran1
+###################################################
+getOption("SweaveHooks")[["fig"]]()
+options(show.signif.stars = FALSE)  # display intelligence
+vfit <- coxph(Surv(time, status) ~ trt + prior + karno, veteran)
+vfit
+quantile(veteran$karno)
+
+zp <- cox.zph(vfit, transform= function(time) log(time +20))
+zp
+plot(zp[3])
+abline(0,0, col=2)
+
+
+###################################################
+### code chunk number 9: vfit2 (eval = FALSE)
+###################################################
+## vfit2 <- coxph(Surv(time, status) ~ trt + prior + karno +
+##                 I(karno * log(time + 20)), data=veteran)
+
+
+###################################################
+### code chunk number 10: vet3
+###################################################
+vfit3 <-  coxph(Surv(time, status) ~ trt + prior + karno + tt(karno),
+                data=veteran,
+                tt = function(x, t, ...) x * log(t+20))
+vfit3
+
+
+###################################################
+### code chunk number 11: pbctime
+###################################################
+pfit1 <- coxph(Surv(time, status==2) ~ log(bili) + ascites + age, pbc)
+pfit2 <- coxph(Surv(time, status==2) ~ log(bili) + ascites + tt(age),
+                data=pbc,
+                tt=function(x, t, ...) {
+                    age <- x + t/365.25 
+                    cbind(age=age, age2= (age-50)^2, age3= (age-50)^3)
+                })
+pfit2
+anova(pfit2)
+# anova(pfit1, pfit2)  #this fails
+2*(pfit2$loglik - pfit1$loglik)[2]
+
+
+###################################################
+### code chunk number 12: timedep.Rnw:634-641
 ###################################################
 function(x, t, riskset, weights){ 
     obrien <- function(x) {
@@ -83,7 +139,7 @@ function(x, t, riskset, weights){
 
 
 ###################################################
-### code chunk number 8: timedep.Rnw:345-347
+### code chunk number 13: timedep.Rnw:651-653
 ###################################################
 function(x, t, riskset, weights) 
     unlist(tapply(x, riskset, rank))

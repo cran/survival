@@ -66,9 +66,9 @@ cumulative incidence curve.
       \item{error}{
 	a character string specifying the error.  Possible values are 
 	\code{"greenwood"} for the Greenwood formula or 
-	\code{"tsiatis"} for the Tsiatis formula, 
-	(only the first character is 
-	necessary).  
+	\code{"tsiatis"} or \code{"aalen"} for the Tsiatis/Aalen formula, 
+	or \code{"robust"} for a robust variance.  The last of these
+	is assumed if non-integer case weights are provided.	
       }
       \item{conf.type}{
 	One of \code{"none"}, \code{"plain"}, \code{"log"} (the default),
@@ -203,13 +203,14 @@ function with doubly censored data. \emph{J Am Stat Assoc},
 
 }
 \seealso{
-\code{\link{survfit.coxph}} for survival curves from Cox models.  
+  \code{\link{survfit.coxph}} for survival curves from Cox models,
+  \code{\link{survfit.object}} for a description of the components of a
+  survfit object,
 \code{\link{print.survfit}},  
 \code{\link{plot.survfit}},  
 \code{\link{lines.survfit}},   
 \code{\link{coxph}},  
-\code{\link{Surv}},  
-\code{\link{strata}}.   
+\code{\link{Surv}}.  
 }
 \examples{
 #fit a Kaplan-Meier and plot it 

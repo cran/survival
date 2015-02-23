@@ -1,13 +1,12 @@
-#  $Id: frailty.gamma.S 11377 2009-12-14 22:59:56Z therneau $
 # 
 # Defining function for gamma frailty fits
 #
 frailty.gamma <- function(x, sparse=(nclass >5), theta, df, eps= 1e-5, 
 			  method=c("em", "aic", "df", "fixed"), ...) {
     nclass <- length(unique(x[!is.na(x)]))
-    if (sparse)	x <-as.numeric(as.factor(x))
+    if (sparse)	x <-as.numeric(factor(x))  #drop extra levels if a factor
     else{
-	x <- as.factor(x)
+	x <- factor(x)
 	attr(x,'contrasts') <- contr.treatment(nclass, contrasts=FALSE)
                 }
     if (is.R()) class(x) <- c("coxph.penalty",class(x))
@@ -62,9 +61,11 @@ frailty.gamma <- function(x, sparse=(nclass >5), theta, df, eps= 1e-5,
     # The final coxph object will contain a copy of printfun.  Stop it from
     #   also containing huge unnecessary variables, e.g. 'x', known at this 
     #   point in time.  Not an issue for pfun, which does not get saved.
-    # Setting to globalenv() won't work since coxph.wtest is not visible 
+    # Setting to globalenv() will not suffice since coxph.wtest is not visible 
     #   outside the survival library's name space.
-    if (is.R()) environment(printfun) <- asNamespace('survival')
+    temp <- new.env(parent=globalenv())
+    assign("cox.zph", cox.zph, envir=temp) #make a private copy
+    environment(printfun) <- temp
 
     if (method=='fixed') {
 	temp <- list(pfun=pfun,

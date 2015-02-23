@@ -251,7 +251,7 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
             ** One of the case-cohort papers suggests an offset of -100 meaning
             ** that etas of 50-100 can occur in "ok" data, so make it larger than this.
             */
-            if (abs(meaneta) > (nrisk *110)) {  
+            if (fabs(meaneta) > (nrisk *110)) {  
                 meaneta = meaneta/nrisk;
                 for (i=0; i<nused; i++) eta[i] -= meaneta;
                 temp = exp(-meaneta);
@@ -463,7 +463,7 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
                 ** One of the case-cohort papers suggests an offset of -100 meaning
                 ** that etas of 50-100 can occur in "ok" data, so make it larger than this.
                 */
-                if (abs(meaneta) > (nrisk *110)) {  
+                if (fabs(meaneta) > (nrisk *110)) {  
                     meaneta = meaneta/nrisk;
                     for (i=0; i<nused; i++) eta[i] -= meaneta;
                     temp = exp(-meaneta);

@@ -2,7 +2,7 @@
 ##
 ## case ~ exposure + strata(matching)
 ##
-clogit<-function(formula,data, weights, subset, na.action,
+clogit<-function(formula, data, weights, subset, na.action,
                  method=c("exact","approximate", "efron", "breslow"),
                  ... ) {
     
@@ -18,6 +18,15 @@ clogit<-function(formula,data, weights, subset, na.action,
     mf[[1]] <- as.name("model.frame")
     mf$na.action <- "na.pass"
     nrows<-NROW(eval(mf, parent.frame()))
+    method <- match.arg(method)
+
+    # Catch the rare case of a person asking for robust variance, and give
+    #  them a nicer warning than will occur if they fall through to the
+    #  coxph call
+    if (missing(data)) temp <- terms(formula, special='cluster')
+    else temp <- terms(formula, special="cluster", data=data)
+    if (!is.null(attr(temp, 'specials')$cluster) && method=="exact")
+        stop("robust variance plus the exact method is not supported")
 
     # Now build a call to coxph with the formula fixed up to have
     #  our special left hand side.
@@ -29,8 +38,8 @@ clogit<-function(formula,data, weights, subset, na.action,
     environment(newformula) <- environment(formula)
     coxcall$formula<-newformula
 
-    coxcall$method <- switch(match.arg(method),exact="exact",
-                                               efron="efron",
+    coxcall$method <- switch(method, exact="exact",
+                             efron="efron",
                              "breslow")
     if (!is.null(coxcall$weights)) {
         coxcall$weights <- NULL
@@ -44,9 +53,13 @@ clogit<-function(formula,data, weights, subset, na.action,
 }
 
 
-print.clogit<-function(x,...){
+print.clogit <- function(x,...){
 
     x$call<-x$userCall
     NextMethod()
 
 }
+
+survfit.clogit <- function(formula, ...)
+    stop("predicted survival curves are not defined for a clogit model")
+

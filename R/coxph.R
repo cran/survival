@@ -51,28 +51,19 @@ coxph <- function(formula, data, weights, subset, na.action,
     if (type!='right' && type!='counting')
         stop(paste("Cox model doesn't support \"", type,
                           "\" survival data", sep=''))
-    weights <- model.weights(mf)
     data.n <- nrow(Y)   #remember this before any time transforms
-    
-    cluster<- attr(Terms, "specials")$cluster
-    if (length(cluster)) {
-        robust <- TRUE  #flag to later compute a robust variance
-        tempc <- untangle.specials(Terms, 'cluster', 1:10)
-        ord <- attr(Terms, 'order')[tempc$terms]
-        if (any(ord>1)) stop ("Cluster can not be used in an interaction")
-        cluster <- strata(mf[,tempc$vars], shortlabel=TRUE)  #allow multiples
-        dropterms <- tempc$terms  #we won't want this in the X matrix
-        dropcon <- tempc$vars
-        # Save away xlevels after removing cluster (we don't want to save upteen
-        #  levels of that variable, which we will never need).
-        xlevels <- .getXlevels(Terms[-tempc$terms], mf)
-    }
-    else {
-        dropterms <- dropcons <- NULL
-        if (missing(robust)) robust <- FALSE
-        xlevels <- .getXlevels(Terms, mf)
-    }
 
+    if (length(attr(Terms, 'variables')) > 2) { # a ~1 formula has length 2
+        ytemp <- terms.inner(attr(Terms, 'variables')[1:2])
+        xtemp <- terms.inner(attr(Terms, 'variables')[-2])
+        if (any(!is.na(match(xtemp, ytemp))))
+            warning("a variable appears on both the left and right sides of the formula")
+    }
+        
+    # The time transform will expand the data frame mf.  To do this
+    #  it needs Y and the strata.  Everything else (cluster, offset, weights)
+    #  should be extracted after the transform
+    #
     strats <- attr(Terms, "specials")$strata
     if (length(strats)) {
         stemp <- untangle.specials(Terms, 'strata', 1)
@@ -151,13 +142,33 @@ coxph <- function(formula, data, weights, subset, na.action,
          type <- 'right'  # new Y is right censored, even if the old was (start, stop]
          strats <- rep(1:length(counts$nrisk), counts$nrisk)
          weights <- model.weights(mf)
+         if (!is.null(weights) && any(!is.finite(weights)))
+             stop("weights must be finite")   
          for (i in 1:ntrans) 
              mf[[timetrans$var[i]]] <- (tt[[i]])(mf[[timetrans$var[i]]], Y[,1], strats, 
                                                 weights)
          }
+
+    cluster<- attr(Terms, "specials")$cluster
+    if (length(cluster)) {
+        robust <- TRUE  #flag to later compute a robust variance
+        tempc <- untangle.specials(Terms, 'cluster', 1:10)
+        ord <- attr(Terms, 'order')[tempc$terms]
+        if (any(ord>1)) stop ("Cluster can not be used in an interaction")
+        cluster <- strata(mf[,tempc$vars], shortlabel=TRUE)  #allow multiples
+        dropterms <- tempc$terms  #we won't want this in the X matrix
+        # Save away xlevels after removing cluster (we don't want to save upteen
+        #  levels of that variable, which we will never need).
+        xlevels <- .getXlevels(Terms[-tempc$terms], mf)
+    }
+    else {
+        dropterms <- NULL
+        if (missing(robust)) robust <- FALSE
+        xlevels <- .getXlevels(Terms, mf)
+    }
     
     contrast.arg <- NULL  #due to shared code with model.matrix.coxph
-    attr(Terms, "intercept") <- TRUE
+    attr(Terms, "intercept") <- 1
     adrop <- 0  #levels of "assign" to be dropped; 0= intercept
     stemp <- untangle.specials(Terms, 'strata', 1)
     if (length(stemp$vars) > 0) {  #if there is a strata statement
@@ -200,6 +211,11 @@ coxph <- function(formula, data, weights, subset, na.action,
     attr(X, "contrasts") <- Xatt$contrasts
     offset <- model.offset(mf)
     if (is.null(offset) | all(offset==0)) offset <- rep(0., nrow(mf))
+    else if (any(!is.finite(offset))) stop("offsets must be finite")
+        
+    weights <- model.weights(mf)
+    if (!is.null(weights) && any(!is.finite(weights)))
+        stop("weights must be finite")   
 
     assign <- attrassign(X, Terms)
     contr.save <- attr(X, "contrasts")

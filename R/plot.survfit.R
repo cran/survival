@@ -141,7 +141,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
     }
     if (missing(firstx)) {
         if (!is.null(x$start.time)) 
-            firstx <- x$start.time
+            firstx <- x$start.time/xscale
         else {
             if (xlog) firstx <- min(stime[stime>0])
             else      firstx <- min(0, stime)
@@ -236,9 +236,12 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
     # Create a step function, removing redundancies that sometimes occur in
     #  curves with lots of censoring.
     dostep <- function(x,y) {
-        if (is.na(x[1] + y[1])) {
-            x <- x[-1]
-            y <- y[-1]
+        keep <- is.finite(x) & is.finite(y) 
+        if (!any(keep)) return()  #all points were infinite or NA
+        if (!all(keep)) {
+            # these won't plot anyway, so simplify (CI values are often NA)
+            x <- x[keep]
+            y <- y[keep]
         }
         n <- length(x)
         if (n==1)       list(x=x, y=y)
@@ -246,14 +249,20 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
         else {
             # replace verbose horizonal sequences like
             # (1, .2), (1.4, .2), (1.8, .2), (2.3, .2), (2.9, .2), (3, .1)
-            # with (1, .2), (3, .1).  They are slow, and can smear the looks
-            # of the line type.
-            dupy <- c(!duplicated(y)[-n], TRUE)
-            n2 <- sum(dupy)
-            
+            # with (1, .2), (.3, .2),(3, .1).  
+            #  They are slow, and can smear the looks of the line type.
+            temp <- rle(y)$lengths
+            drops <- 1 + cumsum(temp[-length(temp)])  # points where the curve drops
+
             #create a step function
-            xrep <- rep(x[dupy], c(1, rep(2, n2-1)))
-            yrep <- rep(y[dupy], c(rep(2, n2-1), 1))
+            if (n %in% drops) {  #the last point is a drop
+                xrep <- c(x[1], rep(x[drops], each=2))
+                yrep <- rep(y[c(1,drops)], c(rep(2, length(drops)), 1))
+            }
+            else {
+                xrep <- c(x[1], rep(x[drops], each=2), x[n])
+                yrep <- c(rep(y[c(1,drops)], each=2))
+            }
             list(x=xrep, y=yrep)
         }
     }
@@ -268,7 +277,6 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
             yy <- approx(x, y, xx, method="constant", f=0)$y
         }
         points(xx, yy, cex=cex, ...)
-            
     }
     plot.surv <- TRUE
     type <- 's'
@@ -430,7 +438,7 @@ lines.survfit <- function(x, type='s',
     }
     if (missing(firstx)) {
         if (!is.null(x$start.time)) 
-            firstx <- x$start.time
+            firstx <- x$start.time/xscale
         else {
             if (xlog) firstx <- min(stime[stime>0])
             else      firstx <- min(0, stime)
@@ -480,9 +488,12 @@ lines.survfit <- function(x, type='s',
     # Create a step function, removing redundancies that sometimes occur in
     #  curves with lots of censoring.
     dostep <- function(x,y) {
-        if (is.na(x[1] + y[1])) {
-            x <- x[-1]
-            y <- y[-1]
+        keep <- is.finite(x) & is.finite(y) 
+        if (!any(keep)) return()  #all points were infinite or NA
+        if (!all(keep)) {
+            # these won't plot anyway, so simplify (CI values are often NA)
+            x <- x[keep]
+            y <- y[keep]
         }
         n <- length(x)
         if (n==1)       list(x=x, y=y)
@@ -490,14 +501,20 @@ lines.survfit <- function(x, type='s',
         else {
             # replace verbose horizonal sequences like
             # (1, .2), (1.4, .2), (1.8, .2), (2.3, .2), (2.9, .2), (3, .1)
-            # with (1, .2), (3, .1).  They are slow, and can smear the looks
-            # of the line type.
-            dupy <- c(!duplicated(y)[-n], TRUE)
-            n2 <- sum(dupy)
-            
+            # with (1, .2), (.3, .2),(3, .1).  
+            #  They are slow, and can smear the looks of the line type.
+            temp <- rle(y)$lengths
+            drops <- 1 + cumsum(temp[-length(temp)])  # points where the curve drops
+
             #create a step function
-            xrep <- rep(x[dupy], c(1, rep(2, n2-1)))
-            yrep <- rep(y[dupy], c(rep(2, n2-1), 1))
+            if (n %in% drops) {  #the last point is a drop
+                xrep <- c(x[1], rep(x[drops], each=2))
+                yrep <- rep(y[c(1,drops)], c(rep(2, length(drops)), 1))
+            }
+            else {
+                xrep <- c(x[1], rep(x[drops], each=2), x[n])
+                yrep <- c(rep(y[c(1,drops)], each=2))
+            }
             list(x=xrep, y=yrep)
         }
     }
@@ -512,7 +529,6 @@ lines.survfit <- function(x, type='s',
             yy <- approx(x, y, xx, method="constant", f=0)$y
         }
         points(xx, yy, cex=cex, ...)
-            
     }
     c1 <- 1  # keeps track of the curve number
     c2 <- 1  # keeps track of the lty, col, etc

@@ -4,7 +4,7 @@ survexp <- function(formula, data,
         method=c("ederer", "hakulinen", "conditional", "individual.h", 
                  "individual.s"),
         cohort=TRUE,  conditional=FALSE,
-        ratetable=survexp.us, scale=1, se.fit,
+        ratetable=survival::survexp.us, scale=1, se.fit,
         model=FALSE, x=FALSE, y=FALSE) {
     call <- match.call()
     m <- match.call(expand.dots=FALSE)

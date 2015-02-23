@@ -8,7 +8,8 @@ vcov.survreg<-function (object, ...) {
         object$var
     }
 
-
+# The extractAIC methods for coxph and survreg objects are defined
+#  in the stats package.  Don't reprise them here.
 extractAIC.coxph.penal<- function(fit,scale,k=2,...){
         edf<-sum(fit$df)
         loglik <- fit$loglik[length(fit$loglik)]
@@ -23,18 +24,24 @@ rep.Surv <- function(x, ...) {
     x[indx,]
 }
 
-logLik.coxph <- function(object, ...) {
-    val <- object$loglik[length(object$loglik)]
-    attr(val, "df") <- sum(!is.na(object$coef))
-    attr(val, "nobs") <- object$n
-    class(val) <- "logLik"
-    val
+# This function is just like all.vars -- except that it does not recur
+#  on the $ sign, it follows both arguments of +, * and - in order to
+#  track formulas, all arguments of Surv, and only the first of things 
+#  like ns().
+# This is used to generate a warning in coxph if the same variable is used
+#  on both sides, so perfection is not required.
+terms.inner <- function(x) {
+    if (class(x) == "formula") c(terms.inner(x[[2]]), terms.inner(x[[3]]))
+    else if (class(x)== "call" && 
+             (x[[1]] != as.name("$") && x[[1]] != as.name("["))) {
+        if (x[[1]] == '+' || x[[1]]== '*' || x[[1]] == '-') {
+            # terms in a model equation
+            c(terms.inner(x[[2]]), terms.inner(x[[3]]))
+        }
+        else if (x[[1]] == as.name("Surv"))
+                 unlist(lapply(x[-1], terms.inner))
+        else terms.inner(x[[2]])
+    }
+    else(deparse(x))
 }
 
-logLik.survreg <- function(object, ...) {
-    val <- object$loglik[2]
-    attr(val, "df") <- object$df
-    attr(val, "nobs") <- object$df + object$df.residual
-    class(val) <- "logLik"
-    val
-}

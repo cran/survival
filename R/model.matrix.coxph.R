@@ -24,7 +24,7 @@ model.matrix.coxph <- function(object, data=NULL,
     }
     else dropterms <- NULL
     
-    attr(Terms, "intercept") <- TRUE
+    attr(Terms, "intercept") <- 1
     adrop <- 0  #levels of "assign" to be dropped; 0= intercept
     stemp <- untangle.specials(Terms, 'strata', 1)
     if (length(stemp$vars) > 0) {  #if there is a strata statement
@@ -179,6 +179,8 @@ model.frame.coxph <- function(formula, ...) {
           type <- 'right'  # new Y is right censored, even if the old was (start, stop]
           strats <- rep(1:length(counts$nrisk), counts$nrisk)
           weights <- model.weights(mf)
+          if (!is.null(weights) && any(!is.finite(weights)))
+              stop("weights must be finite")   
           for (i in 1:ntrans) 
               mf[[timetrans$var[i]]] <- (tt[[i]])(mf[[timetrans$var[i]]], Y[,1], strats, 
                                                  weights)

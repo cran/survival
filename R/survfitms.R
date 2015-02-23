@@ -16,6 +16,11 @@ summary.survfit <- function(object, times, censored=FALSE,
     table <- temp$matrix  #for inclusion in the output list
     rmean.endtime <- temp$end.time
 
+    if (!missing(times)) {
+        if (!is.numeric(times)) stop ("times must be numeric")
+        times <- sort(times)
+    }
+
     # The fit$surv object is sometimes a vector and sometimes a
     #  matrix.  We calculate row indices first, and then deal
     #  with the cases at the end.
@@ -141,7 +146,7 @@ summary.survfit <- function(object, times, censored=FALSE,
         temp$time <- temp$time[indx1]/scale
         temp$table <- table
         for (j in c("n.risk", "n.event", "n.censor", "n.enter",
-                    "surv", "std.err", "lower", "upper")) {
+                    "surv", "std.err", "cumhaz", "lower", "upper")) {
             zed <- temp[[j]]
             if (!is.null(zed)) {
                 if (is.matrix(zed)) temp[[j]] <- zed[indx1,,drop=FALSE]
@@ -169,7 +174,9 @@ summary.survfit <- function(object, times, censored=FALSE,
             if (!is.null(fit$lower)) {
                 temp$lower <- rbind(1, fit$lower)[indx1,,drop=FALSE]
                 temp$upper <- rbind(1, fit$upper)[indx1,,drop=FALSE]
-            }
+             }
+            if (!is.null(fit$cumhaz))
+                temp$cumhaz <- rbind(0, fit$cumhaz)[indx1,,drop=FALSE]
         }
         else {
             temp$surv <- c(1, fit$surv)[indx1]
@@ -178,6 +185,7 @@ summary.survfit <- function(object, times, censored=FALSE,
                 temp$lower <- c(1, fit$lower)[indx1]
                 temp$upper <- c(1, fit$upper)[indx1]
             }
+            if (!is.null(fit$cumhaz)) temp$cumhaz <- c(0, fit$cumhaz)[indx1]
         }
         if (!is.null(fit$strata)) {
             scount <- unlist(lapply(newtimes, length))
@@ -206,6 +214,10 @@ summary.survfitms <- function(object, times, censored=FALSE,
             stop("summary.survfitms can only be used for survfitms objects")
 
     if (is.null(rmean)) rmean <- "none"
+    if (!missing(times)) {
+        if (!is.numeric(times)) stop ("times must be numeric")
+        times <- sort(times)
+    }
 
     # add some temps to make survmean work
     object$surv <- 1-object$prev

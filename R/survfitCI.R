@@ -57,7 +57,6 @@ survfitCI <- function(X, Y, weights, id, istate,
         ftime <- factor(c(entry,etime))
         ltime <- levels(ftime)
         ftime <- matrix(as.integer(ftime), ncol=2)
-        n <- length(entry)
         timeset <- as.numeric(ltime[sort(unique(ftime[,2]))]) #unique event times
          
         nstate <- length(states)

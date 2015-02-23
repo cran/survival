@@ -30,7 +30,6 @@ agsurv <- function(y, x, wt, risk, survtype, vartype) {
         }
         
     ndeath <- rowsum(status, dtime)  #unweighted death count
-    dtimes <- which(nevent >0)
     ntime  <- length(time)        
     if (survtype ==1) {  #Kalbfleisch-Prentice
         indx <- (which(status==1))[order(dtime[status==1])] #deaths
