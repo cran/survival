@@ -59,7 +59,8 @@ agreg.fit <- function(x, y, strata, offset, init, control,
                    as.integer(method=="efron"),
                    as.integer(maxiter), 
                    as.double(control$eps),
-                   as.double(control$toler.chol))
+                   as.double(control$toler.chol),
+                   as.integer(1)) # internally rescale
     var <- matrix(agfit$imat,nvar,nvar)
     coef <- agfit$coef
     if (agfit$flag < nvar) which.sing <- diag(var)==0

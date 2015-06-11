@@ -55,7 +55,7 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
     if (!missing(tstop) && length(tstop) != length(id))
         stop("tstop and id must be the same length")
     # grab the... arguments
-    notdot <- c("data1", "data2", "id", "tstart", "tstop", "topt")
+    notdot <- c("data1", "data2", "id", "tstart", "tstop", "options")
     dotarg <- Call[is.na(match(names(Call), notdot))]
     dotarg[[1]] <- as.name("list")  # The as-yet dotarg arguments
     if (missing(data2)) args <- eval(dotarg, envir=new)

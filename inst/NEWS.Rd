@@ -1,6 +1,55 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
-\section{Changes in version 2.37-8}{
+\section{Changes in version 2.38-2}{
+  \itemize{
+    \item Change print.coxph to use the printCoefmat routine, which l
+    leads to nicer p-values.  Other print routines will follow unless
+    there is an outcry.  (But I forced signif.stars=FALSE: my tolerance of
+    bad practice has limits.)
+    
+    \item Make those parts of the competing risks vignette which depend
+    on the cmprsk library conditional.  Otherwise the build fails for
+    those without the pacakge.
+    
+    \item The coxph function could fail converge for a set of very collinear
+    predictors when using (start, stop) data; revealed in a test case
+    sent by G Borstrom.  This was due to deficiency in a check for
+    near infinite coefficients, which had already been updated for some
+    but not all cases.  (2015/6/3)
+    
+    \item Update anova.coxph to use the model.frame.coxph function; the 
+    current code had scoping errors if embedded in a function.  Add an
+    anova.coxph.penal function to correctly handle models with pspline
+    terms.
+
+    \item Fix an error in the tmerge function.  Using the options
+    argument would generate a spurious error.
+    \item Pyears could fail on very long formulas due to a deparse() issue.
+    
+    \item Add the number of observations used and deleted due to missing
+    to summary.pyears.
+    
+    \item Allow the combination of a null coxph model (~1 on the right)
+    and the exact calculation for tied times.  No one had ever asked for
+    this before.  (2015/3/25)
+    
+    \item Shorten the default printout for survfit. The records, n.max
+    and n.start columns are often the same: if so suppress duplicates.
+    
+    \item Move the anova.coxphlist function from the survival package to
+    coxme.  (2015/3/3)
+
+    \item Change the logLik method for coxph models so that the nobs
+    component is the number of events rather than the number of rows in
+    the data.  This is superior for follow on methods such as AIC.
+
+    \item Add a test to the coxexact.c routine for too large a data set;
+    too many tied times could lead to integer overflow.  "Fixing" the error
+    is not sensible: the computation for such a data set would take decades.
+    Add some more explanation to the help pages as well.
+}}
+
+\section{Changes in version 2.38-1}{
   \itemize{
     \item Fix an error discovered by CRAN, which triggered a core dump
     for them on a particular manual page (but never for me).  The linear
@@ -13,7 +62,7 @@
     
     \item Add error check for infitinte weights or offsets.  This in respose
     to a bug report where someone did this on purpose, trying to mimic
-    cure fractions, and then complained that survfit.coxph failed.
+    cure fractions, and then found that survfit.coxph failed.
 
     \item Robust variance is not supported for a coxph model with the
     "exact" approximation.  (Rarely requested and a lot of work to add.)

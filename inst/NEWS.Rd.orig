@@ -1,19 +1,77 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
-\section{Changes in version 2.37-8}{
+\section{Changes in version 2.38-2}{
   \itemize{
+    \item Fix an error in the tmerge function.  Using the options
+    argument would generate a spurious error.
+    
+    \item Add the number of observations used and deleted due to missing
+    to summary.pyears.
+    
+    \item Allow the combination of a null coxph model (~1 on the right)
+    and the exact calculation for tied times.  No one had ever asked for
+    this before.  (2015/3/25)
+    
+    \item Shorten the default printout for survfit. The records, n.max
+    and n.start columns are often the same: if so suppress duplicates.
+    
+    \item Move the anova.coxphlist function from the survival package to
+    coxme.  (2015/3/3)
+
+    \item Change the logLik method for coxph models so that the nobs
+    component is the number of events rather than the number of rows in
+    the data.  This is superior for follow on methods such as AIC.
+}}
+
+\section{Changes in version 2.38-1}{
+  \itemize{
+    \item Fix an error discovered by CRAN, which triggered a core dump
+    for them on a particular manual page (but never for me).  The linear
+    predictors from a frailty model contained NA values (incorrect),
+    leading to failure in survConcordance.fit. (2015/2/16).
+    
+    \item An error was found in the mgus data set (a progression after
+    death).  Now corrected, and added a little more follow-up time for
+    some subjects.
+    
+    \item Add error check for infitinte weights or offsets.  This in respose
+    to a bug report where someone did this on purpose, trying to mimic
+    cure fractions, and then complained that survfit.coxph failed.
+
+    \item Robust variance is not supported for a coxph model with the
+    "exact" approximation.  (Rarely requested and a lot of work to add.)
+    Add an error message to clogit(), so users get a more useful notice of
+    the issue rather than a late error from residuals.coxph.
+    
+    \item Update the rats data set: it now includes both female and male
+    litters so as to match the documentation.
+    
+    \item The term frailty(x) would fail if x were a factor, and not all
+    levels were present.  Pointed out by Theodor Balan.
+    
+    \item Fix error of "abs" instead of "fabs" in the agfit4.c code;
+    pointed out to me by CRAN.
+    
+    \item Replace all instances of the obsolete prmatrix function.
+    
+    \item Modify pyears to allow cbind(time, count) as the response,
+    giving a cumulative sum of counts, when the counts per observation
+    may be other than 0/1.
+    
     \item The lines.survfit function was incorrect for data sets that
     used the start.time option and xscale (it neglected to rescale the
     start time.)
-    
+
     \item An increasingly common error is for user to put the time
     variable on both sides of a coxph equation in the mistaken belief
     that this is a way to create time-dependent coefficients.  Generate
-    and error message for this case.
+    a warning message for this case.
     
     \item Update the basehaz function to a simple alias for "survfit".
     Prior versions called surfit but then only returned part of the
-    object.
+    object.  Update 2/2015: reverted the change.  It turns out that 6
+    different packages that depend on survival also depended on the
+    old behavior.  
     
     \item Make the default value for the shortlabel argument of strata()
     more nuanced.  If the argument is a single factor, assume that we
@@ -22,12 +80,16 @@
     \item Return the weights vector, if present, as part of the survreg
     object.
     
+    \item For interval censored points and the symmetric distributions
+    (Gaussian and logistic) response type residuals were incorrect.
+    Silly error: needed (x-mean)/scale not x/scale - mean.
+
     \item Martingale residuals could be incorrect for the case of model with
     (start, stop] data and a pspline term.  Refactor the code so that
     all of the possible code paths call the same C routine to do the residuals.
     Add a new test for this case, and further tests to verify that
     predict(type='expected') and residuals agree.
-    
+        
     \item Fix bug pointed out by D Dunker: if a model had both tt() and
     cluster() terms it would fail with a length error.
     

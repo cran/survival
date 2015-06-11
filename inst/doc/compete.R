@@ -1,17 +1,25 @@
 ### R code from vignette source 'compete.Rnw'
 
 ###################################################
-### code chunk number 1: compete.Rnw:20-25
+### code chunk number 1: compete.Rnw:24-30
 ###################################################
 options(continue="  ", width=60)
 options(SweaveHooks=list(fig=function() par(mar=c(4.1, 4.1, .3, 1.1))))
 pdf.options(pointsize=10) #text in graph about the same as regular text
 options(contrasts=c("contr.treatment", "contr.poly")) #ensure default
+
 require("survival")
 
 
 ###################################################
-### code chunk number 2: sfig1
+### code chunk number 2: check
+###################################################
+cmplib <- require("cmprsk", quietly=TRUE)
+if (cmplib) cat("\\newcommand{\\CMPRSK}{}%\n")
+
+
+###################################################
+### code chunk number 3: sfig1
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 par(mar=c(.1, .1, .1, .1))
@@ -45,7 +53,7 @@ text(c(25, 45,45), c(30, 20, 40), c("Health", "Death", "Illness"))
 
 
 ###################################################
-### code chunk number 3: mgus1
+### code chunk number 4: mgus1
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 oldpar <- par(mfrow=c(1,2))
@@ -61,7 +69,7 @@ par(oldpar)
 
 
 ###################################################
-### code chunk number 4: mgus2
+### code chunk number 5: mgus2
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 etime <- with(mgus2, ifelse(pstat==0, futime, ptime))
@@ -79,7 +87,7 @@ legend(20, .6, c("death:female", "death:male", "pcm:female", "pcm:male"),
 
 
 ###################################################
-### code chunk number 5: mgus3
+### code chunk number 6: mgus3
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 pcmbad <- survfit(Surv(etime, pstat) ~ sex, data=mgus2)
@@ -91,7 +99,7 @@ legend(0, .28, c("Males, PCM, incorrect curve", "Males, PCM, competing risk"),
 
 
 ###################################################
-### code chunk number 6: mgus4
+### code chunk number 7: mgus4
 ###################################################
 ptemp <- with(mgus2, ifelse(ptime==futime & pstat==1, ptime-.1, ptime))
 newdata <- tmerge(mgus2, mgus2,  id=id, death=event(futime, death))
@@ -101,7 +109,7 @@ with(newdata, table(death, pcm))
 
 
 ###################################################
-### code chunk number 7: mgus4g
+### code chunk number 8: mgus4g
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 temp <- with(newdata, ifelse(death==1, 2, pcm))
@@ -114,7 +122,7 @@ legend(4, .04, c("female", "male"), lty=1, col=1:2, lwd=2, bty='n')
 
 
 ###################################################
-### code chunk number 8: mgus5
+### code chunk number 9: mgus5
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 d2 <- with(newdata, ifelse(enum==2, 4, as.numeric(event)))
@@ -133,7 +141,7 @@ legend(15, .5, c("male:death w/o pcm", "male: ever pcm",
 
 
 ###################################################
-### code chunk number 9: cfit1
+### code chunk number 10: cfit1
 ###################################################
 mtemp <- mgus2
 mtemp$age <- mtemp$age/10   #age in decades (easier coefficients)
@@ -146,7 +154,7 @@ cfit2
 
 
 ###################################################
-### code chunk number 10: cfit2
+### code chunk number 11: cfit2
 ###################################################
 cfit1 <- coxph(Surv(ptime, pstat) ~ age + sex + mspike, mtemp)
 cfit1
@@ -154,7 +162,7 @@ quantile(mgus2$mspike, na.rm=TRUE)
 
 
 ###################################################
-### code chunk number 11: mpyears
+### code chunk number 12: mpyears
 ###################################################
 pfit1 <- pyears(Surv(ptime, pstat) ~ sex, mtemp, scale=12)
 round(100* pfit1$event/pfit1$pyears, 1)  # PCM rate per year
@@ -164,7 +172,7 @@ round(temp$table[,1:6], 1)
 
 
 ###################################################
-### code chunk number 12: mprev
+### code chunk number 13: mprev
 ###################################################
 tdata <- expand.grid(mspike=c(.5, 1.5), age=c(6,8), sex=c("F", "M"))
 surv1 <- survfit(cfit1, newdata=tdata)  # time to progression curves
@@ -172,7 +180,7 @@ surv2 <- survfit(cfit2, newdata=tdata)  # time to death curves
 
 
 ###################################################
-### code chunk number 13: mprev2
+### code chunk number 14: mprev2
 ###################################################
 cifun <- function(surv1, surv2) {
     utime <- sort(unique(surv1$time, surv2$time))
@@ -215,7 +223,7 @@ round(100*t(progmat), 1)  #males and females at 20 years
 
 
 ###################################################
-### code chunk number 14: mprev3
+### code chunk number 15: mprev3
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 par(mfrow=c(1,2))
@@ -230,34 +238,36 @@ matplot(coxtime/12, coxpcm[,c(2,4,6,8)], col=c(1,1,2,2),
 
 
 ###################################################
-### code chunk number 15: finegray
+### code chunk number 16: finegray
 ###################################################
-require(cmprsk)
-temp <- mtemp
-temp$fstat <- as.numeric(event)  # 1=censor, 2=pcm, 3=death
-temp$msex  <- with(temp, 1* (sex=='M'))
-fgfit1 <- with(temp, crr(etime, fstat, cov1= cbind(age, msex,  mspike),
+if (cmplib) {
+    temp <- mtemp
+    temp$fstat <- as.numeric(event)  # 1=censor, 2=pcm, 3=death
+    temp$msex  <- with(temp, 1* (sex=='M'))
+    fgfit1 <- with(temp, crr(etime, fstat, cov1= cbind(age, msex,  mspike),
                         failcode=2, cencode=1, variance=TRUE))
-fgfit2 <- with(temp, crr(etime, fstat, cov1=cbind(age, msex, mspike),
+    fgfit2 <- with(temp, crr(etime, fstat, cov1=cbind(age, msex, mspike),
                          failcode=3, cencode=1, variance=TRUE))
-cmat <- rbind("FineGray: PCM" = fgfit1$coef,
-              "Cox: PCM" = coef(cfit1),
-              "FineGray: death" = fgfit2$coef,
-              "Cox: death" = coef(cfit2))
-round(cmat,2)
+    cmat <- rbind("FineGray: PCM" = fgfit1$coef,
+                  "Cox: PCM" = coef(cfit1),
+                  "FineGray: death" = fgfit2$coef,
+                  "Cox: death" = coef(cfit2))
+    round(cmat,2)
+}
 
 
 ###################################################
-### code chunk number 16: compare
+### code chunk number 17: compare
 ###################################################
 cox.f <- log(1- progmat)    #log(1-P)
 round(cox.f[,1] / cox.f[,2], 2)
 
 
 ###################################################
-### code chunk number 17: finegray2
+### code chunk number 18: finegray2
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
+if (cmplib) {
 par(mfrow=c(1,2))
 fdata <- model.matrix(~age + sex + mspike, data=tdata)[,-1] #remove intercept
 fpred <- predict(fgfit1, cov1=fdata)
@@ -268,5 +278,15 @@ legend(0, .22, c("Female, 60", "Male, 60","Female: 80", "Male, 80"),
        col=c(1,2,1,2), lty=c(1,1,2,2), lwd=2, bty='n')
 matplot(fpred[,1]/12, fpred[,c(3,5,7,9)], col=c(1,1,2,2), lty=c(1,2,1,2),
        type='l', lwd=2, xlab="Years", ylab="FG predicted")
+}
+
+
+###################################################
+### code chunk number 19: timedep
+###################################################
+if (cmplib)
+fgfit3 <- with(temp, crr(etime, fstat, cov1= cbind(age, msex,  mspike),
+                        failcode=2, cencode=1, variance=TRUE,
+                        cov2=msex, tf = function(x) log(x)))
 
 

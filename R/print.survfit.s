@@ -57,6 +57,23 @@ print.survfit <- function(x, scale=1,
     }
     
     temp <- survmean(x, scale=scale, rmean)
+    # If the first columns of survmean are identical, suppress duplicates
+    #
+    mtemp <- if (is.matrix(temp$matrix)) temp$matrix  
+             else matrix(temp$matrix, nrow=1, 
+                         dimnames=list(NULL, names(temp$matrix)))
+    if (all(mtemp[,2] == mtemp[,3])){
+        cname <- dimnames(mtemp)[[2]]
+        mtemp <- mtemp[,-2, drop=FALSE]
+        cname <-cname[-2]
+        cname[2] <- "n"
+        dimnames(mtemp)[[2]] <- cname
+    }
+
+    if (all(mtemp[,1] == mtemp[,2])) 
+        mtemp <- mtemp[,-1, drop=FALSE]
+    temp$matrix <- drop(mtemp)
+
     print(temp$matrix)
     if (rmean != 'none') {
         if (rmean == 'individual') 

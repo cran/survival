@@ -61,7 +61,8 @@ survexp <- function(formula, data,
     # Create a temporary formula, used only in the call to model.frame
     newvar <- all.vars(rcall)
     if (length(newvar) > 0) {
-        tform <- paste(deparse(Terms), paste(newvar, collapse='+'), sep='+')
+        tform <- paste(paste(deparse(Terms), collapse=""),  
+                       paste(newvar, collapse='+'), sep='+')
         m$formula <- as.formula(tform, environment(Terms))
         }
 

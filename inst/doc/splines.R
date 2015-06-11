@@ -10,10 +10,37 @@ options(contrasts=c("contr.treatment", "contr.poly")) #reset default
 
 
 ###################################################
-### code chunk number 2: fit1
+### code chunk number 2: mplot
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 require(survival)
+mfit <- coxph(Surv(futime, death) ~ sex + pspline(age), data=mgus)
+termplot(mfit, term=2, se=TRUE, col.term=1, col.se=1)
+
+
+###################################################
+### code chunk number 3: mplot2
+###################################################
+ptemp <- termplot(mfit, se=TRUE, plot=FALSE)
+attributes(ptemp)
+ptemp$age[1:4,]
+
+
+###################################################
+### code chunk number 4: mplot3
+###################################################
+getOption("SweaveHooks")[["fig"]]()
+center <- with(ptemp$age, y[x==50])
+ytemp <- ptemp$age$y + outer(ptemp$age$se, c(0, -1.96, 1.96), '*')
+matplot(ptemp$age$x, exp(ytemp - center), log='y',
+        type='l', lty=c(1,2,2), col=1, 
+        xlab="Age at diagnosis", ylab="Relative death rate")
+
+
+###################################################
+### code chunk number 5: fit1
+###################################################
+getOption("SweaveHooks")[["fig"]]()
 options(show.signif.stars=FALSE) # display intelligence
 fit1 <- coxph(Surv(futime, death) ~ sex + pspline(age, 3), data=flchain)
 fit1
@@ -22,7 +49,7 @@ termplot(fit1, term=2, se=TRUE, col.term=1, col.se=1,
 
 
 ###################################################
-### code chunk number 3: fit2
+### code chunk number 6: fit2
 ###################################################
 agem <- with(flchain, ifelse(sex=="M", age, 60))
 agef <- with(flchain, ifelse(sex=="F", age, 60))
@@ -32,7 +59,7 @@ anova(fit2, fit1)
 
 
 ###################################################
-### code chunk number 4: plot2
+### code chunk number 7: plot2
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 # predictions

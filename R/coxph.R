@@ -220,6 +220,12 @@ coxph <- function(formula, data, weights, subset, na.action,
     assign <- attrassign(X, Terms)
     contr.save <- attr(X, "contrasts")
     if (missing(init)) init <- NULL
+    else {
+        if (length(init) != ncol(X)) stop("wrong length for init argument")
+        temp <- X %*% init - sum(colMeans(X) * init)
+        if (any(temp < .Machine$double.min.exp | temp > .Machine$double.max.exp))
+            stop("initial values lead to overflow or underflow of the exp function")
+    }
     pterms <- sapply(mf, inherits, 'coxph.penalty')
     if (any(pterms)) {
         pattr <- lapply(mf[pterms], attributes)

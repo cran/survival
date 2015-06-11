@@ -12,14 +12,28 @@ library(survival)
 
 
 ###################################################
-### code chunk number 2: timedep.Rnw:118-120 (eval = FALSE)
+### code chunk number 2: fake
+###################################################
+getOption("SweaveHooks")[["fig"]]()
+set.seed(1953)  # a good year
+nvisit <- floor(pmin(lung$time/30.5, 12))
+response <- rbinom(nrow(lung), nvisit, .05) > 0
+badfit <- survfit(Surv(time/365.25, status) ~ response, data=lung)
+plot(badfit, mark.time=FALSE, lty=1:2, 
+     xlab="Years post diagnosis", ylab="Survival")
+legend(1.5, .85, c("Responders", "Non-responders"), 
+       lty=2:1, bty='n')
+
+
+###################################################
+### code chunk number 3: timedep.Rnw:152-154 (eval = FALSE)
 ###################################################
 ## fit <- coxph(Surv(time1, time2, status) ~ age + creatinine, 
 ##              data=mydata)
 
 
 ###################################################
-### code chunk number 3: rep (eval = FALSE)
+### code chunk number 4: rep (eval = FALSE)
 ###################################################
 ## newd <- tmerge(data1=base, data2=timeline, id=repid, tstart=age1, 
 ##                tstop=age2, options(id="repid"))
@@ -31,7 +45,7 @@ library(survival)
 
 
 ###################################################
-### code chunk number 4: cgd1
+### code chunk number 5: cgd1
 ###################################################
 newcgd <- tmerge(cgd0[, 1:13], cgd0, id=id, tstop=futime)
 newcgd <- tmerge(newcgd, cgd0, id=id, infect = event(etime1))
@@ -48,7 +62,7 @@ all.equal(newcgd[, c("id", "tstart", "tstop", "infect")],
 
 
 ###################################################
-### code chunk number 5: stanford
+### code chunk number 6: stanford
 ###################################################
 tdata <- jasa[, -(1:4)]  #leave off the dates, temporary data set
 tdata$futime <- pmax(.5, tdata$futime)  # the death on day 0
@@ -62,7 +76,7 @@ coxph(Surv(tstart, tstop, death) ~ age + trans, sdata)
 
 
 ###################################################
-### code chunk number 6: pbc
+### code chunk number 7: pbc
 ###################################################
 temp <- subset(pbc, id <= 312, select=c(id:sex, stage))
 pbc2 <- tmerge(temp, temp, id=id, status = event(time, status))
@@ -74,13 +88,13 @@ coef(coxph(Surv(tstart, tstop, status==2) ~ log(bili) + log(protime), pbc2))
 
 
 ###################################################
-### code chunk number 7: timedep.Rnw:432-433
+### code chunk number 8: timedep.Rnw:467-468
 ###################################################
 attr(pbc2, "tcount")
 
 
 ###################################################
-### code chunk number 8: veteran1
+### code chunk number 9: veteran1
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 options(show.signif.stars = FALSE)  # display intelligence
@@ -95,14 +109,14 @@ abline(0,0, col=2)
 
 
 ###################################################
-### code chunk number 9: vfit2 (eval = FALSE)
+### code chunk number 10: vfit2 (eval = FALSE)
 ###################################################
 ## vfit2 <- coxph(Surv(time, status) ~ trt + prior + karno +
 ##                 I(karno * log(time + 20)), data=veteran)
 
 
 ###################################################
-### code chunk number 10: vet3
+### code chunk number 11: vet3
 ###################################################
 vfit3 <-  coxph(Surv(time, status) ~ trt + prior + karno + tt(karno),
                 data=veteran,
@@ -111,7 +125,7 @@ vfit3
 
 
 ###################################################
-### code chunk number 11: pbctime
+### code chunk number 12: pbctime
 ###################################################
 pfit1 <- coxph(Surv(time, status==2) ~ log(bili) + ascites + age, pbc)
 pfit2 <- coxph(Surv(time, status==2) ~ log(bili) + ascites + tt(age),
@@ -127,7 +141,7 @@ anova(pfit2)
 
 
 ###################################################
-### code chunk number 12: timedep.Rnw:634-641
+### code chunk number 13: timedep.Rnw:669-676
 ###################################################
 function(x, t, riskset, weights){ 
     obrien <- function(x) {
@@ -139,7 +153,7 @@ function(x, t, riskset, weights){
 
 
 ###################################################
-### code chunk number 13: timedep.Rnw:651-653
+### code chunk number 14: timedep.Rnw:686-688
 ###################################################
 function(x, t, riskset, weights) 
     unlist(tapply(x, riskset, rank))
