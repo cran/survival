@@ -1,5 +1,10 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 2.38-3}{
+  \itemize{
+    \item Add more imports to the NAMESPACE file per a request from CRAN
+  }
+}
 \section{Changes in version 2.38-2}{
   \itemize{
     \item Change print.coxph to use the printCoefmat routine, which l

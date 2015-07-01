@@ -65,15 +65,16 @@ Figure  \ref{treefig} shows a balanced binary tree containing
 have a smaller value than the parent, the right child and all its
 descendents have a larger value.
 Each node in figure \ref{treefig} is also annotated with the total weight
-of observations in that node and the weight for all its children 
-(not shown on graph).  
+of observations in that node and the weight for all its children. 
+(These weights are not shown on the graph.  For this example assume that
+all weights are 1.).  
 Assume that the tree shown represents all of the subjects still alive at the
 time a particular subject ``Smith'' expires, and that Smith has the risk score
-2.1.  The concordant pairs are all of those with a risk score greater than
-2.1, which can be found by traversing the tree from the top down,
-adding the (parent - child) value each time we branch left (5-3 at the 2.6
+38.  The concordant pairs are all of those with a risk score greater than
+38, which can be found by traversing the tree from the top down,
+adding the (parent - child) value each time we branch left (5-3 at the 44
 node),
-with a last addition of the right hand child when we 
+with a last addition of the right hand sum of weights when we 
 find the node with Smith's value (1).      %'
 There are 3 concordant and 12-3=9 discordant pairs.
 This takes a little less than $\log_2(n)$ steps on average, as compared to an
@@ -99,7 +100,7 @@ bit of code returns the indices of a sorted list when placed into such a
 tree.  
 The basic idea is that the rows of the tree start at indices 1, 2, 4, \ldots.
 For the above tree, the last row will contains the 1st, 3rd, \ldots, 11th
-smallest ranks.  The next row above contains every other value of the
+smallest ranks.  The next row above contains half of the
 ranks \emph{not yet assigned}, and etc to the top of the tree.  There is
 some care to make sure the result is an integer.
 <<btree>>=
@@ -290,7 +291,7 @@ The key part of our computation is to update the vectors of weights.
 We don't actually pass the risk score values $r$ into the routine,   %'
 it is enough for each observation to point to the appropriate tree
 node.
-The tree contains the  for everyone whose survival is larger
+The tree contains the  weights for everyone whose survival is larger
 than the time currently under review, so starts with all weights
 equal to zero.  
 For any pair of observations $i,j$ we need to add [[wt[i]*wt[j]]]
