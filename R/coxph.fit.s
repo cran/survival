@@ -119,8 +119,8 @@ coxph.fit <- function(x, y, strata, offset, init, control,
 	names(resid) <- rownames
 	if (maxiter > 0) coef[which.sing] <- NA  #leave it be if iter=0 is set
 
-        concordance <- survConcordance.fit(Surv(stime, sstat), lp[sorted],
-                                           strata, weights) 
+        #concordance <- survConcordance.fit(Surv(stime, sstat), lp[sorted],
+        #                                   strata, weights) 
 	list(coefficients  = coef,
 		    var    = var,
 		    loglik = coxfit$loglik,
@@ -129,7 +129,6 @@ coxph.fit <- function(x, y, strata, offset, init, control,
 		    linear.predictors = as.vector(lp),
 		    residuals = resid,
 		    means = coxfit$means,
-                    concordance=concordance,
 		    method='coxph')
 	}
     }
