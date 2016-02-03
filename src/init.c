@@ -49,6 +49,7 @@ static const R_CallMethodDef Callentries[] = {
     {"Csurvreg6",     (DL_FUNC) &survreg6,    15},
     {"Csurvreg7",     (DL_FUNC) &survreg7,    21},
     {"Ctmerge",       (DL_FUNC) &tmerge,       7},
+    {"Ccoxdetail1",       (DL_FUNC) &coxdetail_wrapper,       14},
     {NULL, NULL, 0}
 };
 

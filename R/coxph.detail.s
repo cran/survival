@@ -55,7 +55,7 @@ coxph.detail <-  function(object, riskmat=FALSE) {
     else rmat <- as.integer(1)
     
     
-    ff <- function(nusedx = as.integer(n),
+    ff <- .Call(Ccoxdetail1,nusedx = as.integer(n),
 			  nvarx = as.integer(nvar),
 			  ndeath= as.integer(ndeath),
 			  y = y,
@@ -63,14 +63,16 @@ coxph.detail <-  function(object, riskmat=FALSE) {
 			  index = as.integer(newstrat),
 			  event2 =as.double(score),
 			  weights = as.double(weights),
-			  means= c(method=='efron', double(ndeath*nvar-1)),
+			  means= c(method=='efron', 
+                          double(ndeath*nvar-1)),
 			  u = double(ndeath*nvar),
 			  i = double(ndeath*nvar*nvar),
 	                  rmat = rmat,
 	                  nrisk2 = double(ndeath),
-			  work=double(nvar*(3 + 2*nvar))) {
-                          .Call("coxdetail_wrapper", nusedx, nvarx, ndeath, y, covar1, index, event2, weights, means, u, i, rmat,nrisk2, work)
-                          }
+			  work=double(nvar*(3 + 2*nvar)))
+			# {
+                        #  .Call("coxdetail_wrapper", nusedx, nvarx, ndeath, y, covar1, index, event2, weights, means, u, i, rmat,nrisk2, work)
+                        #  }
     
      keep <- 1:ff$ndeath
     vname<- dimnames(x)[[2]]
