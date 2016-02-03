@@ -54,10 +54,10 @@
 void coxdetail(Sint   *nusedx,   Sint   *nvarx,    Sint   *ndeadx, 
 	       double *y,        double *covar2,   Sint   *strata,  
 	       double *score,    double *weights,  double *means2, 
-	       double *u2,       double *var,      Sint   *rmat,
+	       double *u2,       double *var,      double   *rmat,
 	       double *nrisk2,   double *work)
 {
-    int i,j,k,person;
+    long long i,j,k,person;
     int     nused, nvar;
     int     nrisk, ndead;
     double **covar, **cmat;    /*ragged arrays */
