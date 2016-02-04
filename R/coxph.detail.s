@@ -55,7 +55,7 @@ coxph.detail <-  function(object, riskmat=FALSE) {
     else rmat <- as.integer(1)
     
     
-    ff <- .Call(Ccoxdetail1,nusedx = as.integer(n),
+    ff <- .Call(Ccoxdetail1,as.integer(n),
 			  as.integer(nvar),
 			  ndeath= as.integer(ndeath),
 			  y = y,
