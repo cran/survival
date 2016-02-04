@@ -29,14 +29,14 @@ SEXP coxdetail_wrapper(SEXP   nusedx,   SEXP   nvarx,    SEXP   ndeadx,
                   covar2_double, strata_int, score_double, weights_double,
                   means2_double, u2_double, var_double,rmat_double, nrisk2_double,work_double);
 
-        int n = length(rmat_double);
-        SEXP out = PROTECT(allocVector(REALSXP, n));
-  
-        for (int i = 0; i < n; i++) {
-              REAL(out)[i] = REAL(rmat_double)[i] + 1;
-         }
-        UNPROTECT(1);
+	int n = length(rmat_double);
+        double *pout;
 
+	SEXP out = PROTECT(allocVector(REALSXP, n));
+        pout = REAL(out);
+        for (int i = 0; i < n; i++) {
+            pout[i] = rmat_double[i];
+        }
+        UNPROTECT(1);
         return out;
-        
 }
