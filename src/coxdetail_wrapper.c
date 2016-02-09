@@ -220,8 +220,12 @@ SEXP coxdetail_wrapper(SEXP   nusedx,   SEXP   nvarx,    SEXP   ndeadx,
 
         double *pout;
         long n = length(rmatx);
+        SEXP out = PROTECT(allocVector(REALSXP, n));		         
+        pout = REAL(out);		
+        for (int i = 0; i < n; i++) 
+            pout[i] = rmat_double[i];
         Rprintf("size of rmatx is %ld",n);
-        UNPROTECT(14);
+        UNPROTECT(15);
         return rmatx;
 }
  
