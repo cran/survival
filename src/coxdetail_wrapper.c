@@ -80,7 +80,6 @@ SEXP coxdetail_wrapper(SEXP   nusedx,   SEXP   nvarx,    SEXP   ndeadx,
         nvar  = *nvarxx;
         method= *means2xx;
         ndead = *ndeadxx;
-        Rprintf("rmat is %lf\n",rmatxx[0]);
         rflag = 1- rmatxx[0];
 
         /*
@@ -217,9 +216,10 @@ SEXP coxdetail_wrapper(SEXP   nusedx,   SEXP   nvarx,    SEXP   ndeadx,
         	    }
         }   /* end  of accumulation loop */
         *ndeadxx = ideath;        
-
+        Rprintf("Finished coxdetail\n");
         double *pout;
-        long n = length(rmatx);
+        long n = length(rmatxx);
+        Rprintf("Length of rmat is %ld\n",n);
         SEXP out = PROTECT(allocVector(REALSXP, n));		         
         pout = REAL(out);
         long ii=0;
@@ -227,12 +227,12 @@ SEXP coxdetail_wrapper(SEXP   nusedx,   SEXP   nvarx,    SEXP   ndeadx,
         while (ii < n){
             pout[ii] = rmatxx[ii];
             ii += 1;
-            if (pout[ii] == 1.0)
+            if (rmatxx[ii] == 1.0)
                cntOnes += 1;
         }
         Rprintf("size of rmatx is %ld with %ld one values",n,cntOnes);
         UNPROTECT(15);
-        return rmatx;
+        return out;
 }
  
 
