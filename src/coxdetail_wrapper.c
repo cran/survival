@@ -149,7 +149,6 @@ SEXP coxdetail_wrapper(SEXP   nusedx,   SEXP   nvarx,    SEXP   ndeadx,
             	    time = stop[person];
             	    deaths=0; wdeath=0;
             	    nrisk =0;
-                    Rprintf("\n Walking thru inner loop to assign cmat, cmat2\n"); 
             	    for (k=person; k<nused; k++) {
                 		if (start[k] < time) {
                 		    nrisk++;
@@ -183,7 +182,6 @@ SEXP coxdetail_wrapper(SEXP   nusedx,   SEXP   nvarx,    SEXP   ndeadx,
             	    hazard =0;
             	    varhaz =0;
             	    meanwt /= deaths;
-                    Rprintf("\n Walking thru inner loop where stop[k] == time\n"); 
             	    for (k=person; k<nused && stop[k]==time; k++) {
                 		if (event[k]==1) {
                 		    itemp++;
