@@ -53,8 +53,8 @@ coxph.detail <-  function(object, riskmat=FALSE) {
 	rmat <- double(ndeath*n)
 	}
     else rmat <- as.integer(1)
-    
-    
+
+
     ff <- .Call(Ccoxdetail1,as.integer(n),
 			  as.integer(nvar),
 			  ndeath= as.integer(ndeath),
