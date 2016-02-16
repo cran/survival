@@ -50,14 +50,15 @@
 #include <math.h>
 #include "survS.h"
 #include "survproto.h"
+#include "Rdefines.h"
 
 void coxdetail(Sint   *nusedx,   Sint   *nvarx,    Sint   *ndeadx, 
 	       double *y,        double *covar2,   Sint   *strata,  
 	       double *score,    double *weights,  double *means2, 
-	       double *u2,       double *var,      Sint   *rmat,
+	       double *u2,       double *var,      double   *rmat,
 	       double *nrisk2,   double *work)
 {
-    int i,j,k,person;
+    long i,j,k,person=0;
     int     nused, nvar;
     int     nrisk, ndead;
     double **covar, **cmat;    /*ragged arrays */
@@ -87,6 +88,7 @@ void coxdetail(Sint   *nusedx,   Sint   *nvarx,    Sint   *ndeadx,
     nvar  = *nvarx;
     method= *means2;
     ndead = *ndeadx;
+    Rprintf("rmat is %lf\n",rmat[0]);
     rflag = 1- rmat[0];
 
     /*
@@ -110,11 +112,13 @@ void coxdetail(Sint   *nusedx,   Sint   *nvarx,    Sint   *ndeadx,
     */
     for (i=0; i<nvar; i++) {
 	temp=0;
-	for (person=0; person<nused; person++) temp += covar[i][person];
+	for (person=0; person<nused; person++) 
+            temp += covar[i][person];
 	temp /= nused;
 	wmeans[i] = temp;
-	for (person=0; person<nused; person++) covar[i][person] -=temp;
-	}
+	for (person=0; person<nused; person++) 
+            covar[i][person] -=temp;
+    }
 
     /*
     ** Zero out some arrays
@@ -122,7 +126,7 @@ void coxdetail(Sint   *nusedx,   Sint   *nvarx,    Sint   *ndeadx,
     for (i=0; i<ndead*nvar; i++) {
 	u2[i]=0;
 	means2[i] =0;
-	}
+    }
     for (i=0; i<ndead*nvar*nvar; i++) var[i]=0;
 
     /*

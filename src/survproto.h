@@ -80,9 +80,15 @@ SEXP coxcount2(SEXP y2, SEXP isort1, SEXP isort2, SEXP strat2) ;
 void coxdetail(Sint   *nusedx,   Sint   *nvarx,    Sint   *ndeadx, 
 	       double *y,        double *covar2,   Sint   *strata,  
 	       double *score,    double *weights,  double *means2, 
-	       double *u2,       double *var,      Sint   *rmat,
+	       double *u2,       double *var,      double   *rmat,
 	       double *nrisk2,   double *work);
- 
+SEXP coxdetail_wrapper(SEXP   nusedx,   SEXP   nvarx,    SEXP   ndeadx,
+               SEXP y,        SEXP covar2,   SEXP   strata,
+               SEXP score,    SEXP weights,  SEXP means2,
+               SEXP u2,       SEXP var,      SEXP   rmat,
+               SEXP nrisk2,   SEXP work);
+
+
 SEXP coxexact(SEXP maxiter2,  SEXP y2, 
               SEXP covar2,    SEXP offset2, SEXP strata2,
               SEXP ibeta,     SEXP eps2,    SEXP toler2) ;
