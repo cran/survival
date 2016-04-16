@@ -1,4 +1,4 @@
-# Automatically generated from all.nw using noweb
+# Automatically generated from the noweb directory
 predict.coxph <- function(object, newdata, 
                        type=c("lp", "risk", "expected", "terms"),
                        se.fit=FALSE, na.action=na.pass,
@@ -46,7 +46,7 @@ predict.coxph <- function(object, newdata,
     if (type == 'expected') {
         y <- object[['y']]
         if (is.null(y)) {  # very rare case
-            mf <- model.frame(object)
+            mf <- stats::model.frame(object)
             y <-  model.extract(mf, 'response')
             have.mf <- TRUE  #for the logic a few lines below, avoid double work
             }
@@ -58,7 +58,7 @@ predict.coxph <- function(object, newdata,
         if (is.null(object[['x']]) || has.weights || has.offset ||
              (has.strata && is.null(object$strata))) {
             # I need the original model frame
-            if (!have.mf) mf <- model.frame(object)
+            if (!have.mf) mf <- stats::model.frame(object)
             if (nrow(mf) != n)
                 stop("Data is not the same size as it was in the original fit")
             x <- model.matrix(object, data=mf)
@@ -102,7 +102,7 @@ predict.coxph <- function(object, newdata,
         names(tcall)[2] <- 'data'  #rename newdata to data
         tcall$formula <- Terms2  #version with no response
         tcall$na.action <- na.action #always present, since there is a default
-        tcall[[1]] <- as.name('model.frame')  # change the function called
+        tcall[[1L]] <- quote(stats::model.frame)  # change the function called
         
         if (!is.null(attr(Terms, "specials")$strata) && !has.strata) {
            temp.lev <- object$xlevels

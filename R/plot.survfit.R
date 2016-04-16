@@ -1,26 +1,36 @@
-# Automatically generated from all.nw using noweb
-plot.survfit<- function(x, conf.int,  mark.time=TRUE,
+# Automatically generated from the noweb directory
+plot.survfit<- function(x, conf.int,  mark.time=FALSE,
                         mark=3, col=1,lty=1, lwd=1, 
                         cex=1, log=FALSE,
                         xscale=1, yscale=1, 
                         firstx=0, firsty=1,
                         xmax, ymin=0,
-                        fun, xlab="", ylab="", xaxs='S', ...) {
+                        fun, xlab="", ylab="", xaxs='S', 
+                        conf.times, conf.cap=.005, conf.offset=.012, ...) {
 
     dotnames <- names(list(...))
     if (any(dotnames=='type'))
         stop("The graphical argument 'type' is not allowed")
-    
+    if (missing(mark.time) & !missing(mark)) mark.time <- TRUE
+  
     if (inherits(x, "survfitms")) {
         x$surv <- 1- x$prev
-        if (is.matrix(x$surv)) dimnames(x$surv) <- list(NULL, x$states)
+        if (is.matrix(x$surv)) {
+            dimnames(x$surv) <- list(NULL, x$states)
+            if (ncol(x$surv) > 1 && any(x$states == '')) {
+                x$surv <- x$surv[, x$states != '']
+                if (is.matrix(x$p0)) x$p0 <- x$p0[, x$states != '']
+                else x$p0 <- x$p0[x$states != '']
+            }
+        }
+
         if (!is.null(x$lower)) {
             x$lower <- 1- x$lower
             x$upper <- 1- x$upper
         }
         if (missing(fun)) fun <- "event"
     }
-    if (missing(firsty) && !is.null(x$prev0)) firsty <- 1-x$prev0
+    if (missing(firsty) && !is.null(x$p0)) firsty <- 1-x$p0
     if (is.logical(log)) {
         ylog <- log
         xlog <- FALSE
@@ -59,11 +69,6 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
         supper <- NULL  #marker for later code
     }
 
-    # Two cases where we don't put marks at the censoring times
-    if (inherits(x, 'survexp') || inherits(x, 'survfit.coxph')) {
-        if (missing(mark.time)) mark.time <- FALSE
-    }
-        
     # set up strata
     if (is.null(x$strata)) {
         nstrat <- 1
@@ -114,7 +119,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
             slower <- slower[keepy,,drop=FALSE]
         }
     }
-    stime <- stime/xscale  #scaling is deferred until xmax processing is done
+    #stime <- stime/xscale  #scaling is deferred until xmax processing is done
 
     if (!missing(fun)) {
         if (is.character(fun)) {
@@ -141,7 +146,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
     }
     if (missing(firstx)) {
         if (!is.null(x$start.time)) 
-            firstx <- x$start.time/xscale
+            firstx <- x$start.time
         else {
             if (xlog) firstx <- min(stime[stime>0])
             else      firstx <- min(0, stime)
@@ -150,7 +155,13 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 
     # The default for plot and lines is to add confidence limits
     #  if there is only one curve
-    if (missing(conf.int)) conf.int <- (ncurve==1)
+    if (missing(conf.int) && missing(conf.times))  conf.int <- (ncurve==1)
+    if (missing(conf.times)) conf.times <- NULL   
+    else {
+        if (!is.numeric(conf.times)) stop('conf.times must be numeric')
+        if (missing(conf.int)) conf.int <- TRUE
+    }
+
     if (is.logical(conf.int)) plot.surv <- TRUE
     else {
         temp <- match.arg(conf.int, c("both", "only", "none"))
@@ -163,14 +174,16 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
     mcol <- rep(col,  length.out=ncurve)
     if (is.numeric(mark.time)) mark.time <- sort(mark.time)
 
-    # The actual number of curves is ncurve*3 if there are confidence bands
+    # The actual number of curves is ncurve*3 if there are confidence bands,
+    #  unless conf.times has been given.  Colors and line types in the latter
+    #  match the curves
     # If the number of line types is 1 and lty is an integer, then use lty 
     #    for the curve and lty+1 for the CI
     # If the length(lty) <= length(ncurve), use the same color for curve and CI
     #   otherwise assume the user knows what they are about and has given a full
     #   vector of line types.
     # Colors and line widths work like line types, excluding the +1 rule.
-    if (conf.int) {
+    if (conf.int & is.null(conf.times)) {
         if (length(lty)==1 && is.numeric(lty))
             lty <- rep(c(lty, lty+1, lty+1), ncurve)
         else if (length(lty) <= ncurve)
@@ -219,13 +232,13 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
         
     if (missing(fun)) {
         tempx <- c(tempx, firstx)
-        tempy <- c(tempy, ymin)
+        if (!ylog) tempy <- c(tempy, ymin)
     }
 
     #
     # Draw the basic box
     #
-    plot(range(tempx, finite=TRUE, na.rm=TRUE), 
+    plot(range(tempx, finite=TRUE, na.rm=TRUE)/xscale, 
          range(tempy, finite=TRUE, na.rm=TRUE)*yscale, 
          type='n', log=logax, xlab=xlab, ylab=ylab, xaxs=xaxs,...)
 
@@ -233,6 +246,10 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
         if (ylog) par(usr =par("usr") -c(0, 0, log10(yscale), log10(yscale))) 
         else par(usr =par("usr")/c(1, 1, yscale, yscale))   
     }
+    if (xscale !=1) {
+        if (xlog) par(usr =par("usr") -c(log10(xscale), log10(xscale), 0,0)) 
+        else par(usr =par("usr")*c(xscale, xscale, 1, 1))   
+    }  
     # Create a step function, removing redundancies that sometimes occur in
     #  curves with lots of censoring.
     dostep <- function(x,y) {
@@ -283,14 +300,19 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
     c1 <- 1  # keeps track of the curve number
     c2 <- 1  # keeps track of the lty, col, etc
     xend <- yend <- double(ncurve)
+    if (length(conf.offset) ==1) 
+        temp.offset <- (1:ncurve - (ncurve-1)/2)* conf.offset* diff(par("usr")[1:2])
+    else temp.offset <- rep(conf.offset, length=ncurve) *  diff(par("usr")[1:2])
+    temp.cap    <-  conf.cap    * diff(par("usr")[1:2])
 
-    for (i in unique(stemp)) {  #for each strata
-        who <- which(stemp==i)
-        censor <- if (is.null(x$n.censor))
-            (x$n.event[who] ==0)  else (x$n.censor[who] >0) #places with a censoring
-        xx <- c(firstx, stime[who])
-        censor <- c(FALSE, censor)  #no mark at firstx
-        for (j in 1:ncol(ssurv)) {
+    for (j in 1:ncol(ssurv)) {
+        for (i in unique(stemp)) {  #for each strata
+            who <- which(stemp==i)
+            censor <- if (is.null(x$n.censor))
+                (x$n.event[who] ==0)  else (x$n.censor[who] >0) #censoring ties
+            xx <- c(firstx, stime[who])
+            censor <- c(FALSE, censor)  #no mark at firstx
+        
             yy <- c(firsty[i,j], ssurv[who,j])
             if (plot.surv) {
                 if (type=='s')
@@ -302,10 +324,28 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
             }
             xend[c1] <- max(xx)
             yend[c1] <- yy[length(yy)]
+
+            if (conf.int && !is.null(conf.times)) {
+                # add vertical bars at the specified times
+                x2 <- conf.times + temp.offset[c1]
+                templow <- approx(xx, c(firsty[i,j], slower[who,j]), x2,
+                                  method='constant', f=1)$y
+                temphigh<- approx(xx, c(firsty[i,j], supper[who,j]), x2,
+                                  method='constant', f=1)$y
+                segments(x2, templow, x2, temphigh,
+                          lty=lty[c2], col=col[c2], lwd=lwd[c2])
+                if (conf.cap>0) {
+                    segments(x2-temp.cap, templow, x2+temp.cap, templow,
+                             lty=lty[c2], col=col[c2], lwd=lwd[c2] )
+                    segments(x2-temp.cap, temphigh, x2+temp.cap, temphigh,
+                              lty=lty[c2], col=col[c2], lwd=lwd[c2])
+                }
+               
+            }
             c1 <- c1 +1
             c2 <- c2 +1
 
-            if (conf.int) {
+            if (conf.int && is.null(conf.times)) {
                 if (type == 's') {
                     lines(dostep(xx, c(firsty[i,j], slower[who,j])), lty=lty[c2], 
                           col=col[c2],lwd=lwd[c2])
@@ -323,6 +363,7 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
                     c2 <- c2 + 1
                 }
              }
+
         }
     }
     invisible(list(x=xend, y=yend))
@@ -331,20 +372,31 @@ plot.survfit<- function(x, conf.int,  mark.time=TRUE,
 lines.survfit <- function(x, type='s', 
                           mark=3, col=1, lty=1, lwd=1,
                           cex=1,
-                          mark.time=TRUE, xscale=1, 
+                          mark.time=FALSE, xscale=1, 
                           firstx=0, firsty=1, xmax,
-                          fun,  conf.int=FALSE, ...) {
+                          fun,  conf.int=FALSE,  
+                          conf.times, conf.cap=.005, conf.offset=.012, ...) {
     xlog <- par("xlog")
+   if (missing(mark.time) & !missing(mark)) mark.time <- TRUE
+ 
     if (inherits(x, "survfitms")) {
         x$surv <- 1- x$prev
-        if (is.matrix(x$surv)) dimnames(x$surv) <- list(NULL, x$states)
+        if (is.matrix(x$surv)) {
+            dimnames(x$surv) <- list(NULL, x$states)
+            if (ncol(x$surv) > 1 && any(x$states == '')) {
+                x$surv <- x$surv[, x$states != '']
+                if (is.matrix(x$p0)) x$p0 <- x$p0[, x$states != '']
+                else x$p0 <- x$p0[x$states != '']
+            }
+        }
+
         if (!is.null(x$lower)) {
             x$lower <- 1- x$lower
             x$upper <- 1- x$upper
         }
         if (missing(fun)) fun <- "event"
     }
-    if (missing(firsty) && !is.null(x$prev0)) firsty <- 1-x$prev0
+    if (missing(firsty) && !is.null(x$p0)) firsty <- 1-x$p0
     ssurv <- as.matrix(x$surv)
     stime <- x$time
     if( !is.null(x$upper)) {
@@ -356,11 +408,6 @@ lines.survfit <- function(x, type='s',
         supper <- NULL  #marker for later code
     }
 
-    # Two cases where we don't put marks at the censoring times
-    if (inherits(x, 'survexp') || inherits(x, 'survfit.coxph')) {
-        if (missing(mark.time)) mark.time <- FALSE
-    }
-        
     # set up strata
     if (is.null(x$strata)) {
         nstrat <- 1
@@ -411,7 +458,7 @@ lines.survfit <- function(x, type='s',
             slower <- slower[keepy,,drop=FALSE]
         }
     }
-    stime <- stime/xscale  #scaling is deferred until xmax processing is done
+    #stime <- stime/xscale  #scaling is deferred until xmax processing is done
 
     if (!missing(fun)) {
         if (is.character(fun)) {
@@ -438,7 +485,7 @@ lines.survfit <- function(x, type='s',
     }
     if (missing(firstx)) {
         if (!is.null(x$start.time)) 
-            firstx <- x$start.time/xscale
+            firstx <- x$start.time
         else {
             if (xlog) firstx <- min(stime[stime>0])
             else      firstx <- min(0, stime)
@@ -447,7 +494,13 @@ lines.survfit <- function(x, type='s',
 
     # The default for plot and lines is to add confidence limits
     #  if there is only one curve
-    if (missing(conf.int)) conf.int <- (ncurve==1)
+    if (missing(conf.int) && missing(conf.times))  conf.int <- (ncurve==1)
+    if (missing(conf.times)) conf.times <- NULL   
+    else {
+        if (!is.numeric(conf.times)) stop('conf.times must be numeric')
+        if (missing(conf.int)) conf.int <- TRUE
+    }
+
     if (is.logical(conf.int)) plot.surv <- TRUE
     else {
         temp <- match.arg(conf.int, c("both", "only", "none"))
@@ -460,14 +513,16 @@ lines.survfit <- function(x, type='s',
     mcol <- rep(col,  length.out=ncurve)
     if (is.numeric(mark.time)) mark.time <- sort(mark.time)
 
-    # The actual number of curves is ncurve*3 if there are confidence bands
+    # The actual number of curves is ncurve*3 if there are confidence bands,
+    #  unless conf.times has been given.  Colors and line types in the latter
+    #  match the curves
     # If the number of line types is 1 and lty is an integer, then use lty 
     #    for the curve and lty+1 for the CI
     # If the length(lty) <= length(ncurve), use the same color for curve and CI
     #   otherwise assume the user knows what they are about and has given a full
     #   vector of line types.
     # Colors and line widths work like line types, excluding the +1 rule.
-    if (conf.int) {
+    if (conf.int & is.null(conf.times)) {
         if (length(lty)==1 && is.numeric(lty))
             lty <- rep(c(lty, lty+1, lty+1), ncurve)
         else if (length(lty) <= ncurve)
@@ -533,14 +588,19 @@ lines.survfit <- function(x, type='s',
     c1 <- 1  # keeps track of the curve number
     c2 <- 1  # keeps track of the lty, col, etc
     xend <- yend <- double(ncurve)
+    if (length(conf.offset) ==1) 
+        temp.offset <- (1:ncurve - (ncurve-1)/2)* conf.offset* diff(par("usr")[1:2])
+    else temp.offset <- rep(conf.offset, length=ncurve) *  diff(par("usr")[1:2])
+    temp.cap    <-  conf.cap    * diff(par("usr")[1:2])
 
-    for (i in unique(stemp)) {  #for each strata
-        who <- which(stemp==i)
-        censor <- if (is.null(x$n.censor))
-            (x$n.event[who] ==0)  else (x$n.censor[who] >0) #places with a censoring
-        xx <- c(firstx, stime[who])
-        censor <- c(FALSE, censor)  #no mark at firstx
-        for (j in 1:ncol(ssurv)) {
+    for (j in 1:ncol(ssurv)) {
+        for (i in unique(stemp)) {  #for each strata
+            who <- which(stemp==i)
+            censor <- if (is.null(x$n.censor))
+                (x$n.event[who] ==0)  else (x$n.censor[who] >0) #censoring ties
+            xx <- c(firstx, stime[who])
+            censor <- c(FALSE, censor)  #no mark at firstx
+        
             yy <- c(firsty[i,j], ssurv[who,j])
             if (plot.surv) {
                 if (type=='s')
@@ -552,10 +612,28 @@ lines.survfit <- function(x, type='s',
             }
             xend[c1] <- max(xx)
             yend[c1] <- yy[length(yy)]
+
+            if (conf.int && !is.null(conf.times)) {
+                # add vertical bars at the specified times
+                x2 <- conf.times + temp.offset[c1]
+                templow <- approx(xx, c(firsty[i,j], slower[who,j]), x2,
+                                  method='constant', f=1)$y
+                temphigh<- approx(xx, c(firsty[i,j], supper[who,j]), x2,
+                                  method='constant', f=1)$y
+                segments(x2, templow, x2, temphigh,
+                          lty=lty[c2], col=col[c2], lwd=lwd[c2])
+                if (conf.cap>0) {
+                    segments(x2-temp.cap, templow, x2+temp.cap, templow,
+                             lty=lty[c2], col=col[c2], lwd=lwd[c2] )
+                    segments(x2-temp.cap, temphigh, x2+temp.cap, temphigh,
+                              lty=lty[c2], col=col[c2], lwd=lwd[c2])
+                }
+               
+            }
             c1 <- c1 +1
             c2 <- c2 +1
 
-            if (conf.int) {
+            if (conf.int && is.null(conf.times)) {
                 if (type == 's') {
                     lines(dostep(xx, c(firsty[i,j], slower[who,j])), lty=lty[c2], 
                           col=col[c2],lwd=lwd[c2])
@@ -573,6 +651,7 @@ lines.survfit <- function(x, type='s',
                     c2 <- c2 + 1
                 }
              }
+
         }
     }
     invisible(list(x=xend, y=yend))
@@ -582,7 +661,15 @@ points.survfit <- function(x, xscale=1,
                            xmax, fun, ...) {
     if (inherits(x, "survfitms")) {
         x$surv <- 1- x$prev
-        if (is.matrix(x$surv)) dimnames(x$surv) <- list(NULL, x$states)
+        if (is.matrix(x$surv)) {
+            dimnames(x$surv) <- list(NULL, x$states)
+            if (ncol(x$surv) > 1 && any(x$states == '')) {
+                x$surv <- x$surv[, x$states != '']
+                if (is.matrix(x$p0)) x$p0 <- x$p0[, x$states != '']
+                else x$p0 <- x$p0[x$states != '']
+            }
+        }
+
         if (!is.null(x$lower)) {
             x$lower <- 1- x$lower
             x$upper <- 1- x$upper
@@ -602,11 +689,6 @@ points.survfit <- function(x, xscale=1,
         supper <- NULL  #marker for later code
     }
 
-    # Two cases where we don't put marks at the censoring times
-    if (inherits(x, 'survexp') || inherits(x, 'survfit.coxph')) {
-        if (missing(mark.time)) mark.time <- FALSE
-    }
-        
     # set up strata
     if (is.null(x$strata)) {
         nstrat <- 1
@@ -657,7 +739,7 @@ points.survfit <- function(x, xscale=1,
             slower <- slower[keepy,,drop=FALSE]
         }
     }
-    stime <- stime/xscale  #scaling is deferred until xmax processing is done
+    #stime <- stime/xscale  #scaling is deferred until xmax processing is done
 
     if (!missing(fun)) {
         if (is.character(fun)) {

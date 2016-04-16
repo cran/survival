@@ -1,4 +1,4 @@
-# Automatically generated from all.nw using noweb
+# Automatically generated from the noweb directory
 # $Id$
 #
 #  Residuals for survreg objects
@@ -47,7 +47,7 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
 
     need.x <- is.na(match(type, c('response', 'deviance', 'working')))
     if (is.null(object$y) || !is.null(strata) || (need.x & is.null(object[['x']])))
-        mf <- model.frame(object)
+        mf <- stats::model.frame(object)
 
     y <- object$y
     if (is.null(y)) {

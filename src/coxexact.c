@@ -1,4 +1,4 @@
-/* Automatically generated from all.nw using noweb */
+/* Automatically generated from the noweb directory */
 #include <math.h>
 #include "survS.h"
 #include "survproto.h"

@@ -1,4 +1,4 @@
-# Automatically generated from all.nw using noweb
+# Automatically generated from the noweb directory
 #tt <- function(x) x
 coxph <- function(formula, data, weights, subset, na.action,
         init, control, ties= c("efron", "breslow", "exact"),
@@ -7,7 +7,6 @@ coxph <- function(formula, data, weights, subset, na.action,
 
     ties <- match.arg(ties)
     Call <- match.call()
-
     # create a call to model.frame() that contains the formula (required)
     #  and any other of the relevant optional arguments
     # then evaluate it in the proper frame
@@ -15,8 +14,8 @@ coxph <- function(formula, data, weights, subset, na.action,
                   names(Call), nomatch=0) 
     if (indx[1] ==0) stop("A formula argument is required")
     temp <- Call[c(1,indx)]  # only keep the arguments we wanted
-    temp[[1]] <- as.name('model.frame')  # change the function called
-    
+    temp[[1L]] <- quote(stats::model.frame)  # change the function called
+
     special <- c("strata", "cluster", "tt")
     temp$formula <- if(missing(data)) terms(formula, special)
                     else              terms(formula, special, data=data)
@@ -31,7 +30,7 @@ coxph <- function(formula, data, weights, subset, na.action,
     if (nrow(mf) ==0) stop("No (non-missing) observations")
     Terms <- terms(mf)
 
-    
+
     ## We want to pass any ... args to coxph.control, but not pass things
     ##  like "dats=mydata" where someone just made a typo.  The use of ...
     ##  is simply to allow things like "eps=1e6" with easier typing
@@ -54,8 +53,8 @@ coxph <- function(formula, data, weights, subset, na.action,
     data.n <- nrow(Y)   #remember this before any time transforms
 
     if (length(attr(Terms, 'variables')) > 2) { # a ~1 formula has length 2
-        ytemp <- terms.inner(attr(Terms, 'variables')[1:2])
-        xtemp <- terms.inner(attr(Terms, 'variables')[-2])
+        ytemp <- terms.inner(formula[1:2])
+        xtemp <- terms.inner(formula[-2])
         if (any(!is.na(match(xtemp, ytemp))))
             warning("a variable appears on both the left and right sides of the formula")
     }
@@ -143,10 +142,22 @@ coxph <- function(formula, data, weights, subset, na.action,
          strats <- rep(1:length(counts$nrisk), counts$nrisk)
          weights <- model.weights(mf)
          if (!is.null(weights) && any(!is.finite(weights)))
-             stop("weights must be finite")   
-         for (i in 1:ntrans) 
-             mf[[timetrans$var[i]]] <- (tt[[i]])(mf[[timetrans$var[i]]], Y[,1], strats, 
-                                                weights)
+             stop("weights must be finite")  
+
+         tcall <- attr(Terms, 'variables')[timetrans$terms+2]
+         pvars <- attr(Terms, 'predvars')
+         pmethod <- sub("makepredictcall.", "", as.vector(methods("makepredictcall")))
+         for (i in 1:ntrans) {
+             newtt <- (tt[[i]])(mf[[timetrans$var[i]]], Y[,1], strats, weights)
+             mf[[timetrans$var[i]]] <- newtt
+             nclass <- class(newtt)
+             if (any(nclass %in% pmethod)) { # It has a makepredictcall method
+                 dummy <- as.call(list(as.name(class(newtt)[1]), tcall[[i]][[2]]))
+                 ptemp <- makepredictcall(newtt, dummy)
+                 pvars[[timetrans$terms[i]+2]] <- ptemp
+             }
+         }
+         attr(Terms, "predvars") <- pvars
          }
 
     cluster<- attr(Terms, "specials")$cluster
@@ -174,7 +185,7 @@ coxph <- function(formula, data, weights, subset, na.action,
     if (length(stemp$vars) > 0) {  #if there is a strata statement
         hasinteractions <- FALSE
         for (i in stemp$vars) {  #multiple strata terms are allowed
-            # The factors att has one row for each variable in the frame, one
+            # The factors attr has one row for each variable in the frame, one
             #   col for each term in the model.  Pick rows for each strata
             #   var, and find if it participates in any interactions.
             if (any(attr(Terms, 'order')[attr(Terms, "factors")[i,] >0] >1))

@@ -1,4 +1,4 @@
-# Automatically generated from all.nw using noweb
+# Automatically generated from the noweb directory
 survfitcoxph.fit <- function(y, x, wt, x2, risk, newrisk, strata, se.fit,
                               survtype, vartype, varmat, id, y2, strata2,
                               unlist=TRUE) {

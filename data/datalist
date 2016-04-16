@@ -3,6 +3,7 @@ cancer
 cgd: cgd cgd0
 colon
 flchain
+genfan
 heart: heart jasa jasa1
 kidney
 leukemia: aml leukemia
@@ -14,6 +15,7 @@ nwtco
 ovarian
 pbc: pbc pbcseq
 rats: rats rats2
+retinopathy
 stanford2
 survexp: survexp.mn survexp.us survexp.usr
 tobin

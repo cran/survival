@@ -397,14 +397,11 @@ round(excess, 1)
 
 
 ###################################################
-### code chunk number 25: adjcurve.Rnw:1043-1055
+### code chunk number 25: adjcurve.Rnw:1043-1052
 ###################################################
-cfit5a <- coxph(Surv(futime, death) ~ group:age +sex + 
-                strata(group), fdata) 
-cfit5b <- coxph(Surv(futime, death) ~ group:(age +sex) + 
-                strata(group), fdata)
-cfit5c <- coxph(Surv(futime, death) ~ group:(age *sex) + 
-                strata(group), fdata)
+cfit5a <- coxph(Surv(futime, death) ~ strata(group):age +sex, fdata)
+cfit5b <- coxph(Surv(futime, death) ~ strata(group):(age +sex), fdata)
+cfit5c <- coxph(Surv(futime, death) ~ strata(group):(age *sex), fdata)
 
 options(show.signif.stars=FALSE) # see footnote
 anova(cfit4a, cfit5a, cfit5b, cfit5c)
@@ -435,7 +432,7 @@ lines(sfit5, fun='event', xscale=365.25, col=c(1,2,4))
 getOption("SweaveHooks")[["fig"]]()
 # there is a spurious warning from the model below: R creates 3 unneeded
 # columns in the X matrix
-cfit6 <- coxph(Surv(futime, death) ~ group:age2 + sex + strata(group), fdata)
+cfit6 <- coxph(Surv(futime, death) ~ strata(group):age2 + sex, fdata)
 
 saspop <- with(fdata, expand.grid(age2= levels(age2), sex= levels(sex),
                                   group = levels(group)))

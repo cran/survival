@@ -1,7 +1,7 @@
 ### R code from vignette source 'splines.Rnw'
 
 ###################################################
-### code chunk number 1: splines.Rnw:20-24
+### code chunk number 1: splines.Rnw:21-25
 ###################################################
 options(continue="  ", width=60)
 options(SweaveHooks=list(fig=function() par(mar=c(4.1, 4.1, .3, 1.1))))
@@ -30,9 +30,10 @@ ptemp$age[1:4,]
 ### code chunk number 4: mplot3
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
-center <- with(ptemp$age, y[x==50])
-ytemp <- ptemp$age$y + outer(ptemp$age$se, c(0, -1.96, 1.96), '*')
-matplot(ptemp$age$x, exp(ytemp - center), log='y',
+ageterm <- ptemp$age  # this will be a data frame
+center <- with(ageterm, y[x==50])
+ytemp <- ageterm$y + outer(ageterm$se, c(0, -1.96, 1.96), '*')
+matplot(ageterm$x, exp(ytemp - center), log='y',
         type='l', lty=c(1,2,2), col=1, 
         xlab="Age at diagnosis", ylab="Relative death rate")
 

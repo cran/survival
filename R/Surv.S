@@ -17,24 +17,14 @@ Surv <- function(time, time2, event,
     # "Surv(a,b)" has the variable b matched to event rather than time2.
     #
     mtype <- match.arg(type)
-    # Retain any attributes of the input arguments. Originally requested
-    #  by the rms package
-    inputAttributes <- list()
-    if (!is.null(attributes(time)))
-        inputAttributes$time  <-attributes(time)
-    if (!missing(time2) && !is.null(attributes(time2)))
-        inputAttributes$time2 <- attributes(time2)
-    if (!missing(event) && !is.null(attributes(event)))
-        inputAttributes$event <- attributes(event)
-
-
+    
     # If type is missing or it is "mstate", I need to figure out for myself
     #  whether I have (time, time2, status) or (time, status) data
     if (missing(type) || mtype=="mstate") {
 	if (ng==1 || ng==2) type <- 'right'
 	else if (ng==3)     type <- 'counting'
         else stop ("No time variable!") # no time variable at all!
-	}
+    }
     else {
         type <- mtype
 	if (ng!=3 && (type=='interval' || type =='counting'))
@@ -50,7 +40,10 @@ Surv <- function(time, time2, event,
 	}
     else if (type=='right' || type=='left') {
         if (!is.numeric(time)) stop("Time variable is not numeric")
-	if (missing(event))   event <- time2  # treat time2 as event
+	if (missing(event))   {
+            event <- time2  # treat time2 as event
+            time2 <- NULL   # force any inputAttributes to attach to "event"
+        }
         if (length(event) != nn) stop ("Time and status are different lengths")
         if (mtype=="mstate" || (is.factor(event) && length(levels(event))>2)) {
             mstat <- as.factor(event)
@@ -153,10 +146,33 @@ Surv <- function(time, time2, event,
 		    status=status)
     }
 
-    dimnames(ss) <- list(NULL, dimnames(ss)[[2]]) #kill any tag-along row names
+    # Retain any attributes of the input arguments. Originally requested
+    #  by the rms package
+    inputAttributes <- list()
+    if (!is.null(attributes(time)))
+        inputAttributes$time  <-attributes(time)
+    if (!missing(time2) && !is.null(attributes(time2)))
+        inputAttributes$time2 <- attributes(time2)
+    if (!missing(event) && !is.null(attributes(event)))
+        inputAttributes$event <- attributes(event)
+
+    # In rare cases there are no column names, and I have discovered that
+    #  people depend on them.
+    cname <- dimnames(ss)[[2]]
+    if (length(cname) ==0) {
+        if (ncol(ss)==2) cname <- c("time", "status")
+        else if (type=="counting") cname <- c("start", "stop", "status")
+        else cname <- c("time1", "time2", "status")
+    }
+    dimnames(ss) <- list(NULL, cname)  #kill extraneous row names
+                                           
     attr(ss, "type")  <- type
-    if (type=="mright" || type=="mcounting") 
-        attr(ss, "states") <- levels(mstat)[-1]
+    if (type=="mright" || type=="mcounting") {
+        states <- levels(mstat)[-1]
+        if (any(is.na(states) | states=='') )
+            stop("each state must have a non-blank name")
+        attr(ss, "states") <- states
+    }
     if (length(inputAttributes) > 0) 
         attr(ss, "inputAttributes") <- inputAttributes
     class(ss) <- 'Surv'
@@ -254,3 +270,4 @@ as.matrix.Surv <- function(x, ...) {
     attr(y, "inputAttributes") <- NULL
     y
     }
+length.Surv <- function(x) nrow(x)

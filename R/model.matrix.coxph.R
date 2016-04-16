@@ -1,4 +1,4 @@
-# Automatically generated from all.nw using noweb
+# Automatically generated from the noweb directory
 # In internal use "data" will often be an already derived model frame.
 #  We detect this via it having a terms attribute.
 model.matrix.coxph <- function(object, data=NULL, 
@@ -10,10 +10,10 @@ model.matrix.coxph <- function(object, data=NULL,
         return(object[['x']]) #don't match "xlevels"
 
     Terms <- delete.response(object$terms)
-    if (is.null(data)) mf <- model.frame(object)
+    if (is.null(data)) mf <- stats::model.frame(object)
     else {
         if (is.null(attr(data, "terms")))
-            mf <- model.frame(Terms, data, xlev=object$xlevels)
+            mf <- stats::model.frame(Terms, data, xlev=object$xlevels)
         else mf <- data  #assume "data" is already a model frame
     }
 
@@ -30,7 +30,7 @@ model.matrix.coxph <- function(object, data=NULL,
     if (length(stemp$vars) > 0) {  #if there is a strata statement
         hasinteractions <- FALSE
         for (i in stemp$vars) {  #multiple strata terms are allowed
-            # The factors att has one row for each variable in the frame, one
+            # The factors attr has one row for each variable in the frame, one
             #   col for each term in the model.  Pick rows for each strata
             #   var, and find if it participates in any interactions.
             if (any(attr(Terms, 'order')[attr(Terms, "factors")[i,] >0] >1))
@@ -83,7 +83,7 @@ model.frame.coxph <- function(formula, ...) {
         if (indx[1] ==0) stop("The coxph call is missing a formula!")
    
         temp <- fcall[c(1,indx)]  # only keep the arguments we wanted
-        temp[[1]] <- as.name('model.frame')  # change the function called
+        temp[[1]] <- quote(stats::model.frame)  # change the function called
         temp$xlev <- formula$xlevels
         temp$formula <- Terms   #keep the predvars attribute
         # Now, any arguments that were on this call overtake the ones that
@@ -180,10 +180,22 @@ model.frame.coxph <- function(formula, ...) {
           strats <- rep(1:length(counts$nrisk), counts$nrisk)
           weights <- model.weights(mf)
           if (!is.null(weights) && any(!is.finite(weights)))
-              stop("weights must be finite")   
-          for (i in 1:ntrans) 
-              mf[[timetrans$var[i]]] <- (tt[[i]])(mf[[timetrans$var[i]]], Y[,1], strats, 
-                                                 weights)
+              stop("weights must be finite")  
+
+          tcall <- attr(Terms, 'variables')[timetrans$terms+2]
+          pvars <- attr(Terms, 'predvars')
+          pmethod <- sub("makepredictcall.", "", as.vector(methods("makepredictcall")))
+          for (i in 1:ntrans) {
+              newtt <- (tt[[i]])(mf[[timetrans$var[i]]], Y[,1], strats, weights)
+              mf[[timetrans$var[i]]] <- newtt
+              nclass <- class(newtt)
+              if (any(nclass %in% pmethod)) { # It has a makepredictcall method
+                  dummy <- as.call(list(as.name(class(newtt)[1]), tcall[[i]][[2]]))
+                  ptemp <- makepredictcall(newtt, dummy)
+                  pvars[[timetrans$terms[i]+2]] <- ptemp
+              }
+          }
+          attr(Terms, "predvars") <- pvars
           mf[[".strata."]] <- strats
        }
        mf

@@ -1,50 +1,52 @@
-/* Automatically generated from all.nw using noweb */
+/* Automatically generated from the noweb directory */
 #include <math.h>
 #include "survS.h" 
 #include "survproto.h"
 
 SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
-            SEXP weights2,  SEXP offset2,    SEXP ibeta2,
+            SEXP weights2,   SEXP offset2,   SEXP ibeta2,
             SEXP sort12,     SEXP sort22,    SEXP method2,
             SEXP maxiter2,   SEXP  eps2,     SEXP tolerance2,
             SEXP doscale2) { 
 
-    int i,j,k,person;
-    int indx2, istrat, p;
-    int ksave, nrisk, ndeath;
+    int i,j,k, person;
+    int indx1, istrat, p, p1;
+    int nrisk;
     int nused, nvar;
- 
+    int rank, rank2, fail;
+    
     double **covar, **cmat, **imat;  /*ragged array versions*/
-    double *a, *oldbeta, *maxbeta;
+    double *a, *oldbeta;
     double *scale;
     double *a2, **cmat2;
     double *eta;
     double  denom, zbeta, risk;
-    double  time;
+    double  dtime;
     double  temp, temp2;
     double  newlk =0;
     int     halving;    /*are we doing step halving at the moment? */
     double  tol_chol, eps;
     double  meanwt;
-    int itemp, deaths;
-    double efron_wt, d2, meaneta;
+    int deaths;
+    double denom2, etasum;
+    int *keep;               /* marker for useless obs */
 
     /* inputs */
-    double *start, *stop, *event;
+    double *start, *tstop, *event;
     double *weights, *offset;
     int *sort1, *sort2, maxiter;
-    int *strata;
+    int *strata, nstrat;
     double method;  /* saving this as double forces some double arithmetic */
     int doscale;
 
     /* returned objects */
-    SEXP imat2, means2, beta2, u2, loglik2;
-    double *beta, *u, *loglik, *means;
+    SEXP imat2, beta2, u2, loglik2;
+    double *beta, *u, *loglik;
     SEXP sctest2, flag2, iter2;
     double *sctest;
     int *flag, *iter;
     SEXP rlist;
-    static const char *outnames[]={"coef", "u", "imat", "loglik", "means",
+    static const char *outnames[]={"coef", "u", "imat", "loglik",
                                    "sctest", "flag", "iter", ""};
     int nprotect;  /* number of protect calls I have issued */
 
@@ -56,11 +58,12 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
     tol_chol = asReal(tolerance2);
     maxiter = asInteger(maxiter2);
     doscale = asInteger(doscale2);
+    nstrat = LENGTH(strata2);
   
     /* input arguments */
     start = REAL(surv2);
-    stop  = start + nused;
-    event = stop + nused;
+    tstop  = start + nused;
+    event = tstop + nused;
     weights = REAL(weights2);
     offset = REAL(offset2);
     sort1  = INTEGER(sort12);
@@ -69,16 +72,16 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
 
     /*
     ** scratch space
-    **  nvar: a, a2, newbeta, maxbeta, scale
+    **  nvar: a, a2, oldbeta, scale
     **  nvar*nvar: cmat, cmat2
-    **  n: eta
+    **  nused:  eta, keep
     */
-    eta = (double *) R_alloc(nused + 5*nvar + 2*nvar*nvar, sizeof(double));
+    eta = (double *) R_alloc(nused + 4*nvar + 2*nvar*nvar, sizeof(double));
     a = eta + nused;
-    a2 = a +nvar;
-    maxbeta = a2 + nvar;
-    scale  = maxbeta + nvar;
-    oldbeta = scale + nvar;   
+    a2= a + nvar;
+    scale  = a2 + nvar;
+    oldbeta = scale + nvar;
+    keep = (int *) R_alloc(nused, sizeof(int));
 
     /*
     **  Set up the ragged arrays
@@ -104,7 +107,6 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
     nprotect++;
     beta2 = SET_VECTOR_ELT(rlist, 0, duplicate(ibeta2));
     beta  = REAL(beta2);
-
     u2 =    SET_VECTOR_ELT(rlist, 1, allocVector(REALSXP, nvar));
     u = REAL(u2);
 
@@ -112,50 +114,50 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
     loglik2 = SET_VECTOR_ELT(rlist, 3, allocVector(REALSXP, 2)); 
     loglik  = REAL(loglik2);
 
-    means2 = SET_VECTOR_ELT(rlist, 4, allocVector(REALSXP, nvar));
-    means  = REAL(means2);
-
-    sctest2 = SET_VECTOR_ELT(rlist, 5, allocVector(REALSXP, 1));
+    sctest2 = SET_VECTOR_ELT(rlist, 4, allocVector(REALSXP, 1));
     sctest =  REAL(sctest2);
-    flag2  =  SET_VECTOR_ELT(rlist, 6, allocVector(INTSXP, 1));
+    flag2  =  SET_VECTOR_ELT(rlist, 5, allocVector(INTSXP, 3));
     flag   =  INTEGER(flag2);
-    iter2  =  SET_VECTOR_ELT(rlist, 7, allocVector(INTSXP, 1));
+    for (i=0; i<3; i++) flag[i]=0;
+
+    iter2  =  SET_VECTOR_ELT(rlist, 6, allocVector(INTSXP, 1));
     iter = INTEGER(iter2);
     
     /*
     ** Subtract the mean from each covar, as this makes the variance
-    **  computation much more stable
+    **  computation much more stable.  The mean is taken per stratum,
+    **  the scaling is overall.
     */
-    temp2 =0;
-    for (i=0; i<nused; i++) temp2 += weights[i];  /* sum of weights */
-
+    if (nvar==1) doscale =0;  /* scaling has no impact, so skip it */
     for (i=0; i<nvar; i++) {
-        maxbeta[i] = 0;  /* temporary, save the max abs covariate value */
-        temp=0;
-        for (person=0; person<nused; person++)
-            temp += weights[i] * covar[i][person];
-        temp /= temp2;
-        means[i] = temp;
-        for (person=0; person<nused; person++)
-            covar[i][person] -=temp;
+        person=0;
+        for (istrat=0; istrat<nstrat; istrat++) {
+            temp=0;
+            temp2 =0;
+            for (k=person; k<strata[istrat]; k++) {
+                j = sort2[k];
+                temp += weights[j] * covar[i][j];
+                temp2 += weights[j];
+            }
+            temp /= temp2;   /* mean for this covariate, this strata */
+            for (; person< strata[istrat]; person++) {
+                j = sort2[person];
+                covar[i][j] -=temp;
+            }
+        }
         if (doscale ==1) { /* also scale the regression */
+            /* this cannot be done per stratum */
             temp =0;
-            for (person=0; person<nused; person++)
+            temp2 =0;
+            for (person=0; person<nused; person++) {
                 temp += weights[person] * fabs(covar[i][person]);
-            if (temp >0) temp = temp2/temp;
+                temp2 += weights[person];
+                }
+            if (temp >0) temp = temp2/temp;  /* 1/scale */
             else temp = 1.0;  /* rare case of a constant covariate */
             scale[i] = temp;
             for (person=0; person<nused; person++) {
                 covar[i][person] *= temp;
-                if (fabs(covar[i][person]) > maxbeta[i])
-                    maxbeta[i] = fabs(covar[i][person]);
-            }
-        } else {
-            /* scaling is only turned off during debugging 
-               still, cover the case */
-            for (person=0; person<nused; person++) {
-                if (fabs(covar[i][person]) > maxbeta[i])
-                    maxbeta[i] = fabs(covar[i][person]);
             }
         }
     }
@@ -164,34 +166,38 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
         for (i=0; i<nvar; i++) beta[i] /= scale[i]; /* rescale initial betas */
         }
     else {for (i=0; i<nvar; i++) scale[i] = 1.0;}
-    
-    /* 
-    **        Set the max beta.  For safety we want beta*x < log(max double) so 
-    **  the the risk score exp(x beta) never becomes either infinite or 0.
-    **  This limit is around 700 for most hardware.  Since exp(23) > population
-    **  of the earth, any beta*x over 20 is a silly relative risk for a Cox
-    **  model, however.  
-    **   We want to cut off huge values, but not take action very often since
-    **  doing so can mess up the iteration in general.
-    **  One of the case-cohort papers suggests using anoffset of -100 to 
-    **  indicate "no risk", meaning that x*beta values of 50-100 can occur 
-    **  in "ok" data sets.  Compromise.
-    */
-    for (i=0; i<nvar; i++) maxbeta[i] = 200/maxbeta[i];
+    indx1 =0;
+    person =0;
+    for (k=0; k<nused; k++) keep[k] =1;
+    for (istrat=0; istrat<nstrat; istrat++) {
+       while(person < strata[istrat]) {
+           /* find the next death */
+           for (k=person; k< strata[istrat]; k++) {
+               p = sort2[k];
+               if (event[p] ==1) {
+                   dtime = tstop[p];
+                   break;
+               }
+           }
+           if (k== strata[istrat]) {
+               /* no more deaths in this strata */
+               person = k;
+               indx1 =k;  /* we can move on */
+           }
 
-    ndeath =0;
-    for (i=0; i<nused; i++) ndeath += event[i];
-    
-    /* First iteration, which has different ending criteria */
-    for (i=0; i<nvar; i++) {
-        u[i] =0;
-        a[i] =0;
-        for (j=0; j<nvar; j++) {
-            imat[i][j] =0 ;
-            cmat[i][j] =0;
-        }
+           for (; indx1 < strata[istrat]; indx1++) {
+               p1 = sort1[indx1];
+               if (start[p1] < dtime) break;
+               keep[p1]--;
+           }
+           for (; person < strata[istrat]; person++) {
+               p = sort2[person];
+               if (tstop[p] < dtime) break;
+               if (keep[p] ==1) keep[p] =2;
+           }
+       }
     }
-
+    /* First iteration, which has different ending criteria */
     for (person=0; person<nused; person++) {
         zbeta = 0;      /* form the term beta*z   (vector mult) */
         for (i=0; i<nvar; i++)
@@ -202,158 +208,209 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
     /*
     **  'person' walks through the the data from 1 to n,
     **     sort1[0] points to the largest stop time, sort1[1] the next, ...
-    **  'time' is a scratch variable holding the time of current interest
-    **  'indx2' walks through the start times.  It will be smaller than 
-    **    'person': if person=27 that means that 27 subjects have stop >=time,
-    **    and are thus potential members of the risk set.  If 'indx2' =9,
-    **    that means that 9 subjects have start >=time and thus are NOT part
-    **    of the risk set.  (stop > start for each subject guarrantees that
-    **    the 9 are a subset of the 27). 
-    **  Basic algorithm: move 'person' forward, adding the new subject into
-    **    the risk set.  If this is a new, unique death time, take selected
-    **    old obs out of the sums, add in obs tied at this time, then
-    **    add terms to the loglik, etc.
+    **  'dtime' is a scratch variable holding the time of current interest
+    **  'indx1' walks through the start times.  
     */
-    istrat=0;
-    indx2 =0;
-    denom =0;
-    meaneta =0;
-    nrisk =0;
     newlk =0;
-    for (person=0; person<nused;) {
-        p = sort1[person];
-        if (event[p]==0){
-            nrisk++;
-            meaneta += eta[p];
-            risk = exp(eta[p]) * weights[p];
-            denom += risk;
-            for (i=0; i<nvar; i++) {
-                a[i] += risk*covar[i][p];
-                for (j=0; j<=i; j++)
-                    cmat[i][j] += risk*covar[i][p]*covar[j][p];
+    for (i=0; i<nvar; i++) {
+        u[i] =0;
+        for (j=0; j<nvar; j++) imat[i][j] =0;
+    }
+    person =0;
+    indx1 =0;
+    istrat =0;
+
+    /* this next set is rezeroed at the start of each stratum */
+    denom=0;
+    nrisk=0;
+    etasum =0;
+    for (i=0; i<nvar; i++) {
+        a[i] =0;
+        for (j=0; j<nvar; j++) cmat[i][j] =0;
+    }
+    /* end of the per-stratum set */
+
+    while (person < nused) {
+        /* find the next death time */
+        for (k=person; k< nused; k++) {
+            if (k == strata[istrat]) {
+                /* hit a new stratum; reset temporary sums */
+                istrat++;
+                denom = 0;
+                nrisk = 0;
+                etasum =0;
+                for (i=0; i<nvar; i++) {
+                    a[i] =0;
+                    for (j=0; j<nvar; j++) cmat[i][j] =0;
                 }
-            person++;
-            /* nothing more needs to be done for this obs */
+                person =k;  /* skip to end of stratum */
+                indx1  =k; 
+            }
+            p = sort2[k];
+            if (event[p] == 1) {
+                dtime = tstop[p];
+                break;
+            }
         }
+        if (k == nused) person =k;  /* no more deaths to be processed */
         else {
-            time = stop[p];
+            /* remove any subjects no longer at risk */
             /*
             ** subtract out the subjects whose start time is to the right
+            ** If everyone is removed reset the totals to zero.  (This happens when
+            ** the survSplit function is used, so it is worth checking).
             */
-            for (; indx2<strata[istrat]; indx2++) {
-                p = sort2[indx2];
-                if (start[p] < time) break;
+            for (; indx1<strata[istrat]; indx1++) {
+                p1 = sort1[indx1];
+                if (start[p1] < dtime) break;
+                if (keep[p1] == 0) continue;  /* skip any never-at-risk rows */
                 nrisk--;
-                meaneta -= eta[p];
-                risk = exp(eta[p]) * weights[p];
-                denom -= risk;
-                for (i=0; i<nvar; i++) {
-                    a[i] -= risk*covar[i][p];
-                    for (j=0; j<=i; j++)
-                        cmat[i][j] -= risk*covar[i][p]*covar[j][p];
+                if (nrisk ==0) {
+                    etasum =0;
+                    denom =0;
+                    for (i=0; i<nvar; i++) {
+                        a[i] =0;
+                        for (j=0; j<=i; j++) cmat[i][j] =0;
                     }
                 }
+                else {
+                    etasum -= eta[p1];
+                    risk = exp(eta[p1]) * weights[p1];
+                    denom -= risk;
+                    for (i=0; i<nvar; i++) {
+                        a[i] -= risk*covar[i][p1];
+                        for (j=0; j<=i; j++)
+                            cmat[i][j] -= risk*covar[i][p1]*covar[j][p1];
+                    }
+                }
+                /* 
+                ** We must avoid overflow in the exp function (~750 on Intel)
+                ** and want to act well before that, but not take action very often.  
+                ** One of the case-cohort papers suggests an offset of -100 meaning
+                ** that etas of 50-100 can occur in "ok" data, so make it larger 
+                ** than this.
+                ** If the range of eta is more then log(1e16) = 37 then the data is
+                **  hopeless: some observations will have effectively 0 weight.  Keeping
+                **  the mean sensible suffices to keep the max in check for all other
+                *   data sets.
+                */
+                if (fabs(etasum/nrisk) > 200) {  
+                    flag[1]++;  /* a count, for debugging/profiling purposes */
+                    temp = etasum/nrisk;
+                    for (i=0; i<nused; i++) eta[i] -= temp;
+                    temp = exp(-temp);
+                    denom *= temp;
+                    for (i=0; i<nvar; i++) {
+                        a[i] *= temp;
+                        for (j=0; j<nvar; j++) {
+                            cmat[i][j]*= temp;
+                        }
+                    }
+                    etasum =0;
+                }
+            }
 
-            /*
-            ** compute the averages over subjects with
-            **   exactly this death time (a2 & c2)
-            ** (and add them into a and cmat while we are at it).
+            /* 
+            ** add any new subjects who are at risk 
+            ** denom2, a2, cmat2, meanwt and deaths count only the deaths
             */
-            efron_wt =0;
+            denom2= 0;
             meanwt =0;
+            deaths=0;    
             for (i=0; i<nvar; i++) {
                 a2[i]=0;
                 for (j=0; j<nvar; j++) {
                     cmat2[i][j]=0;
-                    }
                 }
-            deaths=0;
-            for (k=person; k<strata[istrat]; k++) {
-                p = sort1[k];
-                if (stop[p] < time) break;
+            }
+            
+            for (; person<strata[istrat]; person++) {
+                p = sort2[person];
+                if (tstop[p] < dtime) break; /* no more to add */
                 risk = exp(eta[p]) * weights[p];
-                denom += risk;
-                nrisk++;
-                meaneta += eta[p];
 
-                for (i=0; i<nvar; i++) {
-                    a[i] += risk*covar[i][p];
-                    for (j=0; j<=i; j++)
-                        cmat[i][j] += risk*covar[i][p]*covar[j][p];
-                    }
-                if (event[p]==1) {
-                    deaths += event[p];
-                    efron_wt += risk*event[p];
+                if (event[p] ==1 ){
+                    nrisk++;
+                    etasum += eta[p];
+                    deaths++;
+                    denom2 += risk*event[p];
                     meanwt += weights[p];
+                    newlk += weights[p]* eta[p];
                     for (i=0; i<nvar; i++) {
+                        u[i] += weights[p] * covar[i][p];
                         a2[i]+= risk*covar[i][p];
                         for (j=0; j<=i; j++)
                             cmat2[i][j] += risk*covar[i][p]*covar[j][p];
-                        }
-                }
-                }
-            ksave = k;
-                
-            /* 
-            ** If the average eta value has gotton out of hand, fix it.
-            ** We must avoid overflow in the exp function (~750 on Intel)
-            ** and want to act well before that, but not take action very often.  
-            ** One of the case-cohort papers suggests an offset of -100 meaning
-            ** that etas of 50-100 can occur in "ok" data, so make it larger than this.
-            */
-            if (fabs(meaneta) > (nrisk *110)) {  
-                meaneta = meaneta/nrisk;
-                for (i=0; i<nused; i++) eta[i] -= meaneta;
-                temp = exp(-meaneta);
-                denom *= temp;
-                for (i=0; i<nvar; i++) {
-                    a[i] *= temp;
-                    a2[i] *= temp;
-                    for (j=0; j<nvar; j++) {
-                        cmat[i][j]*= temp;
-                        cmat2[i][j] *= temp;
                     }
                 }
-                meaneta =0;
+                else if (keep[p] >0) {
+                    nrisk++;
+                    etasum += eta[p];
+                    denom += risk;
+                    for (i=0; i<nvar; i++) {
+                        a[i] += risk*covar[i][p];
+                        for (j=0; j<=i; j++)
+                            cmat[i][j] += risk*covar[i][p]*covar[j][p];
+                    }
+                }
             }
-                
             /*
             ** Add results into u and imat for all events at this time point
             */
-            meanwt /= deaths;
-            itemp = -1;
-            for (; person<ksave; person++) {
-                p = sort1[person];
-                if (event[p]==1) {
-                    itemp++;
-                    temp = itemp*method/(double) deaths;
-                    d2 = denom - temp*efron_wt;
-                    newlk +=  weights[p]*eta[p] -meanwt *log(d2);
-
+            if (method==0 || deaths ==1) { /*Breslow */
+                denom += denom2;
+                newlk -= meanwt*log(denom);  /* sum of death weights*/ 
+                for (i=0; i<nvar; i++) {
+                    a[i] += a2[i];
+                    temp = a[i]/denom;   /*mean covariate at this time */
+                    u[i] -= meanwt*temp;
+                    for (j=0; j<=i; j++) {
+                        cmat[i][j] += cmat2[i][j];
+                        imat[j][i] += meanwt*((cmat[i][j]- temp*a[j])/denom);
+                    }
+                }
+            }
+            else {
+                meanwt /= deaths;
+                for (k=0; k<deaths; k++) {
+                    denom += denom2/deaths;
+                    newlk -= meanwt*log(denom);
                     for (i=0; i<nvar; i++) {
-                        temp2 = (a[i] - temp*a2[i])/d2;
-                        u[i] += weights[p]*covar[i][p] - meanwt*temp2;
-                        for (j=0; j<=i; j++)
-                            imat[j][i] += meanwt* (
-                                        (cmat[i][j] - temp*cmat2[i][j])/d2-
-                                           temp2*(a[j]-temp*a2[j])/d2);
+                        a[i] += a2[i]/deaths;
+                        temp = a[i]/denom;
+                        u[i] -= meanwt*temp;
+                        for (j=0; j<=i; j++) {
+                            cmat[i][j] += cmat2[i][j]/deaths;
+                            imat[j][i] += meanwt*((cmat[i][j]- temp*a[j])/denom);
                         }
+                        }
+                }
+            }
+            /* 
+            ** We must avoid overflow in the exp function (~750 on Intel)
+            ** and want to act well before that, but not take action very often.  
+            ** One of the case-cohort papers suggests an offset of -100 meaning
+            ** that etas of 50-100 can occur in "ok" data, so make it larger 
+            ** than this.
+            ** If the range of eta is more then log(1e16) = 37 then the data is
+            **  hopeless: some observations will have effectively 0 weight.  Keeping
+            **  the mean sensible suffices to keep the max in check for all other
+            *   data sets.
+            */
+            if (fabs(etasum/nrisk) > 200) {  
+                flag[1]++;  /* a count, for debugging/profiling purposes */
+                temp = etasum/nrisk;
+                for (i=0; i<nused; i++) eta[i] -= temp;
+                temp = exp(-temp);
+                denom *= temp;
+                for (i=0; i<nvar; i++) {
+                    a[i] *= temp;
+                    for (j=0; j<nvar; j++) {
+                        cmat[i][j]*= temp;
                     }
                 }
-        }
-
-        if (person == strata[istrat]) {
-            istrat++;
-            denom =0;
-            meaneta=0;
-            nrisk =0;
-            indx2 = person;
-            for (i=0; i<nvar; i++) {
-                a[i] =0;
-                for (j=0; j<nvar; j++) {
-                    cmat[i][j]=0;
-                    }
-                }
+                etasum =0;
+            }
         }
     }   /* end  of accumulation loop */
     loglik[0] = newlk;   /* save the loglik for iteration zero  */
@@ -362,50 +419,46 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
     /* Calculate the score test */
     for (i=0; i<nvar; i++) /*use 'a' as a temp to save u0, for the score test*/
         a[i] = u[i];
-    *flag = cholesky2(imat, nvar, tol_chol);
+    rank = cholesky2(imat, nvar, tol_chol);
     chsolve2(imat,nvar,a);        /* a replaced by  a *inverse(i) */
     *sctest=0;
     for (i=0; i<nvar; i++)
         *sctest +=  u[i]*a[i];
 
-    if (maxiter ==0) {
-        *iter =0;
-        loglik[1] = newlk;
-        chinv2(imat, nvar);
-        for (i=0; i<nvar; i++) {
-            beta[i] *= scale[i];  /* return to original scale */
-            u[i] /= scale[i];
-            imat[i][i] *= scale[i] * scale[i];
-            for (j=0; j<i; j++) {
-                imat[j][i] *= scale[i] * scale[j];
-                imat[i][j] = imat[j][i];
-            }
-        }
-        UNPROTECT(nprotect);
-        return(rlist);
-    }
-    else {  
-        /* Update beta for the next iteration
-        **  Never complain about convergence on this first step or impose step
-        **  halving.  That way someone can force one iter at a time.
-        */
-        for (i=0; i<nvar; i++) {
-            oldbeta[i] = beta[i];
-            beta[i] = beta[i] + a[i];
-        }
-    }
     /* main loop */
     halving =0 ;             /* =1 when in the midst of "step halving" */
+    fail =0;                 /* iteration 1 is never marked as a failure */
     for (*iter=1; *iter<= maxiter; (*iter)++) {
-        for (i=0; i<nvar; i++) {
-            u[i] =0;
-            a[i] =0;
-            for (j=0; j<nvar; j++) {
-                imat[i][j] =0 ;
-                cmat[i][j] =0;
-            }
+        R_CheckUserInterrupt();  /* be polite -- did the user hit cntrl-C? */
+        if (*iter >1) {
+            /* on iteration 1 the cholesky has already been done */
+            rank2 = cholesky2(imat, nvar, tol_chol);
+            /* Are we done? */
+            fail = isnan(loglik[1]) + isinf(loglik[1]) + (rank-rank2);
+            if (fail ==0 && halving ==0 &&
+                fabs(1-(loglik[1]/newlk)) <= eps) break;
         }
+        
+        /* Update coefficients */
+        if (fail >0 || newlk < loglik[1]) { /*never true on iteration 1 */
+            /* 
+            ** The routine has not made progress past the last good value.
+            */
+            halving =1; flag[2]++;
+            for (i=0; i<nvar; i++)
+                beta[i] = (oldbeta[i] + beta[i]) /2; /*half of old increment */
+        }
+        else {
+             halving=0;
+             loglik[1] = newlk;
+             chsolve2(imat,nvar,u);
 
+             for (i=0; i<nvar; i++) {
+                 oldbeta[i] = beta[i];
+                 beta[i] = beta[i] +  u[i];
+             }
+        }
+        
         for (person=0; person<nused; person++) {
             zbeta = 0;      /* form the term beta*z   (vector mult) */
             for (i=0; i<nvar; i++)
@@ -416,199 +469,231 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
         /*
         **  'person' walks through the the data from 1 to n,
         **     sort1[0] points to the largest stop time, sort1[1] the next, ...
-        **  'time' is a scratch variable holding the time of current interest
-        **  'indx2' walks through the start times.  It will be smaller than 
-        **    'person': if person=27 that means that 27 subjects have stop >=time,
-        **    and are thus potential members of the risk set.  If 'indx2' =9,
-        **    that means that 9 subjects have start >=time and thus are NOT part
-        **    of the risk set.  (stop > start for each subject guarrantees that
-        **    the 9 are a subset of the 27). 
-        **  Basic algorithm: move 'person' forward, adding the new subject into
-        **    the risk set.  If this is a new, unique death time, take selected
-        **    old obs out of the sums, add in obs tied at this time, then
-        **    add terms to the loglik, etc.
+        **  'dtime' is a scratch variable holding the time of current interest
+        **  'indx1' walks through the start times.  
         */
-        istrat=0;
-        indx2 =0;
-        denom =0;
-        meaneta =0;
-        nrisk =0;
         newlk =0;
-        for (person=0; person<nused;) {
-            p = sort1[person];
-            if (event[p]==0){
-                nrisk++;
-                meaneta += eta[p];
-                risk = exp(eta[p]) * weights[p];
-                denom += risk;
-                for (i=0; i<nvar; i++) {
-                    a[i] += risk*covar[i][p];
-                    for (j=0; j<=i; j++)
-                        cmat[i][j] += risk*covar[i][p]*covar[j][p];
+        for (i=0; i<nvar; i++) {
+            u[i] =0;
+            for (j=0; j<nvar; j++) imat[i][j] =0;
+        }
+        person =0;
+        indx1 =0;
+        istrat =0;
+
+        /* this next set is rezeroed at the start of each stratum */
+        denom=0;
+        nrisk=0;
+        etasum =0;
+        for (i=0; i<nvar; i++) {
+            a[i] =0;
+            for (j=0; j<nvar; j++) cmat[i][j] =0;
+        }
+        /* end of the per-stratum set */
+
+        while (person < nused) {
+            /* find the next death time */
+            for (k=person; k< nused; k++) {
+                if (k == strata[istrat]) {
+                    /* hit a new stratum; reset temporary sums */
+                    istrat++;
+                    denom = 0;
+                    nrisk = 0;
+                    etasum =0;
+                    for (i=0; i<nvar; i++) {
+                        a[i] =0;
+                        for (j=0; j<nvar; j++) cmat[i][j] =0;
                     }
-                person++;
-                /* nothing more needs to be done for this obs */
+                    person =k;  /* skip to end of stratum */
+                    indx1  =k; 
+                }
+                p = sort2[k];
+                if (event[p] == 1) {
+                    dtime = tstop[p];
+                    break;
+                }
             }
+            if (k == nused) person =k;  /* no more deaths to be processed */
             else {
-                time = stop[p];
+                /* remove any subjects no longer at risk */
                 /*
                 ** subtract out the subjects whose start time is to the right
+                ** If everyone is removed reset the totals to zero.  (This happens when
+                ** the survSplit function is used, so it is worth checking).
                 */
-                for (; indx2<strata[istrat]; indx2++) {
-                    p = sort2[indx2];
-                    if (start[p] < time) break;
+                for (; indx1<strata[istrat]; indx1++) {
+                    p1 = sort1[indx1];
+                    if (start[p1] < dtime) break;
+                    if (keep[p1] == 0) continue;  /* skip any never-at-risk rows */
                     nrisk--;
-                    meaneta -= eta[p];
-                    risk = exp(eta[p]) * weights[p];
-                    denom -= risk;
-                    for (i=0; i<nvar; i++) {
-                        a[i] -= risk*covar[i][p];
-                        for (j=0; j<=i; j++)
-                            cmat[i][j] -= risk*covar[i][p]*covar[j][p];
+                    if (nrisk ==0) {
+                        etasum =0;
+                        denom =0;
+                        for (i=0; i<nvar; i++) {
+                            a[i] =0;
+                            for (j=0; j<=i; j++) cmat[i][j] =0;
                         }
                     }
+                    else {
+                        etasum -= eta[p1];
+                        risk = exp(eta[p1]) * weights[p1];
+                        denom -= risk;
+                        for (i=0; i<nvar; i++) {
+                            a[i] -= risk*covar[i][p1];
+                            for (j=0; j<=i; j++)
+                                cmat[i][j] -= risk*covar[i][p1]*covar[j][p1];
+                        }
+                    }
+                    /* 
+                    ** We must avoid overflow in the exp function (~750 on Intel)
+                    ** and want to act well before that, but not take action very often.  
+                    ** One of the case-cohort papers suggests an offset of -100 meaning
+                    ** that etas of 50-100 can occur in "ok" data, so make it larger 
+                    ** than this.
+                    ** If the range of eta is more then log(1e16) = 37 then the data is
+                    **  hopeless: some observations will have effectively 0 weight.  Keeping
+                    **  the mean sensible suffices to keep the max in check for all other
+                    *   data sets.
+                    */
+                    if (fabs(etasum/nrisk) > 200) {  
+                        flag[1]++;  /* a count, for debugging/profiling purposes */
+                        temp = etasum/nrisk;
+                        for (i=0; i<nused; i++) eta[i] -= temp;
+                        temp = exp(-temp);
+                        denom *= temp;
+                        for (i=0; i<nvar; i++) {
+                            a[i] *= temp;
+                            for (j=0; j<nvar; j++) {
+                                cmat[i][j]*= temp;
+                            }
+                        }
+                        etasum =0;
+                    }
+                }
 
-                /*
-                ** compute the averages over subjects with
-                **   exactly this death time (a2 & c2)
-                ** (and add them into a and cmat while we are at it).
+                /* 
+                ** add any new subjects who are at risk 
+                ** denom2, a2, cmat2, meanwt and deaths count only the deaths
                 */
-                efron_wt =0;
+                denom2= 0;
                 meanwt =0;
+                deaths=0;    
                 for (i=0; i<nvar; i++) {
                     a2[i]=0;
                     for (j=0; j<nvar; j++) {
                         cmat2[i][j]=0;
-                        }
                     }
-                deaths=0;
-                for (k=person; k<strata[istrat]; k++) {
-                    p = sort1[k];
-                    if (stop[p] < time) break;
+                }
+                
+                for (; person<strata[istrat]; person++) {
+                    p = sort2[person];
+                    if (tstop[p] < dtime) break; /* no more to add */
                     risk = exp(eta[p]) * weights[p];
-                    denom += risk;
-                    nrisk++;
-                    meaneta += eta[p];
 
-                    for (i=0; i<nvar; i++) {
-                        a[i] += risk*covar[i][p];
-                        for (j=0; j<=i; j++)
-                            cmat[i][j] += risk*covar[i][p]*covar[j][p];
-                        }
-                    if (event[p]==1) {
-                        deaths += event[p];
-                        efron_wt += risk*event[p];
+                    if (event[p] ==1 ){
+                        nrisk++;
+                        etasum += eta[p];
+                        deaths++;
+                        denom2 += risk*event[p];
                         meanwt += weights[p];
+                        newlk += weights[p]* eta[p];
                         for (i=0; i<nvar; i++) {
+                            u[i] += weights[p] * covar[i][p];
                             a2[i]+= risk*covar[i][p];
                             for (j=0; j<=i; j++)
                                 cmat2[i][j] += risk*covar[i][p]*covar[j][p];
-                            }
-                    }
-                    }
-                ksave = k;
-                    
-                /* 
-                ** If the average eta value has gotton out of hand, fix it.
-                ** We must avoid overflow in the exp function (~750 on Intel)
-                ** and want to act well before that, but not take action very often.  
-                ** One of the case-cohort papers suggests an offset of -100 meaning
-                ** that etas of 50-100 can occur in "ok" data, so make it larger than this.
-                */
-                if (fabs(meaneta) > (nrisk *110)) {  
-                    meaneta = meaneta/nrisk;
-                    for (i=0; i<nused; i++) eta[i] -= meaneta;
-                    temp = exp(-meaneta);
-                    denom *= temp;
-                    for (i=0; i<nvar; i++) {
-                        a[i] *= temp;
-                        a2[i] *= temp;
-                        for (j=0; j<nvar; j++) {
-                            cmat[i][j]*= temp;
-                            cmat2[i][j] *= temp;
                         }
                     }
-                    meaneta =0;
+                    else if (keep[p] >0) {
+                        nrisk++;
+                        etasum += eta[p];
+                        denom += risk;
+                        for (i=0; i<nvar; i++) {
+                            a[i] += risk*covar[i][p];
+                            for (j=0; j<=i; j++)
+                                cmat[i][j] += risk*covar[i][p]*covar[j][p];
+                        }
+                    }
                 }
-                    
                 /*
                 ** Add results into u and imat for all events at this time point
                 */
-                meanwt /= deaths;
-                itemp = -1;
-                for (; person<ksave; person++) {
-                    p = sort1[person];
-                    if (event[p]==1) {
-                        itemp++;
-                        temp = itemp*method/(double) deaths;
-                        d2 = denom - temp*efron_wt;
-                        newlk +=  weights[p]*eta[p] -meanwt *log(d2);
-
+                if (method==0 || deaths ==1) { /*Breslow */
+                    denom += denom2;
+                    newlk -= meanwt*log(denom);  /* sum of death weights*/ 
+                    for (i=0; i<nvar; i++) {
+                        a[i] += a2[i];
+                        temp = a[i]/denom;   /*mean covariate at this time */
+                        u[i] -= meanwt*temp;
+                        for (j=0; j<=i; j++) {
+                            cmat[i][j] += cmat2[i][j];
+                            imat[j][i] += meanwt*((cmat[i][j]- temp*a[j])/denom);
+                        }
+                    }
+                }
+                else {
+                    meanwt /= deaths;
+                    for (k=0; k<deaths; k++) {
+                        denom += denom2/deaths;
+                        newlk -= meanwt*log(denom);
                         for (i=0; i<nvar; i++) {
-                            temp2 = (a[i] - temp*a2[i])/d2;
-                            u[i] += weights[p]*covar[i][p] - meanwt*temp2;
-                            for (j=0; j<=i; j++)
-                                imat[j][i] += meanwt* (
-                                            (cmat[i][j] - temp*cmat2[i][j])/d2-
-                                               temp2*(a[j]-temp*a2[j])/d2);
+                            a[i] += a2[i]/deaths;
+                            temp = a[i]/denom;
+                            u[i] -= meanwt*temp;
+                            for (j=0; j<=i; j++) {
+                                cmat[i][j] += cmat2[i][j]/deaths;
+                                imat[j][i] += meanwt*((cmat[i][j]- temp*a[j])/denom);
                             }
+                            }
+                    }
+                }
+                /* 
+                ** We must avoid overflow in the exp function (~750 on Intel)
+                ** and want to act well before that, but not take action very often.  
+                ** One of the case-cohort papers suggests an offset of -100 meaning
+                ** that etas of 50-100 can occur in "ok" data, so make it larger 
+                ** than this.
+                ** If the range of eta is more then log(1e16) = 37 then the data is
+                **  hopeless: some observations will have effectively 0 weight.  Keeping
+                **  the mean sensible suffices to keep the max in check for all other
+                *   data sets.
+                */
+                if (fabs(etasum/nrisk) > 200) {  
+                    flag[1]++;  /* a count, for debugging/profiling purposes */
+                    temp = etasum/nrisk;
+                    for (i=0; i<nused; i++) eta[i] -= temp;
+                    temp = exp(-temp);
+                    denom *= temp;
+                    for (i=0; i<nvar; i++) {
+                        a[i] *= temp;
+                        for (j=0; j<nvar; j++) {
+                            cmat[i][j]*= temp;
                         }
                     }
-            }
-
-            if (person == strata[istrat]) {
-                istrat++;
-                denom =0;
-                meaneta=0;
-                nrisk =0;
-                indx2 = person;
-                for (i=0; i<nvar; i++) {
-                    a[i] =0;
-                    for (j=0; j<nvar; j++) {
-                        cmat[i][j]=0;
-                        }
-                    }
+                    etasum =0;
+                }
             }
         }   /* end  of accumulation loop */
-
-        *flag = cholesky2(imat, nvar, tol_chol);
-        if (fabs(1-(loglik[1]/newlk))<= eps  && halving==0){ /* all done */
-            loglik[1] = newlk;
-            chinv2(imat, nvar);
-            for (i=0; i<nvar; i++) {
-                beta[i] *= scale[i];  /* return to original scale */
-                u[i] /= scale[i];
-                imat[i][i] *= scale[i] * scale[i];
-                for (j=0; j<i; j++) {
-                    imat[j][i] *= scale[i] * scale[j];
-                    imat[i][j] = imat[j][i];
-                }
-            }
-            UNPROTECT(nprotect);
-            return(rlist);
-        }
-
-        if (*iter < maxiter) { /*update beta */
-            if (newlk < loglik[1])   {    /*it is not converging ! */
-                halving =1;
-                for (i=0; i<nvar; i++)
-                    beta[i] = (oldbeta[i] + beta[i]) /2; /*half of old increment */
-            }
-            else {
-                halving=0;
-                loglik[1] = newlk;
-                chsolve2(imat,nvar,u);
-
-                for (i=0; i<nvar; i++) {
-                    oldbeta[i] = beta[i];
-                    beta[i] = beta[i] +  u[i];
-                    if (beta[i]> maxbeta[i]) beta[i] = maxbeta[i];
-                    else if (beta[i] < -maxbeta[i]) beta[i] = -maxbeta[i];
-                }
-            }
-        }  
-        R_CheckUserInterrupt();  /* be polite -- did the user hit cntrl-C? */
+       
     } /*return for another iteration */
+
+    (*iter)--;  /* the loop index is always 1 beyond where it finished */
+    flag[0] = rank; 
+    loglik[1] = newlk;
+    chinv2(imat, nvar);
+    for (i=0; i<nvar; i++) {
+        beta[i] *= scale[i];  /* return to original scale */
+        u[i] /= scale[i];
+        imat[i][i] *= scale[i] * scale[i];
+        for (j=0; j<i; j++) {
+            imat[j][i] *= scale[i] * scale[j];
+            imat[i][j] = imat[j][i];
+        }
+    }
+    UNPROTECT(nprotect);
+    return(rlist);
+    (*iter)--;  /* the loop index is always 1 beyond where it finished */
+    flag[0] = rank; 
     loglik[1] = newlk;
     chinv2(imat, nvar);
     for (i=0; i<nvar; i++) {

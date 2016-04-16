@@ -74,6 +74,9 @@ SEXP concordance1(SEXP y, SEXP wt2,  SEXP indx2, SEXP ntree2);
 SEXP concordance2(SEXP y,     SEXP wt2,  SEXP indx2, SEXP ntree2,
                   SEXP sortstop, SEXP sortstart) ;
 
+void cox_callback(int which, double *coef, double *first, double *second,
+		  double *penalty, int *flag, int p, SEXP fexpr, SEXP rho);
+
 SEXP coxcount1(SEXP y2, SEXP strat2) ;
 SEXP coxcount2(SEXP y2, SEXP isort1, SEXP isort2, SEXP strat2) ;
 
@@ -133,6 +136,9 @@ void coxscore(Sint   *nx,      Sint   *nvarx,    double *y,
 
 double coxsafe(double x);
 double **dmatrix(double *array, int ncol, int nrow);
+
+SEXP finegray(SEXP tstart2, SEXP tstop2,   SEXP ctime2,   SEXP cprob2, 
+	      SEXP extend2, SEXP keep2);
 
 void init_doloop(int min, int max);
 int doloop      (int nloops, int *index);
@@ -207,6 +213,8 @@ void survpenal(int whichcase, int nfrail,    int  nvar2,    double **hmat,
 	       double *u,     double *beta,  double *loglik,
 	       int ptype,     int pdiag,     SEXP pexpr1,   double *cptr1, 
 	       SEXP pexpr2,   double *cptr2, SEXP rho);
+
+SEXP survsplit(SEXP tstart2,  SEXP tstop2,  SEXP cut2);
 
 SEXP tmerge (SEXP id2,  SEXP time1x, SEXP time2x, SEXP newx2,
 	     SEXP nid2, SEXP ntime2, SEXP x2,  SEXP indx2); 

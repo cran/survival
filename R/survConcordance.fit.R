@@ -1,5 +1,8 @@
-# Automatically generated from all.nw using noweb
-survConcordance.fit <- function(y, x, strata, weight) {    
+# Automatically generated from the noweb directory
+survConcordance.fit <- function(y, x, strata, weight) { 
+    # The coxph program may occassionally fail, and this will kill the C
+    #  routine below
+    if (any(is.na(x)) || any(is.na(y))) return(NULL)   
     btree <- function(n) {
         ranks <- rep(0L, n)  #will be overwritten
         yet.to.do <- 1:n
@@ -18,7 +21,7 @@ survConcordance.fit <- function(y, x, strata, weight) {
         }
         ranks
     }
-
+        
     docount <- function(stime, risk, wts) {
         if (attr(stime, 'type') == 'right') {
             ord <- order(stime[,1], -stime[,2])

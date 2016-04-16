@@ -1,4 +1,4 @@
-# Automatically generated from all.nw using noweb
+# Automatically generated from the noweb directory
 survfitCI <- function(X, Y, weights, id, istate, 
                       type=c('kaplan-meier', 'fleming-harrington', 'fh2'),
                       se.fit=TRUE,
@@ -20,9 +20,9 @@ survfitCI <- function(X, Y, weights, id, istate,
     }
 
     type <- attr(Y, "type")
-    if (type !='mright' && type!='mcounting' && 
-        type != "right" && type != "counting")
-        stop(paste("Cumulative incidence computation doesn't support \"", type,
+    # This line should be unreachable, unless they call "surfitCI"
+    if (type !='mright' && type!='mcounting')
+         stop(paste("multi-state computation doesn't support \"", type,
                           "\" survival data", sep=''))
 
     n <- nrow(Y)
@@ -30,30 +30,42 @@ survfitCI <- function(X, Y, weights, id, istate,
     ncurve <- length(levels(X))
     
     state.names <- attr(Y, "states")
-    if (missing(istate) || is.null(istate)) istate <- rep(0L, n)
+    nstate <- length(state.names) 
+    has.istate <- !missing(istate)
+    if (missing(istate) || is.null(istate)) {
+        istate <- rep(nstate+ 1L, n)
+        state.names <- c(state.names, "")
+        }
     else if (is.factor(istate) || is.character(istate)) {
         # Match levels with the survival variable
         temp <- as.factor(istate)
         # append any starting states not found in Y, but remember that
         #  if istate was a factor then not all its levels might appear
-        appear <- (levels(istate))[unique(as.numeric(istate))]
+        appear <- (levels(temp))[unique(as.numeric(temp))]
         state.names <- unique(c(attr(Y, "states"), appear))
-        istate <- as.numeric(factor(as.character(istate), levels=state.names))
+        istate <- as.numeric(factor(as.character(temp), levels=state.names))
     }
-    else if (!is.numeric(istate) || any(istate != floor(istate)))
+    else {
+        if (!is.numeric(istate) || any(istate != floor(istate)) || 
+             any(istate < 1))
         stop("istate should be a vector of integers or a factor")
+        if (max(istate) > nstate) 
+            state.names <- c(state.names, (1+nstate):max(istate))
+        }
     
     if (length(id) ==0) id <- 1:n
-    # these next two lines should be impossible, since istate came from the data frame
+    # these next two lines should be impossible, since istate came from 
+    #   the data frame
     if (length(istate) ==1) istate <- rep(istate,n)
     if (length(istate) !=n) stop ("wrong length for istate")
 
-    states <- sort(unique(c(istate, 1:length(attr(Y, "states"))))) #list of all
+    # The states of the status variable are the first columns in the output
+    states <- unique(c(1:nstate, istate))
     docurve2 <- function(entry, etime, status, istate, wt, states, id, se.fit) {
         #
         # round off error can cause trouble, if two times are within machine
         #  precsion
-        # solve this by using creating a factor
+        # solve this by creating a factor
         ftime <- factor(c(entry,etime))
         ltime <- levels(ftime)
         ftime <- matrix(as.integer(ftime), ncol=2)
@@ -63,7 +75,7 @@ survfitCI <- function(X, Y, weights, id, istate,
         uid <- sort(unique(id))
         P <- as.vector(tapply(wt, factor(istate, levels=states), sum) / sum(wt))
         P <- ifelse(is.na(P), 0, P) # initial probability distribution
-        cstate <- istate[match(uid, id)]   #current state for each observation
+        cstate <- istate[match(uid, id)]   #initial state for each observation
         
         storage.mode(wt) <- "double" # just in case someone had integer weights
         storage.mode(cstate) <- "integer"
@@ -78,25 +90,20 @@ survfitCI <- function(X, Y, weights, id, istate,
                      wt,
                      match(id, uid) -1L,
                      P, as.integer(se.fit))
-        prev0 <- table(factor(cstate, levels=states), exclude=NA)/length(cstate)
+        p0 <- table(factor(cstate, levels=states), exclude=NA)/length(cstate)
+        n.event <- table(ftime[,2], factor(status,c(0,states)))[,-1]
         if (se.fit) 
-            list(time=timeset, pmat=t(fit$p), std=sqrt(t(fit$var)),
-                 n.risk = colSums(fit$nrisk),n.event = fit$nevent, 
-                 n.censor=fit$ncensor, prev0 = prev0,
+            list(time=timeset, prev=t(fit$p), std=sqrt(t(fit$var)),
+                 n.risk = t(fit$nrisk),
+                 n.event = n.event, 
+                 n.censor=fit$ncensor, p0 = p0,
                  cumhaz=array(fit$cumhaz, dim=c(nstate,nstate, length(timeset))))
-        else list(time=timeset, pmat=t(fit$p),
-                 n.risk = colSums(fit$nrisk),n.event = fit$nevent, 
-                 n.censor=fit$ncensor,  prev0=prev0,
+        else list(time=timeset, prev=t(fit$p),
+                 n.risk = t(fit$nrisk), 
+                 n.event = n.event, 
+                 n.censor=fit$ncensor,  p0=p0,
                  cumhaz=array(fit$cumhaz, dim=c(nstate,nstate, length(timeset))))
     }
-    if (any(states==0)) {
-        state0 <- TRUE
-        states <- states + 1
-        istate <- istate + 1
-        status <- ifelse(status==0, 0, status+1)
-        }
-    else state0 <- FALSE
-    
     curves <- vector("list", ncurve)
     names(curves) <- levels(X)
                             
@@ -109,6 +116,12 @@ survfitCI <- function(X, Y, weights, id, istate,
         if (length(id) && any(duplicated(id)))
             stop("Cannot have duplicate id values with (time, status) data")
 
+        # make a table of transitions.  The from can range across
+        #  all of the states, to can only have nstate categories
+        nst <- length(state.names)
+        transitions <- table(factor(istate, 1:nst), factor(Y[,2], 1:nstate))
+        dimnames(transitions) <-list(from=state.names, to=state.names[1:nstate])
+                             
         # dummy entry time that is < any event time
         entry <- rep(min(-1, 2*min(Y[,1])-1), n)  
         for (i in levels(X)) {
@@ -126,28 +139,39 @@ survfitCI <- function(X, Y, weights, id, istate,
             stop("the id argument is required for start:stop data")
 
         indx <- order(id, Y[,2])  #ordered event times within subject
-        indx1 <- c(NA, indx)  #a pair of lagged indices
-        indx2 <- c(indx, NA)
-        same <- (id[indx1] == id[indx2] & !is.na(indx1) & !is.na(indx2)) #indx1, indx2= same id?
+        indx1 <- indx[-length(indx)]  #a pair of lagged indices
+        indx2 <- indx[-1]
+        #if indx1[5] == index2[5] that means that the 5th and 6th are the same id
+        same <- (id[indx1] == id[indx2])
         if (any(same & X[indx1] != X[indx2])) {
-            who <- 1 + min(which(same & X[indx1] != X[indx2]))
-            stop("subject is in two different groups, id ", (id[indx1])[who])
+            who <- min(which(same & X[indx1] != X[indx2]))
+            stop("subject is in two different groups, id ", id[indx1[who]])
         }
         if (any(same & Y[indx1,2] != Y[indx2,1])) {
-            who <- 1 + min(which(same & Y[indx1,2] != Y[indx2,1]))
-            stop("gap in follow-up, id ", (id[indx1])[who])
+            who <- min(which(same & Y[indx1,2] != Y[indx2,1]))
+            stop("gap in follow-up, id ", id[indx1[who]])
         }
         if (any(Y[,1] == Y[,2])) 
             stop("cannot have start time == stop time")
 
-        if (any(same & Y[indx1,3] == Y[indx2,3] & Y[indx1,3] !=0)) {
-            who <-  1 + min(which(same & Y[indx1,1] != Y[indx2,2]))
-            warning("subject changes to the same state, id ", (id[indx1])[who])
+        if (any(same & (Y[indx1,3] == Y[indx2,3]) & (Y[indx1,3] !=0))) {
+            who <-  min(which(same & (Y[indx1,3] == Y[indx2,3]) & (Y[indx1,3] !=0)))
+            warning("subject changes to the same state, id ", id[indx1[who]])
         }
         if (any(same & weights[indx1] != weights[indx2])) {
-            who <-  1 + min(which(same & weights[indx1] != weights[indx2]))
-            stop("subject changes case weights, id ", (id[indx1])[who])
+            who <-  min(which(same & weights[indx1] != weights[indx2]))
+            stop("subject changes case weights, id ", id[indx1[who]])
         }
+
+        # Make the table of transitions
+        nst <- length(state.names)
+        first <- indx[!duplicated(id[indx])]
+        transitions <- table(factor(istate[first], 1:nst), 
+                             factor(Y[first,3], 1:nstate))
+        if (any(same))
+            transitions <- transitions + table(factor(Y[indx1[same],3], 1:nst),
+                                               factor(Y[indx2[same],3], 1:nstate))
+        dimnames(transitions) = list(from=state.names, to=state.names[1:nstate])
         # We only want to pay attention to the istate variable for the very first
         #  observation of any given subject, but the program logic does better with
         #  a full one.  So construct one that will do this
@@ -185,21 +209,16 @@ survfitCI <- function(X, Y, weights, id, istate,
                  n.risk=  grabit(curves, "n.risk"),
                  n.event= grabit(curves, "n.event"),
                  n.censor=grabit(curves, "n.censor"),
-                 prev   = grabit(curves, "pmat"),
-                 prev0  = grabit(curves, "prev0"))
+                 prev   = grabit(curves, "prev"),
+                 p0  = grabit(curves, "p0"),
+                 transitions = transitions)
     nstate <- length(states)
     kfit$cumhaz <- array(unlist(lapply(curves, function(x) x$cumhaz)),
                                dim=c(nstate, nstate, length(kfit$time)))
     if (length(curves) >1)
         kfit$strata <- unlist(lapply(curves, function(x) length(x$time)))
     if (se.fit) kfit$std.err <- grabit(curves, "std")
-
-    # if state 0 was present, remove it
-    if (state0) {
-        kfit$prev <- kfit$prev[,-1]
-        if (se.fit) kfit$std.err <- kfit$std.err[,-1]
-        kfit$prev0 <- kfit$prev0[,-1]
-    }
+    kfit$istate <- has.istate  # used later in plots
     #       
     # Last bit: add in the confidence bands:
     #   modeled on survfit.km, though for P instead of S

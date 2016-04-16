@@ -1,10 +1,10 @@
-# Automatically generated from all.nw using noweb
+# Automatically generated from the noweb directory
 survConcordance <- function(formula, data,
                             weights, subset, na.action) {
     Call <- match.call()  # save a copy of of the call, as documentation
 
     m <- match.call(expand.dots=FALSE)
-    m[[1]] <- as.name("model.frame")
+    m[[1L]] <-  quote(stats::model.frame)
     m$formula <- if(missing(data)) terms(formula, "strata")
                  else              terms(formula, "strata", data=data)
     m <- eval(m, sys.parent())

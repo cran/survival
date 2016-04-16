@@ -14,43 +14,7 @@ coxph <- function(formula, data, weights, subset, na.action,
 
     ties <- match.arg(ties)
     Call <- match.call()
-
-    # create a call to model.frame() that contains the formula (required)
-    #  and any other of the relevant optional arguments
-    # then evaluate it in the proper frame
-    indx <- match(c("formula", "data", "weights", "subset", "na.action"),
-                  names(Call), nomatch=0) 
-    if (indx[1] ==0) stop("A formula argument is required")
-    temp <- Call[c(1,indx)]  # only keep the arguments we wanted
-    temp[[1]] <- as.name('model.frame')  # change the function called
-    
-    special <- c("strata", "cluster", "tt")
-    temp$formula <- if(missing(data)) terms(formula, special)
-                    else              terms(formula, special, data=data)
-    # Make "tt" visible for coxph formulas, without making it visible elsewhere
-    if (!is.null(attr(temp$formula, "specials")$tt)) {
-        coxenv <- new.env(parent= environment(formula))
-        assign("tt", function(x) x, env=coxenv)
-        environment(temp$formula) <- coxenv
-    }
-
-    mf <- eval(temp, parent.frame())
-    if (nrow(mf) ==0) stop("No (non-missing) observations")
-    Terms <- terms(mf)
-
-    
-    ## We want to pass any ... args to coxph.control, but not pass things
-    ##  like "dats=mydata" where someone just made a typo.  The use of ...
-    ##  is simply to allow things like "eps=1e6" with easier typing
-    extraArgs <- list(...)
-    if (length(extraArgs)) {
-	controlargs <- names(formals(coxph.control)) #legal arg names
-	indx <- pmatch(names(extraArgs), controlargs, nomatch=0L)
-	if (any(indx==0L))
-            stop(gettextf("Argument %s not matched", names(extraArgs)[indx==0L]),
-                 domain = NA)
-    }
-    if (missing(control)) control <- coxph.control(...)
+    <<coxph-getdata>>
 
     Y <- model.extract(mf, "response")
     if (!inherits(Y, "Surv")) stop("Response must be a survival object")
@@ -107,6 +71,46 @@ coxph <- function(formula, data, weights, subset, na.action,
     }
 @     
 
+Standard code to grab the data.
+<<coxph-getdata>>=
+# create a call to model.frame() that contains the formula (required)
+#  and any other of the relevant optional arguments
+# then evaluate it in the proper frame
+indx <- match(c("formula", "data", "weights", "subset", "na.action"),
+              names(Call), nomatch=0) 
+if (indx[1] ==0) stop("A formula argument is required")
+temp <- Call[c(1,indx)]  # only keep the arguments we wanted
+temp[[1L]] <- quote(stats::model.frame)  # change the function called
+
+special <- c("strata", "cluster", "tt")
+temp$formula <- if(missing(data)) terms(formula, special)
+                else              terms(formula, special, data=data)
+# Make "tt" visible for coxph formulas, without making it visible elsewhere
+if (!is.null(attr(temp$formula, "specials")$tt)) {
+    coxenv <- new.env(parent= environment(formula))
+    assign("tt", function(x) x, env=coxenv)
+    environment(temp$formula) <- coxenv
+}
+
+mf <- eval(temp, parent.frame())
+if (nrow(mf) ==0) stop("No (non-missing) observations")
+Terms <- terms(mf)
+
+
+## We want to pass any ... args to coxph.control, but not pass things
+##  like "dats=mydata" where someone just made a typo.  The use of ...
+##  is simply to allow things like "eps=1e6" with easier typing
+extraArgs <- list(...)
+if (length(extraArgs)) {
+    controlargs <- names(formals(coxph.control)) #legal arg names
+    indx <- pmatch(names(extraArgs), controlargs, nomatch=0L)
+    if (any(indx==0L))
+        stop(gettextf("Argument %s not matched", names(extraArgs)[indx==0L]),
+             domain = NA)
+}
+if (missing(control)) control <- coxph.control(...)
+@ 
+
 An increasingly common error is for users to put the time variable on
 both sides of the formula, in the mistaken idea that this will
 deal with a failure of proportional hazards.
@@ -114,11 +118,12 @@ Add a test for such models, and bail out.
 The \code{variables} attribute of the Terms object is the expression form
 of a list that contains the response variable followed by the predictors.
 Subscripting this, element 1 is the call to ``list'' itself so we always
-retain it.
+retain it.  My \code{terms.inner} function works only with formula
+objects. 
 <<coxph-bothsides>>=
 if (length(attr(Terms, 'variables')) > 2) { # a ~1 formula has length 2
-    ytemp <- terms.inner(attr(Terms, 'variables')[1:2])
-    xtemp <- terms.inner(attr(Terms, 'variables')[-2])
+    ytemp <- terms.inner(formula[1:2])
+    xtemp <- terms.inner(formula[-2])
     if (any(!is.na(match(xtemp, ytemp))))
         warning("a variable appears on both the left and right sides of the formula")
 }
@@ -210,7 +215,23 @@ The C routine has returned a list with 4 elements
     1, followed by those at risk at event time 2, those at risk at event time 3,
     etc.
 \end{description}
+
 The new data frame is then a simple creation.
+The subtle part below is a desire to retain transformation information
+so that a downstream call to \code{termplot} will work.
+The tt function supplied by the user often finishes with a call to 
+\code{pspline} or \code{ns}.  If the returned value of the \code{tt}
+call has a class for which a \code{makepredictcall} method exists then
+we need to do 2 things:
+\begin{enumerate}
+  \item Construct a fake call, e.g., ``pspline(age)'', then feed it and
+    the result of tt as arguments to \code{makepredictcall}
+  \item Replace that componenent in the predvars attribute of the terms.
+\end{enumerate}
+The \code{timetrans\$terms} value is a count of the right hand side of
+the formula.  Some objects in the terms structure are unevaluated calls
+that include y, this adds 2 to the count (the call to ``list'' and
+the response).
 <<coxph-transform>>=
 mf <- mf[tindex,]
 Y <- Surv(rep(counts$time, counts$nrisk), counts$status)
@@ -218,10 +239,22 @@ type <- 'right'  # new Y is right censored, even if the old was (start, stop]
 strats <- rep(1:length(counts$nrisk), counts$nrisk)
 weights <- model.weights(mf)
 if (!is.null(weights) && any(!is.finite(weights)))
-    stop("weights must be finite")   
-for (i in 1:ntrans) 
-    mf[[timetrans$var[i]]] <- (tt[[i]])(mf[[timetrans$var[i]]], Y[,1], strats, 
-                                       weights)
+    stop("weights must be finite")  
+
+tcall <- attr(Terms, 'variables')[timetrans$terms+2]
+pvars <- attr(Terms, 'predvars')
+pmethod <- sub("makepredictcall.", "", as.vector(methods("makepredictcall")))
+for (i in 1:ntrans) {
+    newtt <- (tt[[i]])(mf[[timetrans$var[i]]], Y[,1], strats, weights)
+    mf[[timetrans$var[i]]] <- newtt
+    nclass <- class(newtt)
+    if (any(nclass %in% pmethod)) { # It has a makepredictcall method
+        dummy <- as.call(list(as.name(class(newtt)[1]), tcall[[i]][[2]]))
+        ptemp <- makepredictcall(newtt, dummy)
+        pvars[[timetrans$terms[i]+2]] <- ptemp
+    }
+}
+attr(Terms, "predvars") <- pvars
 @ 
 
 This is the C code for time-transformation.
@@ -482,7 +515,7 @@ stemp <- untangle.specials(Terms, 'strata', 1)
 if (length(stemp$vars) > 0) {  #if there is a strata statement
     hasinteractions <- FALSE
     for (i in stemp$vars) {  #multiple strata terms are allowed
-        # The factors att has one row for each variable in the frame, one
+        # The factors attr has one row for each variable in the frame, one
         #   col for each term in the model.  Pick rows for each strata
         #   var, and find if it participates in any interactions.
         if (any(attr(Terms, 'order')[attr(Terms, "factors")[i,] >0] >1))
@@ -691,10 +724,10 @@ model.matrix.coxph <- function(object, data=NULL,
         return(object[['x']]) #don't match "xlevels"
 
     Terms <- delete.response(object$terms)
-    if (is.null(data)) mf <- model.frame(object)
+    if (is.null(data)) mf <- stats::model.frame(object)
     else {
         if (is.null(attr(data, "terms")))
-            mf <- model.frame(Terms, data, xlev=object$xlevels)
+            mf <- stats::model.frame(Terms, data, xlev=object$xlevels)
         else mf <- data  #assume "data" is already a model frame
     }
 
@@ -743,7 +776,7 @@ model.frame.coxph <- function(formula, ...) {
         if (indx[1] ==0) stop("The coxph call is missing a formula!")
    
         temp <- fcall[c(1,indx)]  # only keep the arguments we wanted
-        temp[[1]] <- as.name('model.frame')  # change the function called
+        temp[[1]] <- quote(stats::model.frame)  # change the function called
         temp$xlev <- formula$xlevels
         temp$formula <- Terms   #keep the predvars attribute
         # Now, any arguments that were on this call overtake the ones that

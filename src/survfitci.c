@@ -1,6 +1,5 @@
-/* Automatically generated from all.nw using noweb */
+/* Automatically generated from the noweb directory */
 #include "survS.h"
-
 /* allocate a ragged array of a given number of rows and columns */
 static double **dmatrix2(int nrow, int ncol) {
     int i;
@@ -15,6 +14,7 @@ static double **dmatrix2(int nrow, int ncol) {
         }
     return(mat);
     }
+
 SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
                     SEXP status2, SEXP cstate2, SEXP wt2,  SEXP id2,
                     SEXP p2,  SEXP sefit2) {   
@@ -49,7 +49,7 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
         
     /* returned objects */
     SEXP rlist;         /* the returned list and variable names of same */  
-    const char *rnames[]= {"nrisk","nevent","ncensor", "prev", 
+    const char *rnames[]= {"nrisk","nevent","ncensor", "p", 
                            "cumhaz", "var", ""};
     SEXP pmat2, vmat2, cumhaz2;  /*list components */
     SEXP nevent2, ncensor2, nrisk2;

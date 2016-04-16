@@ -1,4 +1,4 @@
-/* Automatically generated from all.nw using noweb */
+/* Automatically generated from the noweb directory */
 #include "survS.h"
 void agsurv5(Sint *n2,     Sint *nvar2,  Sint *dd, double *x1,  
              double *x2,   double *xsum, double *xsum2, 

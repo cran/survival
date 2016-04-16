@@ -11,8 +11,9 @@ generated with \code{plot.survfit}.
 }
 \usage{
 \method{lines}{survfit}(x, type="s", mark=3, col=1, lty=1,
-        lwd=1, cex=1, mark.time=TRUE, 
-	xscale=1,  firstx=0, firsty=1, xmax, fun, conf.int=FALSE,  ...)
+        lwd=1, cex=1, mark.time=FALSE, 
+	xscale=1,  firstx=0, firsty=1, xmax, fun, conf.int=FALSE,
+        conf.times, conf.cap=.005, conf.offset=.012,  ...)
 \method{lines}{survexp}(x, type="l", ...)
 \method{points}{survfit}(x, xscale, xmax, fun, ...)
 }
@@ -41,8 +42,8 @@ If \code{mark.time} is a numeric vector, then curves are marked at
 the specified time points. 
 }
 \item{xscale}{
-a number used to divide the x values.  If time was originally in days, a 
-value of 365.25 would give a plotted scale in years. 
+  this parameter is no longer necessary and is ignored.  See the
+  note in \code{\link{plot.survfit}}.
 }
 \item{firstx, firsty}{
 the starting point for the survival curves.  If either of these is set to 
@@ -63,7 +64,7 @@ argument instead: "log" is the same as using the \code{log=T} option,
 "event" plots cumulative events (f(y) = 1-y), 
 "cumhaz" plots the cumulative hazard function (f(y) = -log(y)) 
 and "cloglog" creates a complimentary log-log survival plot  
-(f(y) = log(-log(y) along with log scale for the x-axis). 
+(f(y) = log(-log(y))) along with log scale for the x-axis. 
 }
 \item{conf.int}{
 if \code{TRUE}, confidence bands for the curves are also plotted. 
@@ -71,6 +72,17 @@ If set to \code{"only"}, then only the CI bands are plotted, and the curve
 itself is left off.   
 This can be useful for fine control over the colors or line types of a plot. 
 }
+  \item{conf.times}{optional vector of times at which to place a
+    confidence bar on the curve(s).  If present, these will be used
+    instead of confidence bands.}
+  \item{conf.cap}{width of the horizontal cap on top of the confidence
+    bars; only used if conf.times is used.  A value of 1 is the width of
+    the plot region.}
+  \item{conf.offset}{the offset for confidence bars, when there are
+    multiple curves on the plot.  A value of 1 is the width of the plot
+    region. If this is a single number then each curve's bars are offset
+    by this amount from the prior curve's bars, if it is a vector the values are
+    used directly.}
 }
 \value{
 a list with components \code{x} and \code{y}, containing the coordinates of the 

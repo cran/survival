@@ -1,4 +1,4 @@
-# Automatically generated from all.nw using noweb
+# Automatically generated from the noweb directory
 agsurv <- function(y, x, wt, risk, survtype, vartype) {
     nvar <- ncol(as.matrix(x))
     status <- y[,ncol(y)]

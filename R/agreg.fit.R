@@ -1,4 +1,4 @@
-# Automatically generated from all.nw using noweb
+# Automatically generated from the noweb directory
 agreg.fit <- function(x, y, strata, offset, init, control,
                         weights, method, rownames)
     {
@@ -12,12 +12,12 @@ agreg.fit <- function(x, y, strata, offset, init, control,
     # Sort the data (or rather, get a list of sorted indices)
     #  For both stop and start times, the indices go from last to first
     if (length(strata)==0) {
-        sort.end  <- order(-stopp, event) -1L #indices start at 0 for C code
+        sort.end  <- order(-stopp) -1L #indices start at 0 for C code
         sort.start<- order(-start) -1L
         newstrat  <- n
         }
     else {
-        sort.end  <- order(strata, -stopp, event) -1L
+        sort.end  <- order(strata, -stopp) -1L
         sort.start<- order(strata, -start) -1L
         newstrat  <- cumsum(table(strata))
         }
@@ -55,15 +55,16 @@ agreg.fit <- function(x, y, strata, offset, init, control,
                    y, x, newstrat, weights, 
                    offset,
                    as.double(init), 
-                   sort.end, sort.start, 
+                   sort.start, sort.end, 
                    as.integer(method=="efron"),
                    as.integer(maxiter), 
                    as.double(control$eps),
                    as.double(control$toler.chol),
                    as.integer(1)) # internally rescale
+
     var <- matrix(agfit$imat,nvar,nvar)
     coef <- agfit$coef
-    if (agfit$flag < nvar) which.sing <- diag(var)==0
+    if (agfit$flag[1] < nvar) which.sing <- diag(var)==0
     else which.sing <- rep(FALSE,nvar)
 
     infs <- abs(agfit$u %*% var)
@@ -79,7 +80,7 @@ agreg.fit <- function(x, y, strata, offset, init, control,
                                           "; beta may be infinite. "))
         }
     }
-    lp  <- as.vector(x %*% coef + offset - sum(coef *agfit$means))
+    lp  <- as.vector(x %*% coef + offset - sum(coef * colMeans(x)))
     score <- as.double(exp(lp))
     resid <- .Call(Cagmart3,
                    y, score, weights,
@@ -95,8 +96,10 @@ agreg.fit <- function(x, y, strata, offset, init, control,
     }
     else {
         names(coef) <- dimnames(x)[[2]]
-        coef[which.sing] <- NA
-
+        if (maxiter > 0) coef[which.sing] <- NA  # always leave iter=0 alone
+        flag <- agfit$flag
+        names(flag) <- c("rank", "rescale", "step halving")
+        
         concordance <- survConcordance.fit(y, lp, strata, weights) 
         list(coefficients  = coef,
              var    = var,
@@ -105,8 +108,10 @@ agreg.fit <- function(x, y, strata, offset, init, control,
              iter   = agfit$iter,
              linear.predictors = as.vector(lp),
              residuals = resid,
-             means = agfit$means,
+             means = colMeans(x),
              concordance = concordance,
+             first = agfit$u,
+             info = flag,
              method= 'coxph')
     }
 }  

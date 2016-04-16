@@ -81,6 +81,27 @@ aeq(truth$mart, fit$resid)
 aeq(truth$scho, resid(fit, 'schoen'))
 aeq(truth$score, resid(fit, 'score'))
 
+# Reprise the test, with strata
+#  offseting the times ensures that we will get the wrong risk sets
+#  if strata were not kept separate
+test2b <- rbind(test2, test2, test2)
+test2b$group <- rep(1:3, each= nrow(test2))
+test2b$start <- test2b$start + test2b$group
+test2b$stop  <- test2b$stop  + test2b$group
+fit0 <- coxph(Surv(start, stop, event) ~ x + strata(group), test2b, iter=0)
+aeq(3*truth0$loglik, fit0$loglik[1])
+aeq(3*truth0$imat, 1/fit0$var)
+aeq(rep(truth0$mart,3), fit0$resid)
+aeq(rep(truth0$scho,3),  resid(fit0, 'schoen'))
+aeq(rep(truth0$score,3), resid(fit0, 'score')) 
+
+fit3 <- coxph(Surv(start, stop, event) ~x + strata(group), test2b, eps=1e-8)
+aeq(3*truth$loglik, fit3$loglik[2])
+aeq(3*truth$imat, 1/fit3$var)
+aeq(rep(truth$mart,3), fit3$resid)
+aeq(rep(truth$scho,3), resid(fit3, 'schoen'))
+aeq(rep(truth$score,3), resid(fit3, 'score'))
+
 # 
 # Done with the formal test, now print out lots of bits
 #

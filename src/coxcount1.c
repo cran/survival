@@ -1,5 +1,8 @@
-/* Automatically generated from all.nw using noweb */
+/* Automatically generated from the noweb directory */
 #include "survS.h"
+/*
+** Count up risk sets and identify who is in each
+*/
 SEXP coxcount1(SEXP y2, SEXP strat2) {
     int ntime, nrow;
     int i, j, n;
@@ -82,6 +85,7 @@ SEXP coxcount1(SEXP y2, SEXP strat2) {
     return(rlist);
 }
 #include "survS.h"
+/* count up risk sets and identify who is in each, (start,stop] version */
 SEXP coxcount2(SEXP y2, SEXP isort1, SEXP isort2, SEXP strat2) {
     int ntime, nrow;
     int i, j, istart, n;

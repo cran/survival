@@ -1,10 +1,103 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 2.39-2}{
+  \itemize{
+    \item Small updates based on feedback from CRAN
+}}
+
+\section{Changes in version 2.38-6}{
+  \itemize{
+    \item Label the output dimnames from pyears with the variable names
+    from the model.  This makes it easier to read.
+    
+    \item Replace any refrences to model.frame with "stats::model.frame"
+    (all 38 of them).  The model.frame function uses non-standard
+    evaluation rules, and holding its hand like this is the only way to
+    ensure that we don't call a user function of the same name.
+    
+    \item The Surv function would almost always label the columns of the
+    resulting matrix, and the glmnet function depended on this. It now
+    always labels them per a request from Trevor Hastie.
+
+    \item Add the finegray function and expand the competing risks
+    vignette to document it.
+
+    \item Add a check to the quantile.survfit function for multi-state
+    models; quantiles are not well defined for this case.
+
+    \item Changes to the iteration path and convergence tests for coxph
+    models with (start, stop] data, driven by two user examples that
+    failed.  The data sets had serious statistical issues of
+    collinearity and/or outliers such that the final fits are not
+    practically useful, but now the routine finishes gracefully instead
+    of dying.  The upshot is much more care about the order in which
+    additions and subtractions of large numbers are done so as to avoid
+    cancellation error.
+
+    \item Fix an error to summary.survfit with the times argument: for
+    intermediate time points it would sometimes choose the wrong value
+    for the number at risk.  (Number at risk is a left continuous
+    function.) 
+}}
+    
+\section{Changes in version 2.38-5}{
+  \itemize{
+    \item Add more graphical arguments to plot.cox.zph in response to a user
+    request.
+    
+    \item Remove some of last vestiges of Splus support from the header
+    files for the C code, per a request from R core to remove mention of S.h.
+    
+    \item Multiple updates and corrections to the tmerge function,
+    including improvements to the vignette.  (As a result of using it in
+    a class where the TA tried out all manner of combinations.)
+    
+    \item Update survSplit: it now handles all types of status variables
+    (0/1, TRUE/FALSE, factors), the id and episode arguments are useful
+    for start/stop data, the data retains its original sort order (new
+    observations are inserted rather than put at the end), and the
+    function is illustrated in a vignette.
+    
+    \item Add the conf.times argument to plot.survfit.  This
+    allows for confidence bars at specified times, which are useful
+    when the plot is crowded.
+
+    \item Survfit changes that are NOT backward compatable!
+    \itemize{
+      \item Change the default for mark.time to FALSE
+      \item Change the behavior of xscale so that it matches that of
+      yscale, i.e., it changes only the label and not the underlying
+      scale.  Follow on annotations such as legend or locator are in the
+      orignal scale of the data.
+      \item For a matrix of curves, e.g. competing risks, print and
+      plot them in column major order rather than row major, so as 
+      to match the usual R behavior.
+      }
+    
+    \item Fix an error in the help page for the cohort
+    argument of survexp, pointed out by Karl Ove Hufthammer.
+
+    \item The anova and logLik functions would fail when given a
+    null model (right hand side of 1 or only an offset).  Pointed
+    out by Karl Ove Hufthammer.
+
+    \item The recently added code to generate an error when the same
+    variable appears on both sides of a formula in coxph (a good idea)
+    caused a failure if there was offset statement that contains a '-'
+    sign.  Pointed out by Abra Jeffers.
+}}
+
 \section{Changes in version 2.38-3}{
   \itemize{
     \item Add more imports to the NAMESPACE file per a request from CRAN
-  }
-}
+
+    \item Add a length method for Surv objects.  Requested by Max Kuhn.
+    (2015/6/17).
+
+    \item Fix an error in neardate. When both input data sets were
+    unsorted the last match could be wrong.
+}}
+
 \section{Changes in version 2.38-2}{
   \itemize{
     \item Change print.coxph to use the printCoefmat routine, which l
@@ -204,7 +297,7 @@
     The result of survfit now (sometimes) includes the cumulative
     hazard.  This will be expanded. 29Jul13
     
-    \item Change code in the coxpenal.fit routine: the use of a vector of
+2    \item Change code in the coxpenal.fit routine: the use of a vector of
     symbols as arguments to my .C calls was confusing to a new CRAN
     consistency check.  Both the old and new are legal R; but the old
     was admittedly an unusual construction and it was simpler to change it.
@@ -1004,8 +1097,8 @@ succeed, when "goodlines" is the subset with correct values.}
 
 \subsection{Older changes}{
  \itemize{
-  \item{25SepO7: How embarrassing -- someone pointed out that I had Dave Harrington's
-name spelled wrong in the options to survfit.coxph!}
+   \item{25SepO7: How embarrassing -- someone pointed out that I had Dave
+     Harrington's name spelled wrong in the options to survfit.coxph!}
 
   \item{9Jul07: In a model with offsets, survreg mistakenly omitted the offset
 from the returned linear.predictor component.}

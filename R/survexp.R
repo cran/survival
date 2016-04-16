@@ -1,4 +1,4 @@
-# Automatically generated from all.nw using noweb
+# Automatically generated from the noweb directory
 survexp <- function(formula, data,
         weights, subset, na.action, rmap, times,
         method=c("ederer", "hakulinen", "conditional", "individual.h", 
@@ -12,7 +12,7 @@ survexp <- function(formula, data,
     # keep the first element (the call), and the following selected arguments
     m <- m[c(1, match(c('formula', 'data', 'weights', 'subset', 'na.action'),
                       names(m), nomatch=0))]
-    m[[1]] <- as.name("model.frame")
+    m[[1L]] <- quote(stats::model.frame)
         
     Terms <- if(missing(data)) terms(formula, 'ratetable')
              else              terms(formula, 'ratetable',data=data)

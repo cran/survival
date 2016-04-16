@@ -2,9 +2,15 @@
 \newcommand{\Twid}{\mbox{\(\tt\sim\)}}
 The competing risks routine is very general, allowing subjects
 to enter or exit states multiple times.
-For this reason I prefer the label ``current prevalence'' estimate, 
+For this reason I prefer the label \emph{current prevalence} estimate, 
 since it estimates what fraction of the subjects are in any
-given state across time.
+given state across time.  
+However the word ``prevalence'' is likely to generate confusion whenever
+death is one of the states, due to its historic use as the fraction of
+living subjects who have a particular condition.
+We will use the phrase \emph{probability in state} or simply $P$
+from this point forward.
+
 The easiest way to understand the estimate is to consider first the
 case of no censoring.  
 In that setting the estimate of $F_k(t) = 1-S_k(t)$ for all states
@@ -29,11 +35,10 @@ A multi-state survival fit has a status variable with multiple levels,
 the first of which by default is censoring, and others indicating
 the type of transition that occured.
 The result will be a matrix of survival curves, one for each event type.
-Subjects are assumed
-to start in a "null" state, which is not tabulated for survival.
-To change this behavior, give all subjects some other initial state.
+In no initial state is specified then subjects are assumed
+to start in a "null" state, which gets listed last and by default will
+not be printed or plotted.  (But it is present, with a name of `');
   
-
 The first part of the code is standard, parsing out options and
 checking the data.
 <<survfitCI>>= 
@@ -58,9 +63,9 @@ survfitCI <- function(X, Y, weights, id, istate,
     }
 
     type <- attr(Y, "type")
-    if (type !='mright' && type!='mcounting' && 
-        type != "right" && type != "counting")
-        stop(paste("Cumulative incidence computation doesn't support \"", type,
+    # This line should be unreachable, unless they call "surfitCI"
+    if (type !='mright' && type!='mcounting')
+         stop(paste("multi-state computation doesn't support \"", type,
                           "\" survival data", sep=''))
 
     n <- nrow(Y)
@@ -68,44 +73,45 @@ survfitCI <- function(X, Y, weights, id, istate,
     ncurve <- length(levels(X))
     
     state.names <- attr(Y, "states")
-    if (missing(istate) || is.null(istate)) istate <- rep(0L, n)
+    nstate <- length(state.names) 
+    has.istate <- !missing(istate)
+    if (missing(istate) || is.null(istate)) {
+        istate <- rep(nstate+ 1L, n)
+        state.names <- c(state.names, "")
+        }
     else if (is.factor(istate) || is.character(istate)) {
         # Match levels with the survival variable
         temp <- as.factor(istate)
         # append any starting states not found in Y, but remember that
         #  if istate was a factor then not all its levels might appear
-        appear <- (levels(istate))[unique(as.numeric(istate))]
+        appear <- (levels(temp))[unique(as.numeric(temp))]
         state.names <- unique(c(attr(Y, "states"), appear))
-        istate <- as.numeric(factor(as.character(istate), levels=state.names))
+        istate <- as.numeric(factor(as.character(temp), levels=state.names))
     }
-    else if (!is.numeric(istate) || any(istate != floor(istate)))
+    else {
+        if (!is.numeric(istate) || any(istate != floor(istate)) || 
+             any(istate < 1))
         stop("istate should be a vector of integers or a factor")
+        if (max(istate) > nstate) 
+            state.names <- c(state.names, (1+nstate):max(istate))
+        }
     
     if (length(id) ==0) id <- 1:n
-    # these next two lines should be impossible, since istate came from the data frame
+    # these next two lines should be impossible, since istate came from 
+    #   the data frame
     if (length(istate) ==1) istate <- rep(istate,n)
     if (length(istate) !=n) stop ("wrong length for istate")
 
-    states <- sort(unique(c(istate, 1:length(attr(Y, "states"))))) #list of all
+    # The states of the status variable are the first columns in the output
+    states <- unique(c(1:nstate, istate))
     <<survfitCI-compute>>  
 @
  
 To make it easier to keep track of things in the computational kernel that does
-all the real work, we reset the states, initial state, and status vectors
-to all be integers 1, 2, \ldots, nstate, where ``1'' is the first state.
+all the real work, we have ensured that any ending states (ones you can reach)
+are 1, 2, 3 \ldots.
 The status vector will have values of 0 for censored.
-Per earlier discussion 1 will often be the unnamed initial state, which
-will later be dropped from the output.
-The statename vector is not modified.
 <<survfitCI>>=
-    if (any(states==0)) {
-        state0 <- TRUE
-        states <- states + 1
-        istate <- istate + 1
-        status <- ifelse(status==0, 0, status+1)
-        }
-    else state0 <- FALSE
-    
     curves <- vector("list", ncurve)
     names(curves) <- levels(X)
                             
@@ -118,6 +124,12 @@ The statename vector is not modified.
         if (length(id) && any(duplicated(id)))
             stop("Cannot have duplicate id values with (time, status) data")
 
+        # make a table of transitions.  The from can range across
+        #  all of the states, to can only have nstate categories
+        nst <- length(state.names)
+        transitions <- table(factor(istate, 1:nst), factor(Y[,2], 1:nstate))
+        dimnames(transitions) <-list(from=state.names, to=state.names[1:nstate])
+                             
         # dummy entry time that is < any event time
         entry <- rep(min(-1, 2*min(Y[,1])-1), n)  
         for (i in levels(X)) {
@@ -147,16 +159,16 @@ vector $p(t)$ using the product-limit form
 \end{align*}
 Where $p$ is a row vector and $H$ is the multi-state hazard matrix.  
 At each event time we define the off diagonal elements of $H$ by
-$$H_{jk}(t) = \sum_i w_i dN_{ijk}(t)/ \sum w_iY_{ij}{t}$$
+$$H_{jk}(t) = \sum_i w_i dN_{ijk}(t)/ \sum w_iY_{ij}(t)$$
 where $N_{ijk}$ counts the number of observed trasitions between 
 state $j$ and state $k$ for subject $i$, $Y_{ij}(t)$ is 1 if subject $i$ is in
 state $j$ at time $t$,  $w_i$ is the weight for subject $i$, 
 and 0/0 is treated as 0.
 Row $j$ of $H(t)$ describes the fate of those subjects in state $j$, going from
-time $t$ to time $t+0$.  
+time $t-0$ to time $t$.  
 The diagonal elements of $H$ are set so that each row of $H$ sums to 1
 (everyone has to go somewhere). 
-This formula collapses to the Kaplan-Meier in the simple case where $P(t)$ is a
+This formula collapses to the Kaplan-Meier in the simple case where $p(t)$ is a
 vector of length 2 with state 1 = alive and state 2 = dead. 
 
 A robust variance for the product-limit estimate is based on the
@@ -168,7 +180,7 @@ chain rule.  Consider the $n$ by $k$ matrix of per subject influence values
                      p(t-) \frac{\partial H_{.k}(t)}{\partial w_i} \label{ci1}\\
  \frac{\partial H_{jk}(t)}{\partial w_i} &=  \left\{ \begin{array}{ll}
         \left( dN_{ijk}(t) - Y_{ij}(t)H_{jk} \right)/n_j(t) & j \ne k \\
-        \left( -dN_{ij.}(t) - Y_{ij}(t)(H_{jj}-1) \right)/n_j(t) & j=k \\
+        -\left(dN_{ij.}(t) - Y_{ij}(t)(1-H_{jj}) \right)/n_j(t) & j=k \\
        \end{array} \right. \label{ci2}
 \end{align}
 where $H_{.k}$ is the $k$th column of $H$ amd $n_j(t)= \sum_i Y_{ij}(t)w_i$
@@ -180,7 +192,9 @@ The first term of \eqref{ci1} is the formula for ordinary matrix multiplication.
 In equation \eqref{ci2} the derivative of $H$ with respect to subject $i$
 will be a matrix which is non-zero only for the row corresponding to the
 current state of the subject.  (I've skipped some intermediate steps in
-the derivation of \eqref{ci2}, ``left as an exercise for the reader'').
+the derivation, they are left as an exercise for the reader).
+Since each row of $H$ sums to a constant, each row of the deviative must
+sum to zero.
 
 The weighted sum of each column of $U$ must zero (if computed correctly)
 and the weighted sum of squares for each column will be the infinitesimal
@@ -200,18 +214,19 @@ For the status variable a value if 0 is ``no event''.
 One nuisance in the function is that we need to ensure the
 tapply command gives totals for all states, not just the ones present in the
 data --- a call using the \code{subset} argument might not have all the states
---- which lead to factor commands.
+--- which leads to using factor commands.
 Another more confusing one is for multiple rows per subject data, where the 
 cstate and U objects have only one row per subject; 
 any given subject is only in one state at a time.
 This leads to indices of [[atrisk]] for the set of rows in the risk set but
 [[aindx]] for the subjects in the risk set, [[death]] for the rows that have
 an event as some given time and [[dindx]] for the corresponding subjects.
+
 <<survfitCI-compute-old>>=
 docurve1 <- function(entry, etime, status, istate, wt, states, id) {
     #
     # round off error can cause trouble: if two times are within machine
-    #  precsion then "unique(time)" and the "table" command may differ
+    #  precision then "unique(time)" and the "table" command may differ
     # solve this by using creating a factor
     ftime <- factor(etime)
     ntime <- length(levels(ftime))
@@ -277,7 +292,7 @@ docurve1 <- function(entry, etime, status, istate, wt, states, id) {
         }
     }
     list(time =as.vector(timeset), pmat=Pmat, std=sqrt(vP),
-         n.event= as.vector(nevent[,2]), n.risk= as.vector(nrisk),
+         n.event= table(ftime, status)[,-1], n.risk= as.vector(nrisk),
          w.risk=wrisk, cumhaz=A)
 }
 @ 
@@ -298,28 +313,39 @@ if (missing(id) || is.null(id))
     stop("the id argument is required for start:stop data")
 
 indx <- order(id, Y[,2])  #ordered event times within subject
-indx1 <- c(NA, indx)  #a pair of lagged indices
-indx2 <- c(indx, NA)
-same <- (id[indx1] == id[indx2] & !is.na(indx1) & !is.na(indx2)) #indx1, indx2= same id?
+indx1 <- indx[-length(indx)]  #a pair of lagged indices
+indx2 <- indx[-1]
+#if indx1[5] == index2[5] that means that the 5th and 6th are the same id
+same <- (id[indx1] == id[indx2])
 if (any(same & X[indx1] != X[indx2])) {
-    who <- 1 + min(which(same & X[indx1] != X[indx2]))
-    stop("subject is in two different groups, id ", (id[indx1])[who])
+    who <- min(which(same & X[indx1] != X[indx2]))
+    stop("subject is in two different groups, id ", id[indx1[who]])
 }
 if (any(same & Y[indx1,2] != Y[indx2,1])) {
-    who <- 1 + min(which(same & Y[indx1,2] != Y[indx2,1]))
-    stop("gap in follow-up, id ", (id[indx1])[who])
+    who <- min(which(same & Y[indx1,2] != Y[indx2,1]))
+    stop("gap in follow-up, id ", id[indx1[who]])
 }
 if (any(Y[,1] == Y[,2])) 
     stop("cannot have start time == stop time")
 
-if (any(same & Y[indx1,3] == Y[indx2,3] & Y[indx1,3] !=0)) {
-    who <-  1 + min(which(same & Y[indx1,1] != Y[indx2,2]))
-    warning("subject changes to the same state, id ", (id[indx1])[who])
+if (any(same & (Y[indx1,3] == Y[indx2,3]) & (Y[indx1,3] !=0))) {
+    who <-  min(which(same & (Y[indx1,3] == Y[indx2,3]) & (Y[indx1,3] !=0)))
+    warning("subject changes to the same state, id ", id[indx1[who]])
 }
 if (any(same & weights[indx1] != weights[indx2])) {
-    who <-  1 + min(which(same & weights[indx1] != weights[indx2]))
-    stop("subject changes case weights, id ", (id[indx1])[who])
+    who <-  min(which(same & weights[indx1] != weights[indx2]))
+    stop("subject changes case weights, id ", id[indx1[who]])
 }
+
+# Make the table of transitions
+nst <- length(state.names)
+first <- indx[!duplicated(id[indx])]
+transitions <- table(factor(istate[first], 1:nst), 
+                     factor(Y[first,3], 1:nstate))
+if (any(same))
+    transitions <- transitions + table(factor(Y[indx1[same],3], 1:nst),
+                                       factor(Y[indx2[same],3], 1:nstate))
+dimnames(transitions) = list(from=state.names, to=state.names[1:nstate])
 @ 
 
 <<survfitCI-startstop>>=
@@ -361,21 +387,16 @@ kfit <- list(n =      as.vector(table(X)),
              n.risk=  grabit(curves, "n.risk"),
              n.event= grabit(curves, "n.event"),
              n.censor=grabit(curves, "n.censor"),
-             prev   = grabit(curves, "pmat"),
-             prev0  = grabit(curves, "prev0"))
+             prev   = grabit(curves, "prev"),
+             p0  = grabit(curves, "p0"),
+             transitions = transitions)
 nstate <- length(states)
 kfit$cumhaz <- array(unlist(lapply(curves, function(x) x$cumhaz)),
                            dim=c(nstate, nstate, length(kfit$time)))
 if (length(curves) >1)
     kfit$strata <- unlist(lapply(curves, function(x) length(x$time)))
 if (se.fit) kfit$std.err <- grabit(curves, "std")
-
-# if state 0 was present, remove it
-if (state0) {
-    kfit$prev <- kfit$prev[,-1]
-    if (se.fit) kfit$std.err <- kfit$std.err[,-1]
-    kfit$prev0 <- kfit$prev0[,-1]
-}
+kfit$istate <- has.istate  # used later in plots
 @ 
 
 Add the confidence bands.  The idea is modeled on survfitKM but with
@@ -436,7 +457,7 @@ docurve2 <- function(entry, etime, status, istate, wt, states, id, se.fit) {
     #
     # round off error can cause trouble, if two times are within machine
     #  precsion
-    # solve this by using creating a factor
+    # solve this by creating a factor
     ftime <- factor(c(entry,etime))
     ltime <- levels(ftime)
     ftime <- matrix(as.integer(ftime), ncol=2)
@@ -446,7 +467,7 @@ docurve2 <- function(entry, etime, status, istate, wt, states, id, se.fit) {
     uid <- sort(unique(id))
     P <- as.vector(tapply(wt, factor(istate, levels=states), sum) / sum(wt))
     P <- ifelse(is.na(P), 0, P) # initial probability distribution
-    cstate <- istate[match(uid, id)]   #current state for each observation
+    cstate <- istate[match(uid, id)]   #initial state for each observation
     
     storage.mode(wt) <- "double" # just in case someone had integer weights
     storage.mode(cstate) <- "integer"
@@ -461,15 +482,18 @@ docurve2 <- function(entry, etime, status, istate, wt, states, id, se.fit) {
                  wt,
                  match(id, uid) -1L,
                  P, as.integer(se.fit))
-    prev0 <- table(factor(cstate, levels=states), exclude=NA)/length(cstate)
+    p0 <- table(factor(cstate, levels=states), exclude=NA)/length(cstate)
+    n.event <- table(ftime[,2], factor(status,c(0,states)))[,-1]
     if (se.fit) 
-        list(time=timeset, pmat=t(fit$p), std=sqrt(t(fit$var)),
-             n.risk = colSums(fit$nrisk),n.event = fit$nevent, 
-             n.censor=fit$ncensor, prev0 = prev0,
+        list(time=timeset, prev=t(fit$p), std=sqrt(t(fit$var)),
+             n.risk = t(fit$nrisk),
+             n.event = n.event, 
+             n.censor=fit$ncensor, p0 = p0,
              cumhaz=array(fit$cumhaz, dim=c(nstate,nstate, length(timeset))))
-    else list(time=timeset, pmat=t(fit$p),
-             n.risk = colSums(fit$nrisk),n.event = fit$nevent, 
-             n.censor=fit$ncensor,  prev0=prev0,
+    else list(time=timeset, prev=t(fit$p),
+             n.risk = t(fit$nrisk), 
+             n.event = n.event, 
+             n.censor=fit$ncensor,  p0=p0,
              cumhaz=array(fit$cumhaz, dim=c(nstate,nstate, length(timeset))))
 }
 @

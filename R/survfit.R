@@ -1,4 +1,4 @@
-# Automatically generated from all.nw using noweb
+# Automatically generated from the noweb directory
 survfit <- function(formula, ...) {
     UseMethod("survfit", formula)
 }
@@ -10,7 +10,8 @@ dim.survfit <- function(x) {
     }
     else {
         nr <- length(x$strata)
-        if (is.matrix(x$xurv)) c(nr, ncol(x$surv))
+        if (is.matrix(x$surv)) c(nr, ncol(x$surv))
+        else if (is.matrix(x$prev)) c(nr, ncol(x$prev))
         else nr
     }
 }
@@ -108,7 +109,7 @@ survfit.formula <- function(formula, data, weights, subset,
     #  eg survfit(wt=Surv(time, status) ~1) 
     if (indx[1]==0) stop("a formula argument is required")
     temp <- Call[c(1, indx)]
-    temp[[1]] <- as.name("model.frame")
+    temp[[1L]] <- quote(stats::model.frame)
     m <- eval.parent(temp)
     
     Terms <- terms(formula, c("strata", "cluster"))

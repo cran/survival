@@ -101,11 +101,12 @@ summary.coxph.penal <-  function(object, conf.int = 0.95, scale=1,
                        pvalue = pchisq(object$wald.test, df, lower.tail=FALSE))
 
     if (!is.null(object$concordance)) {
+        # A stratified model has a matrix of values, one row per strata
         if (is.matrix(object$concordance)) temp <- colSums(object$concordance)
         else temp <- object$concordance
-        rval$concordance <- c((temp[1] + temp[3]/2)/ sum(temp[1:3]),
-		                       temp[5]/(2*sum(temp[1:3])))
-        names(rval$concordance) <- c("concordance", "se")
+        rval$concordance <- c((temp[1] + temp[3]/2)/sum(temp[1:3]), 
+                               temp[5]/(2*sum(temp[1:3])))
+        names(rval$concordance) <- c("C", "se(C)")
     }
  
     class(rval) <- "summary.coxph.penal"

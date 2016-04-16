@@ -69,7 +69,7 @@ truth <- truth[c(1:6, 6:11),]/10  #the explicit censor at 22
 
 #dimnames(truth) <- list(c(5, 6, 10, 15, 18, 20, 25, 30, 34, 40, 50),
 #                        c('a', 'b', 'c', 'd')
-all.equal(truth, fit$prev)
+all.equal(truth, fit$prev[,1:4])
 
 # Test the dfbetas
 dfbeta <- array(0., dim=c(6, nrow(fit$prev), ncol(fit$prev)))

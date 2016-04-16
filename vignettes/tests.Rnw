@@ -6,7 +6,6 @@
 \setlength{\evensidemargin}{\oddsidemargin}
 %\VignetteIndexEntry{Cox models and ``type 3'' Tests}
 
-
 \SweaveOpts{prefix.string=tests,width=6,height=4, keep.source=TRUE, fig=FALSE}
 % Ross Ihaka suggestions
 \DefineVerbatimEnvironment{Sinput}{Verbatim} {xleftmargin=2em}
@@ -25,7 +24,7 @@ pdf.options(pointsize=8) #text in graph about the same as regular text
 options(contrasts=c("contr.treatment", "contr.poly")) #reset default
 @ 
 
-\title{Populations, Cox models, and ``type III'' tests}
+\title{Contrasts, populations, and ``type III'' tests}
 \author{Terry M Therneau \\ \emph{Mayo Clinic}}
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\myfig}[1]{\includegraphics[height=!, width=\textwidth]
@@ -38,6 +37,58 @@ options(contrasts=c("contr.treatment", "contr.poly")) #reset default
   \tableofcontents
 
 \section{Introduction}
+\begin{table} \centering
+  \begin{tabular} {crrrrr} 
+    & \multicolumn{5}{c}{Group} \\
+    &A & B & C & D & E \\
+<<echo=FALSE, results=tex>>=
+library(survival)
+age2 <- cut(flchain$age, c(49, 59, 69, 79, 89, 120),                   
+            labels=c("50-59", "60-69", "70-79", "80-89", "90+"))
+
+flchain$flc <- flchain$kappa + flchain$lambda                    
+tab1 <- with(flchain, tapply(flc, list(sex, age2), mean))
+cat("female&" , paste(round(tab1[1,], 1), collapse=" & "), "\\\\ \n")
+cat("male &"  , paste(round(tab1[2,], 1), collapse=" & "), "\n")
+@ 
+\end{tabular}
+ \caption{Fitted values from a linear model with two factors.}
+ \label{tab1}
+ \end{table}
+
+One of the annoying design shortfalls of R, inherited from S, is how 
+modeling functions deal with categorical predictors.
+For a simple model such as \code{y ~ age + treatment} where the latter is
+a categorical, we will normally want to compare pairs of treatments.
+One way to do this is to set up the columns of 0/1 dummy variables that
+represent treatment so that the comparisons of interest appear directly
+as coefficients in the fit. If for instance there were three treatments,
+a control and two active agents then the two natural comparisons are
+control vs. agent1 and control vs. agent2.
+R does this for us without a hitch and nearly automatically, with several
+options to help control exactly how said 0/1 variables are created.
+But what if there were 4 treatments and we want to look at all 6 pairwise
+comparisons?  This cannot be set up so that all 6 will appear as one
+coefficient in the fit, 
+one needs a mechanism to compute these 6 estimates or \emph{contrasts} after the
+fit. 
+As a more complex case consider the simple data shown in table \ref{tab1}, 
+which are fitted values
+from a linear model on two factors along with their interaction.
+There are any number of comparisons that we might want to make 
+in the data set: a trend test across the groups, overall or separately for
+each sex, all pairwise comparisons between groups, etc.
+A standard mechanism for this after-the-fit estimates has been lacking.
+There are several addons that address parts of the question such as
+\code{pairwise.t.tests} or \code{TukeyHSD}, but they are not applicable to
+coxph models.  
+
+The \code{yates} function was motivated by the more perplexing problem of
+population contrasts, which it also addresses.
+
+
+
+
 This note started with an interchange on the R-help.
 A user asked ``how do I do a type III test using the Cox model'', and I
 replied that this was not a well defined question.
@@ -230,7 +281,7 @@ Any given data set may often be too small to explore these variations and
 our statistical models will of necessity smooth over the complexity,
 but interactions are nevertheless still present.
 
-Consider the data shown in figure \ref{fig1} below, which shows a particular
+Consider the data shown in figure \ref{fig:data} above, which shows a particular
 laboratory test value by age and sex.  
 We see that the sex effect varies by age.  
 Given this, what could be meant by a ``main effect'' of sex? 
@@ -977,7 +1028,8 @@ A modern summary with focus on the clinical trials arena is found in
 chapter 14 of the textbook by  Senn \cite{Senn07}
 
 I have found two papers particularly useful in thinking about this.
-Senn \ref{Senn00} points out the strong parallels between tests for main effects
+Senn \cite{Senn00} points out the strong parallels between tests for 
+main effects
 when there may be interactions and meta analyses, cross connecting these two
 approaches is illuminating.
 A classic reference is the 1978 paper by Aitkin \cite{Aitkin78}.

@@ -1,4 +1,4 @@
-# Automatically generated from all.nw using noweb
+# Automatically generated from the noweb directory
 pyears <- function(formula, data,
         weights, subset, na.action, rmap,
         ratetable, scale=365.25,  expect=c('event', 'pyears'),
@@ -9,7 +9,7 @@ pyears <- function(formula, data,
     m <- match.call(expand.dots=FALSE)
     m <- m[c(1, match(c('formula', 'data', 'weights', 'subset', 'na.action'),
                       names(m), nomatch=0))]
-    m[[1]] <- as.name("model.frame")
+    m[[1L]] <- quote(stats::model.frame)
 
     Terms <- if(missing(data)) terms(formula, 'ratetable')
              else              terms(formula, 'ratetable',data=data)
@@ -136,6 +136,7 @@ pyears <- function(formula, data,
         odims <- ofac <- double(odim)
         X <- matrix(0, n, odim)
         outdname <- vector("list", odim)
+        names(outdname) <- attr(Terms, 'term.labels')
         for (i in 1:odim) {
             temp <- m[[ovars[i]]]
             if (inherits(temp, 'tcut')) {
@@ -309,6 +310,7 @@ pyears <- function(formula, data,
                 out$event <- array(temp$pcount, dim=odims, dimnames=outdname)
         }
     out$observations <- nrow(m)
+    out$terms <- Terms
     na.action <- attr(m, "na.action")
     if (length(na.action))  out$na.action <- na.action
     if (model) out$model <- m

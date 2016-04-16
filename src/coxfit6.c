@@ -42,7 +42,6 @@
 **       cmat(nvar,nvar)       ragged array
 **       cmat2(nvar,nvar)
 **       newbeta(nvar)         always contains the "next iteration"
-**       maxbeta(nvar)         limits on beta
 **
 **  calls functions:  cholesky2, chsolve2, chinv2
 **
@@ -69,13 +68,12 @@ SEXP coxfit6(SEXP maxiter2,  SEXP time2,   SEXP status2,
     double  tdeath=0;  /* ndead= total at a given time point, tdeath= all */
 
     double  newlk=0;
-    double  dtime, d2;
+    double  dtime;
     double  deadwt;  /*sum of case weights for the deaths*/
-    double  efronwt; /* sum of weighted risk scores for the deaths*/
+    double  denom2;  /* sum of weighted risk scores for the deaths*/
     int     halving;    /*are we doing step halving at the moment? */
     int     nrisk;   /* number of subjects in the current risk set */
-    double  *maxbeta;
- 
+
     /* copies of scalar input arguments */
     int     nused, nvar, maxiter;
     int     method;
@@ -126,11 +124,10 @@ SEXP coxfit6(SEXP maxiter2,  SEXP time2,   SEXP status2,
     PROTECT(imat2 = allocVector(REALSXP, nvar*nvar)); 
     nprotect++;
     imat = dmatrix(REAL(imat2),  nvar, nvar);
-    a = (double *) R_alloc(2*nvar*nvar + 5*nvar, sizeof(double));
+    a = (double *) R_alloc(2*nvar*nvar + 4*nvar, sizeof(double));
     newbeta = a + nvar;
     a2 = newbeta + nvar;
-    maxbeta = a2 + nvar;
-    scale = maxbeta + nvar;
+    scale = a2 + nvar;
     cmat = dmatrix(scale + nvar,   nvar, nvar);
     cmat2= dmatrix(scale + nvar +nvar*nvar, nvar, nvar);
 
@@ -163,7 +160,6 @@ SEXP coxfit6(SEXP maxiter2,  SEXP time2,   SEXP status2,
 	tdeath += weights[i] * status[i];
     }	
     for (i=0; i<nvar; i++) {
-	maxbeta[i] =0;  /* temporary, keep the max abs for the covariate */
 	temp=0;
 	for (person=0; person<nused; person++) 
 	    temp += weights[person] * covar[i][person];
@@ -180,39 +176,16 @@ SEXP coxfit6(SEXP maxiter2,  SEXP time2,   SEXP status2,
 	    scale[i] = temp;
 	    for (person=0; person<nused; person++) {
 		covar[i][person] *= temp;
-		if (fabs(covar[i][person]) > maxbeta[i])
-		    maxbeta[i] = fabs(covar[i][person]);
-		}
-	    }
-	else { 
-	    /* scaling is only turned off during debugging 
-	       still, cover the case */
-	    for (person=0; person<nused; person++) {
-		if (fabs(covar[i][person]) > maxbeta[i])
-		    maxbeta[i] = fabs(covar[i][person]);
 		}
 	    }
 	}
-    if (doscale==1) {
+ 
+   if (doscale==1) {
 	for (i=0; i<nvar; i++) beta[i] /= scale[i]; /*rescale initial betas */
 	}
     else {
 	for (i=0; i<nvar; i++) scale[i] = 1.0;
 	}
-
-    /* 
-    **	Set the max beta.  For safety we want beta*x < log(max double) so 
-    **  the the risk score exp(x beta) never becomes either infinite or 0.
-    **  This limit is around 700 for most hardware.  Since exp(23) > population
-    **  of the earth, any beta*x over 20 is a silly relative risk for a Cox
-    **  model, however.  
-    **   We want to cut off huge values, but not take action very often since
-    **  doing so can mess up the iteration in general.
-    **  One of the case-cohort papers suggests using an offset of -100 to 
-    **  indicate "no risk", meaning that x*beta values of 50-100 can occur 
-    **  in "ok" data sets.  Compromise.
-    */
-    for (i=0; i<nvar; i++) maxbeta[i] = 200/maxbeta[i];
 
     /*
     ** do the initial iteration step
@@ -241,7 +214,7 @@ SEXP coxfit6(SEXP maxiter2,  SEXP time2,   SEXP status2,
 	dtime = time[person];
 	ndead =0; /*number of deaths at this time point */
 	deadwt =0;  /* sum of weights for the deaths */
-	efronwt=0;  /* sum of weighted risks for the deaths */
+	denom2=0;  /* sum of weighted risks for the deaths */
 	while(person >=0 &&time[person]==dtime) {
 	    /* walk through the this set of tied times */
 	    nrisk++;
@@ -249,46 +222,45 @@ SEXP coxfit6(SEXP maxiter2,  SEXP time2,   SEXP status2,
 	    for (i=0; i<nvar; i++)
 		zbeta += beta[i]*covar[i][person];
 	    risk = exp(zbeta) * weights[person];
-	    denom += risk;
-
-	    /* a is the vector of weighted sums of x, cmat sums of squares */
-	    for (i=0; i<nvar; i++) {
-		a[i] += risk*covar[i][person];
-		for (j=0; j<=i; j++)
-		    cmat[i][j] += risk*covar[i][person]*covar[j][person];
+	    if (status[person] ==0) {
+		denom += risk;
+		/* a contains weighted sums of x, cmat sums of squares */
+		for (i=0; i<nvar; i++) {
+		    a[i] += risk*covar[i][person];
+		    for (j=0; j<=i; j++)
+			cmat[i][j] += risk*covar[i][person]*covar[j][person];
 	        }
-
-	    if (status[person]==1) {
+	    }	
+	    else {
 		ndead++;
 		deadwt += weights[person];
-		efronwt += risk;
+		denom2 += risk;
 		loglik[1] += weights[person]*zbeta;
 
-		for (i=0; i<nvar; i++) 
+		for (i=0; i<nvar; i++) {
 		    u[i] += weights[person]*covar[i][person];
-		if (method==1) { /* Efron */
-		    for (i=0; i<nvar; i++) {
-			a2[i] +=  risk*covar[i][person];
-			for (j=0; j<=i; j++)
-			    cmat2[i][j] += risk*covar[i][person]*covar[j][person];
+		    a2[i] +=  risk*covar[i][person];
+		    for (j=0; j<=i; j++)
+			cmat2[i][j] += risk*covar[i][person]*covar[j][person];
 		        }
-		    }
-	        }
-	    
-	    person--;
-	    if (strata[person]==1) break;  /*ties don't cross strata */
 	    }
-
+	    person--;
+	    if (person>=0 && strata[person]==1) break;  /*ties don't cross strata */
+	    }
 
 	if (ndead >0) {  /* we need to add to the main terms */
 	    if (method==0) { /* Breslow */
+		denom += denom2;
 		loglik[1] -= deadwt* log(denom);
 	   
 		for (i=0; i<nvar; i++) {
+		    a[i] += a2[i];
 		    temp2= a[i]/ denom;  /* mean */
 		    u[i] -=  deadwt* temp2;
-		    for (j=0; j<=i; j++)
+		    for (j=0; j<=i; j++) {
+			cmat[i][j] += cmat2[i][j];
 			imat[j][i] += deadwt*(cmat[i][j] - temp2*a[j])/denom;
+			}
 		    }
 		}
 	    else { /* Efron */
@@ -296,34 +268,30 @@ SEXP coxfit6(SEXP maxiter2,  SEXP time2,   SEXP status2,
 		** If there are 3 deaths we have 3 terms: in the first the
 		**  three deaths are all in, in the second they are 2/3
 		**  in the sums, and in the last 1/3 in the sum.  Let k go
-		**  from 0 to (ndead -1), then we will sequentially use
-		**     denom - (k/ndead)*efronwt as the denominator
-		**     a - (k/ndead)*a2 as the "a" term
-		**     cmat - (k/ndead)*cmat2 as the "cmat" term
-		**  and reprise the equations just above.
+		**  1 to ndead: we sequentially add a2/ndead and cmat2/ndead
+		**  and efron_wt/ndead to the totals.
 		*/
+		wtave = deadwt/ndead;
 		for (k=0; k<ndead; k++) {
-		    temp = (double)k/ ndead;
-		    wtave = deadwt/ndead;
-		    d2 = denom - temp*efronwt;
-		    loglik[1] -= wtave* log(d2);
+		    denom += denom2/ndead;
+		    loglik[1] -= wtave* log(denom);
 		    for (i=0; i<nvar; i++) {
-			temp2 = (a[i] - temp*a2[i])/ d2;
+			a[i] += a2[i]/ndead;
+			temp2 = a[i]/denom;
 			u[i] -= wtave *temp2;
-			for (j=0; j<=i; j++)
-			    imat[j][i] +=  (wtave/d2) *
-				((cmat[i][j] - temp*cmat2[i][j]) -
-					  temp2*(a[j]-temp*a2[j]));
-		        }
-		    }
-		
-		for (i=0; i<nvar; i++) {
-		    a2[i]=0;
-		    for (j=0; j<nvar; j++) cmat2[i][j]=0;
+			for (j=0; j<=i; j++) {
+			    cmat[i][j] += cmat2[i][j]/ndead;
+			    imat[j][i] += wtave*(cmat[i][j] - temp2*a[j])/denom;
+			}	
 		    }
 		}
+	    }	
+	    for (i=0; i<nvar; i++) {
+		a2[i]=0;
+		for (j=0; j<nvar; j++) cmat2[i][j]=0;
 	    }
-	}   /* end  of accumulation loop */
+	}
+    }   /* end  of accumulation loop */
     loglik[0] = loglik[1]; /* save the loglik for iter 0 */
 
     /* am I done?
@@ -343,11 +311,13 @@ SEXP coxfit6(SEXP maxiter2,  SEXP time2,   SEXP status2,
     /*
     **  Never, never complain about convergence on the first step.  That way,
     **  if someone HAS to they can force one iter at a time.
+    ** A non-finite loglik comes from exp overflow and requires almost
+    **  malicious initial values.
     */
     for (i=0; i<nvar; i++) {
 	newbeta[i] = beta[i] + a[i];
-	}
-    if (maxiter==0) {
+    }
+    if (maxiter==0 || isnan(loglik[0]) || 0 != isinf(loglik[0])) {
 	chinv2(imat,nvar);
 	for (i=0; i<nvar; i++) {
 	    beta[i] *= scale[i];  /*return to original scale */
@@ -356,8 +326,8 @@ SEXP coxfit6(SEXP maxiter2,  SEXP time2,   SEXP status2,
 	    for (j=0; j<i; j++) {
 		imat[j][i] *= scale[i]*scale[j];
 		imat[i][j] = imat[j][i];
-		}
 	    }
+	}
 	goto finish;
     }
 
@@ -391,75 +361,77 @@ SEXP coxfit6(SEXP maxiter2,  SEXP time2,   SEXP status2,
 	    dtime = time[person];
 	    deadwt =0;
 	    ndead =0;
-	    efronwt =0;
+	    denom2 =0;
 	    while(person>=0 && time[person]==dtime) {
 		nrisk++;
 		zbeta = offset[person];
 		for (i=0; i<nvar; i++)
 		    zbeta += newbeta[i]*covar[i][person];
 		risk = exp(zbeta) * weights[person];
-		denom += risk;
 
-		for (i=0; i<nvar; i++) {
-		    a[i] += risk*covar[i][person];
-		    for (j=0; j<=i; j++)
-		    cmat[i][j] += risk*covar[i][person]*covar[j][person];
+		if (status[person] ==0) {
+		    denom += risk;
+
+		    for (i=0; i<nvar; i++) {
+			a[i] += risk*covar[i][person];
+			for (j=0; j<=i; j++)
+			    cmat[i][j] += risk* covar[i][person]* covar[j][person];		
 		    }
-
-		if (status[person]==1) {
+		} else {	
 		    ndead++;
+		    denom2 += risk;		    
 		    deadwt += weights[person];
 		    newlk += weights[person] *zbeta;
-		    for (i=0; i<nvar; i++) 
+		    for (i=0; i<nvar; i++) {
 			u[i] += weights[person] *covar[i][person];
-		    if (method==1) { /* Efron */
-			efronwt += risk;
-			for (i=0; i<nvar; i++) {
-			    a2[i] +=  risk*covar[i][person];
-			    for (j=0; j<=i; j++)
-				cmat2[i][j] += risk*covar[i][person]*covar[j][person];
-			    }   
-		        }
-	  	    }
-		
+			a2[i] +=  risk*covar[i][person];
+			for (j=0; j<=i; j++)
+			    cmat2[i][j] += risk*covar[i][person]*covar[j][person];	
+			}   
+		    }
 		person--;
-		if (strata[person]==1) break; /*tied times don't cross strata*/
-	        }
+		if (person>0 && strata[person]==1) break; /*tied times don't cross strata*/
+	    }		
 
 	    if (ndead >0) {  /* add up terms*/
 		if (method==0) { /* Breslow */
+		    denom += denom2;
 		    newlk -= deadwt* log(denom);
 		    for (i=0; i<nvar; i++) {
+			a[i] += a2[i];
 			temp2= a[i]/ denom;  /* mean */
 			u[i] -= deadwt* temp2;
-			for (j=0; j<=i; j++)
+			for (j=0; j<=i; j++) {
+			    cmat[i][j] += cmat2[i][j];
 			    imat[j][i] +=  (deadwt/denom)*
 				(cmat[i][j] - temp2*a[j]);
-		        }
-    		    }
-		else  { /* Efron */
-		    for (k=0; k<ndead; k++) {
-			temp = (double)k / ndead;
-			wtave= deadwt/ ndead;
-			d2= denom - temp* efronwt;
-			newlk -= wtave* log(d2);
-			for (i=0; i<nvar; i++) {
-			    temp2 = (a[i] - temp*a2[i])/ d2;
-			    u[i] -= wtave*temp2;
-			    for (j=0; j<=i; j++)
-				imat[j][i] +=  (wtave/d2)*
-				    ((cmat[i][j] - temp*cmat2[i][j]) -
-				    temp2*(a[j]-temp*a2[j]));
-    		            }
-    		        }
-
-		    for (i=0; i<nvar; i++) { /*in anticipation */
-			a2[i] =0;
-			for (j=0; j<nvar; j++) cmat2[i][j] =0;
-		        }
-	            }
+			}
+		    }
 		}
-	    }   /* end  of accumulation loop  */
+		else  { /* Efron */	
+		    wtave= deadwt/ ndead;
+		    for (k=0; k<ndead; k++) {
+			denom += denom2/ndead;
+			newlk -= wtave* log(denom);
+			for (i=0; i<nvar; i++) {
+			    a[i] += a2[i]/ndead;
+			    temp2 = a[i]/denom;
+			    u[i] -= wtave*temp2;
+			    for (j=0; j<=i; j++) {
+				cmat[i][j] += cmat2[i][j]/ndead;
+				imat[j][i] +=  (wtave/denom)*
+				    (cmat[i][j] - temp2*a[j]);
+			    }
+			}
+		    }
+		}
+		denom2=0;
+		for (i=0; i<nvar; i++) { /*in anticipation */
+		    a2[i] =0;
+		    for (j=0; j<nvar; j++) cmat2[i][j] =0;
+		}
+	    }	
+	}   /* end  of accumulation loop  */
 
 	/* am I done?
 	**   update the betas and test for convergence
@@ -480,27 +452,48 @@ SEXP coxfit6(SEXP maxiter2,  SEXP time2,   SEXP status2,
 	    }
 	    goto finish;
 	}
+	/*
+	** a non-finite loglik is very rare: a step so bad that we get
+	** an overflow of the exp function.
+	**  When this happens back up one iteration and quit
+	*/
+	if (isnan(newlk) || 0!=isinf(newlk)) {
+	    for (i=0; i<nvar; i++) newbeta[i]= beta[i];
+	    /* we want to recompute imat, as it is likely NaN or Inf as well 
+	    **  The "fabs()" check further above will test true on the next
+	    **  iteration, but just in case this was the last force one more
+	    */
+	    maxiter++;
+	    continue;
+	    }
 
 	if (*iter== maxiter) break;  /*skip the step halving calc*/
-
-	if (newlk < loglik[1])   {    /*it is not converging ! */
-		halving =1;
-		for (i=0; i<nvar; i++)
-		    newbeta[i] = (newbeta[i] + beta[i]) /2; /*half of old increment */
-		}
+	if (newlk < loglik[1])   {    
+	    /*it is not converging ! */
+	    halving =1;
+	    for (i=0; i<nvar; i++) 
+		newbeta[i] = (newbeta[i] + beta[i]) /2; /*half of old increment */
+	}
 	else {
 	    halving=0;
 	    loglik[1] = newlk;
 	    chsolve2(imat,nvar,u);
 	    j=0;
 	    for (i=0; i<nvar; i++) {
-		beta[i] = newbeta[i];
+			beta[i] = newbeta[i];
 		newbeta[i] = newbeta[i] +  u[i];
-		if (newbeta[i] > maxbeta[i]) newbeta[i] = maxbeta[i];
+		/*
+		** This code was a mistake.  If X is collinear we can easlily
+		**  create a beta which is large while eta is restrained
+		
+		if (newbeta[i] > maxbeta[i]) {
+		    newbeta[i] = maxbeta[i];
+		    }
 		else if (newbeta[i] < -maxbeta[i]) newbeta[i] = -maxbeta[i];
-	        }
+	        */
 	    }
-	}   /* return for another iteration */
+	}
+    }  /* return for another iteration */
 
     /*
     ** We end up here only if we ran out of iterations 
@@ -514,9 +507,9 @@ SEXP coxfit6(SEXP maxiter2,  SEXP time2,   SEXP status2,
 	for (j=0; j<i; j++) {
 	    imat[j][i] *= scale[i]*scale[j];
 	    imat[i][j] = imat[j][i];
-	    }
 	}
-    *flag = 1000;
+    }
+   *flag = 1000;
 
 
 finish:

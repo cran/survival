@@ -1,4 +1,4 @@
-# Automatically generated from all.nw using noweb
+# Automatically generated from the noweb directory
 survfit.coxph <-
   function(formula, newdata, se.fit=TRUE, conf.int=.95, individual=FALSE,
             type, vartype,
@@ -9,7 +9,6 @@ survfit.coxph <-
     Call <- match.call()
     Call[[1]] <- as.name("survfit")  #nicer output for the user
     object <- formula     #'formula' because it has to match survfit
-
     if (!is.null(attr(object$terms, "specials")$tt))
         stop("The survfit function can not yet process coxph models with a tt term")
 
@@ -36,13 +35,24 @@ survfit.coxph <-
 
     if (!se.fit) conf.type <- "none"
     else conf.type <- match.arg(conf.type)
-    has.strata <- !is.null(attr(object$terms, 'specials')$strata) 
+
+    tfac <- attr(terms(object), 'factors')
+    temp <- attr(terms(object), 'specials')$strata 
+    has.strata <- !is.null(temp)
+    if (has.strata) {
+        # Toss out strata terms in tfac before doing the test 1 line below, as
+        #  strata end up in the model with age:strat(grp) terms or *strata() terms
+        #  (There might be more than one strata term)
+        for (i in temp) tfac <- tfac[,tfac[i,] ==0]  # toss out strata terms
+        }
+    if (any(tfac >1))
+        stop("not able to create a curve for models that contain an interaction without the lower order effect")
     if (is.null(object$y) || is.null(object[['x']]) ||
         !is.null(object$call$weights) || 
         (has.strata && is.null(object$strata)) ||
         !is.null(attr(object$terms, 'offset'))) {
         
-        mf <- model.frame(object)
+        mf <- stats::model.frame(object)
         }
     else mf <- NULL  #useful for if statements later
     if (is.null(mf)) y <- object[['y']]
@@ -142,7 +152,7 @@ survfit.coxph <-
         tt
     }
     temp <- untangle.specials(Terms, 'cluster')
-    if (length(temp$vars)) 
+    if (length(temp$terms)) 
         Terms <- subterms(Terms, -temp$terms)
 
     if (missing(newdata)) {
@@ -179,7 +189,7 @@ survfit.coxph <-
                         found.strata <- FALSE
                 }
 
-                if (found.strata) mf2 <- model.frame(Terms2, data=newdata, 
+                if (found.strata) mf2 <- stats::model.frame(Terms2, data=newdata, 
                                        na.action=na.action, xlev=object$xlevels)
                 else {
                     Terms2 <- subterms(Terms2, -attr(Terms2, 'specials')$strata)
@@ -189,12 +199,12 @@ survfit.coxph <-
                         if (length(myxlev)==0) myxlev <- NULL
                     }
                     else myxlev <- NULL
-                    mf2 <- model.frame(Terms2, data=newdata, na.action=na.action, 
+                    mf2 <- stats::model.frame(Terms2, data=newdata, na.action=na.action, 
                                        xlev=myxlev)
                     }
                 }
             else {
-                mf2 <- model.frame(Terms2, data=newdata, na.action=na.action, 
+                mf2 <- stats::model.frame(Terms2, data=newdata, na.action=na.action, 
                                     xlev=object$xlevels)
                 found.strata <- has.strata  #would have failed otherwise
                 }
@@ -205,7 +215,7 @@ survfit.coxph <-
             tcall$data <- newdata
             tcall$formula <- Terms2
             tcall$xlev <- object$xlevels
-            tcall[[1]] <- as.name('model.frame')
+            tcall[[1L]] <- quote(stats::model.frame)
             mf2 <- eval(tcall)
             found.strata <- has.strata # would have failed otherwise
         }
@@ -216,7 +226,9 @@ survfit.coxph <-
         strata2 <- factor(strata2, levels=levels(strata))
         if (any(is.na(strata2)))
             stop("New data set has strata levels not found in the original")
-        Terms2 <- Terms2[-temp$terms]
+        # An expression like age:strata(sex) will have temp$vars= "strata(sex)"
+        #  and temp$terms = integer(0).  This does not work as a subscript
+        if (length(temp$terms) >0) Terms2 <- Terms2[-temp$terms]
     }
     else strata2 <- factor(rep(0, nrow(mf2)))
 
