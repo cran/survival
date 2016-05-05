@@ -190,6 +190,7 @@ SEXP coxfit6(SEXP maxiter2,  SEXP time2,   SEXP status2,
     /*
     ** do the initial iteration step
     */
+    *iter =0; 
     strata[nused-1] =1;
     loglik[1] =0;
     for (i=0; i<nvar; i++) {
