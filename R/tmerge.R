@@ -145,7 +145,7 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
         else baseid <- data1[[indx[1]]]
 
         if (any(duplicated(baseid))) 
-            stop("for the first call (that establishes the time range) data1 must have no duplicat identifiers")
+            stop("for the first call (that establishes the time range) data1 must have no duplicate identifiers")
 
         if (length(baseid)== length(id) && all(baseid == id)) newdata <- data1
         else {
@@ -195,7 +195,7 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
         # if an event time is missing then skip that obs
         etime <- argi$time
         if (length(etime) != length(saveid))
-            stop("argument", argname[ii], "is not the same length as id")
+            stop("argument ", argname[ii], " is not the same length as id")
        if (!is.null(argi$value)) {
            if (length(argi$value) != length(saveid))
                 stop("argument", argname[ii], "is not the same length as id")

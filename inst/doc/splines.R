@@ -14,7 +14,8 @@ options(contrasts=c("contr.treatment", "contr.poly")) #reset default
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 require(survival)
-mfit <- coxph(Surv(futime, death) ~ sex + pspline(age), data=mgus)
+mfit <- coxph(Surv(futime, death) ~ sex + pspline(age, df=4), data=mgus)
+mfit
 termplot(mfit, term=2, se=TRUE, col.term=1, col.se=1)
 
 
@@ -39,7 +40,55 @@ matplot(ageterm$x, exp(ytemp - center), log='y',
 
 
 ###################################################
-### code chunk number 5: fit1
+### code chunk number 5: hgb
+###################################################
+fit <- coxph(Surv(futime, death) ~ age + pspline(hgb, 4), mgus2)
+fit
+termplot(fit, se=TRUE, term=2, col.term=1, col.se=1,
+         xlab="Hemoglobin level")
+
+
+###################################################
+### code chunk number 6: df
+###################################################
+termplot(fit, se=TRUE, col.term=1, col.se=1, term=2,
+         xlab="Hemoglobin level", ylim=c(-.4, 1.3))
+df <- c(3, 2.5, 2)
+for (i in 1:3) {
+    tfit <- coxph(Surv(futime, death) ~ age + 
+                  pspline(hgb, df[i], nterm=8), mgus2)
+    temp <- termplot(tfit, se=FALSE, plot=FALSE, term=2)
+    lines(temp$hgb$x, temp$hgb$y, col=i+1, lwd=2)
+}
+legend(14, 1, paste("df=", c(4, df)), lty=1, col=1:4, lwd=2)
+
+
+###################################################
+### code chunk number 7: fit2.5
+###################################################
+fit2a <- coxph(Surv(futime, death) ~ age + pspline(hgb, 2.5, nterm=8), mgus2)
+coef(fit2a)
+plot(1:10, coef(fit2a)[-1])
+
+
+###################################################
+### code chunk number 8: fit2b
+###################################################
+temp <- c(1:7, 8,8,8)
+fit2b <- coxph(Surv(futime, death) ~ age + 
+               pspline(hgb, 2.5, nterm=8, combine=temp), 
+               data= mgus2)
+temp2 <- c(1:6, 7,7,7,7)
+fit2c <- coxph(Surv(futime, death) ~ age + 
+               pspline(hgb, 2.5, nterm=8, combine=temp2), 
+               data= mgus2)
+matplot(1:10, cbind(coef(fit2a)[-1], coef(fit2b)[temp+1], 
+                    coef(fit2c)[temp2+1]), type='b', pch='abc',
+                    xlab="Term", ylab="Pspline coef")
+
+
+###################################################
+### code chunk number 9: fit1
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 options(show.signif.stars=FALSE) # display intelligence
@@ -50,7 +99,7 @@ termplot(fit1, term=2, se=TRUE, col.term=1, col.se=1,
 
 
 ###################################################
-### code chunk number 6: fit2
+### code chunk number 10: fit2
 ###################################################
 agem <- with(flchain, ifelse(sex=="M", age, 60))
 agef <- with(flchain, ifelse(sex=="F", age, 60))
@@ -60,7 +109,7 @@ anova(fit2, fit1)
 
 
 ###################################################
-### code chunk number 7: plot2
+### code chunk number 11: plot2
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 # predictions

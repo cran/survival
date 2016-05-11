@@ -676,25 +676,10 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
         }   /* end  of accumulation loop */
        
     } /*return for another iteration */
-
     (*iter)--;  /* the loop index is always 1 beyond where it finished */
     flag[0] = rank; 
     loglik[1] = newlk;
-    chinv2(imat, nvar);
-    for (i=0; i<nvar; i++) {
-        beta[i] *= scale[i];  /* return to original scale */
-        u[i] /= scale[i];
-        imat[i][i] *= scale[i] * scale[i];
-        for (j=0; j<i; j++) {
-            imat[j][i] *= scale[i] * scale[j];
-            imat[i][j] = imat[j][i];
-        }
-    }
-    UNPROTECT(nprotect);
-    return(rlist);
-    (*iter)--;  /* the loop index is always 1 beyond where it finished */
-    flag[0] = rank; 
-    loglik[1] = newlk;
+    if (*iter == maxiter) cholesky2(imat, nvar, tol_chol);
     chinv2(imat, nvar);
     for (i=0; i<nvar; i++) {
         beta[i] *= scale[i];  /* return to original scale */

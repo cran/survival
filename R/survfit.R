@@ -5,13 +5,12 @@ survfit <- function(formula, ...) {
 
 dim.survfit <- function(x) {
     if (is.null(x$strata)) {
-        if (is.matrix(x$surv)) ncol(x$surv)
-        else 1
+        if (is.matrix(x$surv)) c(1L, ncol(x$surv))
+        else 1L
     }
     else {
         nr <- length(x$strata)
         if (is.matrix(x$surv)) c(nr, ncol(x$surv))
-        else if (is.matrix(x$prev)) c(nr, ncol(x$prev))
         else nr
     }
 }

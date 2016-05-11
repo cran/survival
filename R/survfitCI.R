@@ -91,7 +91,7 @@ survfitCI <- function(X, Y, weights, id, istate,
                      match(id, uid) -1L,
                      P, as.integer(se.fit))
         p0 <- table(factor(cstate, levels=states), exclude=NA)/length(cstate)
-        n.event <- table(ftime[,2], factor(status,c(0,states)))[,-1]
+        n.event <- table(ftime[,2], factor(status,c(0,states)))[,-1, drop=FALSE]
         if (se.fit) 
             list(time=timeset, prev=t(fit$p), std=sqrt(t(fit$var)),
                  n.risk = t(fit$nrisk),

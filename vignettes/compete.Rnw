@@ -138,7 +138,7 @@ All subjects start in the alive state and thus $p(0) = (1,0)$ and
 the transition matrix is 
 \begin{equation*}
   T(s) = \left( \begin{array}{cc} 
-    \frac{n(s)- d(s)}{n(s)}  & \frac{d(s)}{n(s)} \\\\ 0 & 1 \end{array}
+    \frac{n(s)- d(s)}{n(s)}  & \frac{n(s)}{d(s)} \\\\ 0 & 1 \end{array}
   \right)
 \end{equation*}
 The second row corresponds to the fact that death is an absorbing state.
@@ -194,7 +194,7 @@ from this point forward.
 
 In the simple two state model Pr(alive) is the 
 usual KM survival estimate, and we have 
-$p_1(t) = 1- p_2(t)$, Pr(alive) = 1 - Pr(dead).  
+$p_1(t) = 1- p2(t)$, Pr(alive) = 1 - Pr(dead).  
 Plots for the 2 state case sometimes choose to show Pr(alive)
 and sometimes Pr(dead). Which one is used often depends on a historical
 whim of the disease specialty; 
@@ -1117,5 +1117,8 @@ proclaiming that he was looking forward to many more years ahead because
 over 100 listed there''.  
 It is not always easy to jump between observed
 deaths, hazard rates, and lifetime risk.
+
+%\bibliographystyle{plain}
+%\bibliography{refer}
 
 \end{document}
