@@ -46,7 +46,11 @@ summary.survfit <- function(object, times, censored=FALSE,
     delta <- function(x, indx) {  # sums between chosen times
         if (!is.null(x) && length(indx) >0) {
             fx <- function(x, indx) diff(c(0, c(0, cumsum(x))[indx+1]))
-            if (is.matrix(x)) apply(x, 2, fx, indx=indx)
+            if (is.matrix(x)) {
+                temp <- apply(x, 2, fx, indx=indx)
+                # don't return a vector when only 1 time point is given
+                if (is.matrix(temp)) temp else matrix(temp, nrow=1)
+            }
             else fx(x, indx)
         }
         else NULL
@@ -165,6 +169,7 @@ summary.survfit <- function(object, times, censored=FALSE,
             fit$strata[] <- sapply(ltemp, function(x) length(x$time))
             fit
         }
+        times <- sort(times)  #in case the user forgot
         if (is.null(fit$strata)) fit <- findrow(fit, times, extend)
         else {
             ltemp <- vector("list", nstrat)
@@ -179,7 +184,7 @@ summary.survfit <- function(object, times, censored=FALSE,
     if (length(rmean.endtime)>0  && !is.na(rmean.endtime)) 
             fit$rmean.endtime <- rmean.endtime
 
-    # An ordinary survfit object contain std(cum hazard), change scales
+    # An ordinary survfit object contains std(cum hazard), change scales
     if (!is.null(fit$std.err)) fit$std.err <- fit$std.err * fit$surv 
  
     # Expand the strata
@@ -229,7 +234,10 @@ summary.survfitms <- function(object, times, censored=FALSE,
     delta <- function(x, indx) {  # sums between chosen times
         if (!is.null(x) && length(indx) >0) {
             fx <- function(x, indx) diff(c(0, c(0, cumsum(x))[indx+1]))
-            if (is.matrix(x)) apply(x, 2, fx, indx=indx)
+            if (is.matrix(x)) {
+                temp <- apply(x, 2, fx, indx=indx)
+                if (is.matrix(temp)) temp else matrix(temp, nrow=1)
+            }
             else fx(x, indx)
         }
         else NULL
@@ -348,6 +356,7 @@ summary.survfitms <- function(object, times, censored=FALSE,
             fit$strata[] <- sapply(ltemp, function(x) length(x$time))
             fit
         }
+        times <- sort(times)
         if (is.null(fit$strata)) fit <- findrow(fit, times, extend, fit$p0)
         else {
             ltemp <- vector("list", nstrat)

@@ -309,7 +309,8 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
         for (i in unique(stemp)) {  #for each strata
             who <- which(stemp==i)
             censor <- if (is.null(x$n.censor))
-                (x$n.event[who] ==0)  else (x$n.censor[who] >0) #censoring ties
+                (x$n.event[who] ==0)  else 
+                (x$n.event[who] ==0 & x$n.censor[who] >0) #censoring ties
             xx <- c(firstx, stime[who])
             censor <- c(FALSE, censor)  #no mark at firstx
         
@@ -597,7 +598,8 @@ lines.survfit <- function(x, type='s',
         for (i in unique(stemp)) {  #for each strata
             who <- which(stemp==i)
             censor <- if (is.null(x$n.censor))
-                (x$n.event[who] ==0)  else (x$n.censor[who] >0) #censoring ties
+                (x$n.event[who] ==0)  else 
+                (x$n.event[who] ==0 & x$n.censor[who] >0) #censoring ties
             xx <- c(firstx, stime[who])
             censor <- c(FALSE, censor)  #no mark at firstx
         

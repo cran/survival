@@ -75,7 +75,7 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
     if (missing(data1) || missing(data2))
         stop("two data sets are required")
     id <- eval(Call[["id"]], data2, enclos=emptyenv()) #don't find it elsewhere
-    if (is.null(id)) stop("the id variable is null")
+    if (is.null(id)) stop("id variable not found in data2")
 
     if (firstcall) {
         if (!missing(tstop)) {
@@ -132,8 +132,8 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
         
         if (indx[1] == 0) {
             # the topt$id variable name is not in data1.  Deal with the
-            # fairly common case that data1 == data2.  If data1 has the
-            # variable used as 'id' in data2, add it to data1 under the
+            # fairly common case that data1 == data2.  If data1 contains the
+            # same variable used as 'id' in data2, add it to data1 under the
             # new name
             temp <- as.character(Call[["id"]])
             if (is.name(Call[["id"]]) && !is.na(match(temp, names(data1)))) {
@@ -147,6 +147,7 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
         if (any(duplicated(baseid))) 
             stop("for the first call (that establishes the time range) data1 must have no duplicate identifiers")
 
+            
         if (length(baseid)== length(id) && all(baseid == id)) newdata <- data1
         else {
             indx2 <- match(id, baseid)
@@ -212,9 +213,10 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
           }
         id <- saveid[keep]
         
-        # For an event or cumevent, one of the later steps becomes much
-        #  easier if we sort the new data by id and time
-        indx <- order(id, etime)
+        # Later steps become easier if we sort the new data by id and time
+        #  The match() is critical when baseid is not in sorted order.  The
+        #  etime part of the sort will change from one ii value to the next.
+        indx <- order(match(id, baseid), etime)
         id <- id[indx]
         etime <- etime[indx]
         if (!is.null(argi$value))
@@ -285,7 +287,13 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
             iend <- (cumsum(irep))[irep >1]  #end row of each duplication set
             for (j in 1:nfix) temp[[j]] <-  -(seq(n.add[j] -1, 0)) + iend[j]
             newrows <- unlist(temp)
-            dstart[newrows] <- dstop[newrows-1] <- unlist(icount)
+            
+            # icount is a list, each element of which is a vector
+            # the natural way to turn that into a vector is unlist(), but that
+            # leads to problems if etime is a date: we lose the time origin
+            if (is.numeric(icount[[1]])) icount <- unlist(icount)
+            else  icount <- do.call('c', icount)
+            dstart[newrows] <- dstop[newrows-1] <- icount
             newdata[[topt$tstartname]] <- dstart
             newdata[[topt$tstopname]]  <- dstop
             for (ename in tevent) newdata[newrows-1, ename] <- tcens[[ename]]
@@ -300,7 +308,7 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
         # add it in
         if (argclass[ii] %in% c("cumtdc", "cumevent")) {
             if (!is.numeric(yinc)) stop("invalid increment for cumtdc or cumevent")
-            yinc <- unlist(tapply(yinc, id, cumsum))
+            yinc <- unlist(tapply(yinc, match(id, baseid), cumsum))
             }
 
         newvar <- newdata[[argname[ii]]]  #does the variable exist? 
@@ -347,7 +355,8 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
         attr(newdata, "tevent") <- tevent
         attr(newdata, "tcensor" ) <- tcens
         }
-    row.names(newdata) <- NULL
+    row.names(newdata) <- NULL  #These are a mess; kill them off.
+    # Not that it works: R just assigns new row names.
     class(newdata) <- c("data.frame")
     newdata
 }

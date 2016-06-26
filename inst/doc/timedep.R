@@ -57,7 +57,7 @@ cgd0[1:4,]
 ### code chunk number 7: cgd1
 ###################################################
 dim(cgd0)
-newcgd <- tmerge(cgd0[, 1:13], cgd0, id=id, tstop=futime)
+newcgd <- tmerge(data1=cgd0[, 1:13], data2=cgd0, id=id, tstop=futime)
 newcgd <- tmerge(newcgd, cgd0, id=id, infect = event(etime1)) 
 newcgd <- tmerge(newcgd, cgd0, id=id, infect = event(etime2)) 
 newcgd <- tmerge(newcgd, cgd0, id=id, infect = event(etime3)) 
@@ -125,20 +125,20 @@ rbind('baseline fit' = coef(fit1),
 
 
 ###################################################
-### code chunk number 11: timedep.Rnw:563-564
+### code chunk number 11: timedep.Rnw:565-566
 ###################################################
 attr(pbc2, "tcount")
 
 
 ###################################################
-### code chunk number 12: timedep.Rnw:566-568
+### code chunk number 12: timedep.Rnw:568-570
 ###################################################
 #grab a couple of numbers for the paragraph below
 atemp <- attr(pbc2, "tcount")[2:3,]
 
 
 ###################################################
-### code chunk number 13: timedep.Rnw:649-655 (eval = FALSE)
+### code chunk number 13: timedep.Rnw:651-657 (eval = FALSE)
 ###################################################
 ## temp <- subset(pbc, id <= 312, select=c(id:sex, stage))
 ## pbc2 <- tmerge(temp, temp, id=id, death = event(time, status))
@@ -238,6 +238,7 @@ vfit3
 ###################################################
 ### code chunk number 22: vet3b
 ###################################################
+getOption("SweaveHooks")[["fig"]]()
 plot(zp[3])
 abline(coef(vfit3)[3:4], col=2)
 
@@ -259,7 +260,7 @@ anova(pfit2)
 
 
 ###################################################
-### code chunk number 24: timedep.Rnw:1016-1023
+### code chunk number 24: timedep.Rnw:1045-1052
 ###################################################
 function(x, t, riskset, weights){ 
     obrien <- function(x) {
@@ -271,7 +272,7 @@ function(x, t, riskset, weights){
 
 
 ###################################################
-### code chunk number 25: timedep.Rnw:1033-1035
+### code chunk number 25: timedep.Rnw:1062-1064
 ###################################################
 function(x, t, riskset, weights) 
     unlist(tapply(x, riskset, rank))

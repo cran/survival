@@ -99,7 +99,33 @@ termplot(fit1, term=2, se=TRUE, col.term=1, col.se=1,
 
 
 ###################################################
-### code chunk number 10: fit2
+### code chunk number 10: nfit
+###################################################
+options(show.signif.stars=FALSE)  # display statistical intellegence
+require(splines, quietly=TRUE)
+nfit1 <- coxph(Surv(futime, death) ~ sex + age, flchain)
+nfit2 <- coxph(Surv(futime, death) ~ sex + ns(age, df=3), flchain)
+nfit3 <- coxph(Surv(futime, death) ~ sex * ns(age, df=3), flchain)
+anova(nfit1, nfit2, nfit3)
+
+
+###################################################
+### code chunk number 11: nfit2
+###################################################
+pdata <- expand.grid(age= 50:99, sex=c("F", "M"))
+pdata[1:5,]
+
+ypred <- predict(nfit3, newdata=pdata, se=TRUE)
+yy <- ypred$fit + outer(ypred$se, c(0, -1.96, 1.96), '*')
+matplot(50:99, exp(matrix(yy, ncol=6)), type='l', lty=c(1,1,2,2,2,2),
+        lwd=2, col=1:2, log='y',
+        xlab="Age", ylab="Relative risk")
+legend(55, 20, c("Female", "Male"), lty=1, lwd=2, col=1:2, bty='n')
+abline(h=1)
+
+
+###################################################
+### code chunk number 12: fit2
 ###################################################
 agem <- with(flchain, ifelse(sex=="M", age, 60))
 agef <- with(flchain, ifelse(sex=="F", age, 60))
@@ -109,28 +135,25 @@ anova(fit2, fit1)
 
 
 ###################################################
-### code chunk number 11: plot2
+### code chunk number 13: plot2
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 # predictions
-pterm <- termplot(fit2, term=2:3, se=TRUE, plot=FALSE)
+pdata2 <- pdata
+pdata2$agem <- with(pdata2, ifelse(sex=="M", age, 60))
+pdata2$agef <- with(pdata2, ifelse(sex=="F", age, 60))
+ypred2 <- predict(fit2, pdata2, se=TRUE)
+yy <- ypred2$fit + outer(ypred2$se, c(0, -1.96, 1.96), '*')
+
 # reference
-refdata <- data.frame(sex=c('F', 'M'), agef=c(65, 60), agem=c(60,65))
-pred.ref <- predict(fit2, newdata=refdata, type="lp")
-# females
-tempf <- pterm$agef$y + outer(pterm$agef$se, c(0, -1.96, 1.96))
-frow <- which(pterm$agef$x == 65)
-tempf <- tempf  - tempf[frow,1]  # shift curves
-# males
-tempm <- pterm$agem$y + outer(pterm$agem$se, c(0, -1.96, 1.96))
-mrow  <- which(pterm$agem$x == 65)
-tempm <- tempm + diff(pred.ref) - tempm[mrow,1]
+refdata <- data.frame(sex='F', agef=65, agem=60)
+ref <- predict(fit2, newdata=refdata, type="lp")
+
 # plot
-matplot(pterm$agef$x, exp(tempf), log='y', col=1, 
-        lty=c(1,2,2), type='l', lwd=c(2,1,1),
-        xlab="Age", ylab="Relative risk of death")
-matlines(pterm$agem$x, exp(tempm), log='y', 
-         col=2, lwd=c(2,1,1), lty=c(1,2,2))
-legend(80, 1, c("Female", "Male"), lty=1, lwd=2, col=1:2, bty='n')
+matplot(50:99, exp(matrix(yy-ref, ncol=6)), type='l', lty=c(1,1,2,2,2,2),
+        lwd=2, col=1:2, log='y',
+        xlab="Age", ylab="Relative risk")
+legend(55, 20, c("Female", "Male"), lty=1, lwd=2, col=1:2, bty='n')
+abline(h=1)
 
 
