@@ -63,7 +63,7 @@ dim.survfit <- function(x) {
             x$n.risk  <- x$n.risk[keep]
             x$n.event <- x$n.event[keep]
             x$n.censor<- x$n.censor[keep]
-            if (!is.null(x$enter)) x$enter <- x$enter[keep]
+            if (!is.null(x$n.enter)) x$n.enter <- x$n.enter[keep]
         }
         if (is.matrix(x$surv)) {
             # If the curve has been selected by strata and keep has only
@@ -168,20 +168,19 @@ survfit.formula <- function(formula, data, weights, subset,
         else stop("etype argument incompatable with survival type")
     }
                          
-    # At one point there were lines here to round the survival
-    # times to a certain number of digits.  This approach worked
-    # almost all the time, but only almost.  The better logic is
-    # now in the individual compuation routines
+    # Deal with the near-ties problem
+    newY <- normalizetime(Y)
     if (attr(Y, 'type') == 'left' || attr(Y, 'type') == 'interval')
-        temp <-  survfitTurnbull(X, Y, casewt, ...)
+        temp <-  survfitTurnbull(X, newY, casewt, ...)
     else if (attr(Y, 'type') == "right" || attr(Y, 'type')== "counting")
-        temp <- survfitKM(X, Y, casewt, ...)
+        temp <- survfitKM(X, newY, casewt, ...)
     else if (attr(Y, 'type') == "mright" || attr(Y, "type")== "mcounting")
-        temp <- survfitCI(X, Y, weights=casewt, id=id,  istate=istate, ...)
+        temp <- survfitCI(X, newY, weights=casewt, id=id,  istate=istate, ...)
     else {
         # This should never happen
         stop("unrecognized survival type")
     }
+
     if (is.null(temp$states)) class(temp) <- 'survfit'
     else class(temp) <- c("survfitms", "survfit")
 

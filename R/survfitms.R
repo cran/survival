@@ -2,12 +2,12 @@
 # Methods for survfitms objects
 dim.survfitms <- function(x) {
     if (is.null(x$strata)) {
-        if (is.matrix(x$surv)) c(1L, ncol(x$surv))
+        if (is.matrix(x$pstate)) c(1L, ncol(x$pstate))
         else 1L
     }
     else {
         nr <- length(x$strata)
-        if (is.matrix(x$prev)) c(nr, ncol(x$prev))
+        if (is.matrix(x$pstate)) c(nr, ncol(x$pstate))
         else nr
     }
 }
@@ -59,7 +59,7 @@ summary.survfit <- function(object, times, censored=FALSE,
     if (missing(times)) {
         if (!censored) {
             index <- which(rowSums(as.matrix(fit$n.event)) >0)
-            for (i in c("time","n.risk", "n.event", "surv", "prev", "std.err", 
+            for (i in c("time","n.risk", "n.event", "surv", "pstate", "std.err", 
                                 "upper", "lower", "cumhaz")) {
                 if (!is.null(fit[[i]])) {  # not all components in all objects
                     temp <- fit[[i]]
@@ -80,8 +80,8 @@ summary.survfit <- function(object, times, censored=FALSE,
                 sindx <- rep(1:nstrat, fit$strata)
                 for (i in c("n.enter", "n.censor")) {
                     if (!is.null(fit[[i]]))
-                        fit[[i]] <- unlist(sapply(1:nstrat, function(x) 
-                                     delta(fit[[i]][sindx==i], index[sindx==i])))
+                        fit[[i]] <- unlist(sapply(1:nstrat, function(j) 
+                                     delta(fit[[i]][sindx==j], index[sindx==j])))
                 }
                 # the "factor" is needed for the case that a strata has no
                 #  events at all, and hence 0 lines of output
@@ -123,7 +123,7 @@ summary.survfit <- function(object, times, censored=FALSE,
             # The pmax() above encodes the assumption that n.risk for any
             #  times before the first observation = n.risk at the first obs
             fit$time <- ptimes
-            for (i in c("surv", "prev", "upper", "lower")) {
+            for (i in c("surv", "pstate", "upper", "lower")) {
                 if (!is.null(fit[[i]])) fit[[i]] <- ssub(fit[[i]], index1, init)
             }
             for (i in c("std.err", "cumhaz")) {
@@ -162,7 +162,7 @@ summary.survfit <- function(object, times, censored=FALSE,
         # unlist all the components built by a set of calls to findrow
         #  and remake the strata
         unpacksurv <- function(fit, ltemp) {
-            keep <- c("time", "surv", "prev", "upper", "lower", "std.err",
+            keep <- c("time", "surv", "pstate", "upper", "lower", "std.err",
                       "cumhaz", "n.risk", "n.event", "n.censor", "n.enter")
             for (i in keep) 
                 if (!is.null(fit[[i]])) fit[[i]] <- unlistsurv(ltemp, i)
@@ -246,7 +246,7 @@ summary.survfitms <- function(object, times, censored=FALSE,
     if (missing(times)) {
         if (!censored) {
             index <- which(rowSums(as.matrix(fit$n.event)) >0)
-            for (i in c("time","n.risk", "n.event", "surv", "prev", "std.err", 
+            for (i in c("time","n.risk", "n.event", "surv", "pstate", "std.err", 
                                 "upper", "lower", "cumhaz")) {
                 if (!is.null(fit[[i]])) {  # not all components in all objects
                     temp <- fit[[i]]
@@ -267,8 +267,8 @@ summary.survfitms <- function(object, times, censored=FALSE,
                 sindx <- rep(1:nstrat, fit$strata)
                 for (i in c("n.enter", "n.censor")) {
                     if (!is.null(fit[[i]]))
-                        fit[[i]] <- unlist(sapply(1:nstrat, function(x) 
-                                     delta(fit[[i]][sindx==i], index[sindx==i])))
+                        fit[[i]] <- unlist(sapply(1:nstrat, function(j) 
+                                     delta(fit[[i]][sindx==j], index[sindx==j])))
                 }
                 # the "factor" is needed for the case that a strata has no
                 #  events at all, and hence 0 lines of output
@@ -310,7 +310,7 @@ summary.survfitms <- function(object, times, censored=FALSE,
             # The pmax() above encodes the assumption that n.risk for any
             #  times before the first observation = n.risk at the first obs
             fit$time <- ptimes
-            for (i in c("surv", "prev", "upper", "lower")) {
+            for (i in c("surv", "pstate", "upper", "lower")) {
                 if (!is.null(fit[[i]])) fit[[i]] <- ssub(fit[[i]], index1, init)
             }
             for (i in c("std.err", "cumhaz")) {
@@ -349,7 +349,7 @@ summary.survfitms <- function(object, times, censored=FALSE,
         # unlist all the components built by a set of calls to findrow
         #  and remake the strata
         unpacksurv <- function(fit, ltemp) {
-            keep <- c("time", "surv", "prev", "upper", "lower", "std.err",
+            keep <- c("time", "surv", "pstate", "upper", "lower", "std.err",
                       "cumhaz", "n.risk", "n.event", "n.censor", "n.enter")
             for (i in keep) 
                 if (!is.null(fit[[i]])) fit[[i]] <- unlistsurv(ltemp, i)
@@ -458,10 +458,11 @@ survmean2 <- function(x, scale, rmean) {
     
         meantime <- matrix(0., ngrp, nstate)
         p0 <- matrix(x$p0, nrow=ngrp)  #in case there is only one row
+        if (!is.null(x$influence)) stdtime <- meantime
         for (i in 1:ngrp) {
-            if (is.matrix(x$prev))
-                temp <- rbind(p0[i,], x$prev[igrp==i,, drop=FALSE])
-            else temp <- matrix(c(p0[i,], x$prev[igrp==i]), ncol=1)
+            if (is.matrix(x$pstate))
+                temp <- rbind(p0[i,], x$pstate[igrp==i,, drop=FALSE])
+            else temp <- matrix(c(p0[i], x$pstate[igrp==i]), ncol=1)
 
             if (is.null(x$start.time)) tt <- c(0, x$time[igrp==i])
             else tt <- c(x$start.time, x$time[igrp==i])
@@ -472,10 +473,23 @@ survmean2 <- function(x, scale, rmean) {
             if (length(delta) < nrow(temp))
                 delta <- c(delta, rep(0, nrow(temp) - length(delta)))
             meantime[i,] <- colSums(delta*temp)
-        }
 
+            if (!is.null(x$influence)) {
+                # calculate the variance
+                if (is.list(x$influence))
+                    itemp <- apply(x$influence[[i]], 1,
+                                   function(x) colSums(x*delta))
+                else itemp <- apply(x$influence, 1,
+                                    function(x) colSums(x*delta))
+                stdtime[i,] <- sqrt(rowSums(itemp^2))
+           }
+        }
         outmat <- cbind(outmat, c(meantime)/scale)
-        cname <- c("n", "nevent", "mean")
+        cname <- c("n", "nevent", "rmean")
+        if (!is.null(x$influence)) {
+            outmat <- cbind(outmat, c(stdtime)/scale)
+            cname <- c(cname, "std(rmean)")
+        }
         # report back a single time, if there is only one
         if (all(maxtime == maxtime[1])) maxtime <- maxtime[1]
     }
@@ -498,8 +512,8 @@ survmean2 <- function(x, scale, rmean) {
     if (missing(..2)) j<- NULL  else j <- ..2  # cols
     n <- length(x$time)
 
-    if (is.null(x$strata) && is.matrix(x$prev)) {
-        # No strata, but a matrix of prevalence values
+    if (is.null(x$strata) && is.matrix(x$pstate)) {
+        # No strata, but a matrix of P(state) values
         #  In this case, allow them to use a single i subscript as well
         if (is.null(j) && !is.null(i)) {
             j <- i
@@ -511,8 +525,8 @@ survmean2 <- function(x, scale, rmean) {
     #  subscript from the program's view, i.e, the row indices to keep
     if (is.null(i)) {
         i2 <- 1:n
-        if (is.null(strata)) i <- 1
-        else i <- seq(along=strata)
+        if (is.null(x$strata)) i <- 1
+        else i <- seq(along=x$strata)
     }
     else {
         if (is.null(x$strata) && (length(i) > 1 || i != 1))
@@ -544,7 +558,7 @@ survmean2 <- function(x, scale, rmean) {
  
     # all the elements that can have "nstate" elements or columns
     #  The n.event variable can have fewer
-    temp <- c("n.risk", "n.event", "n.censor", "prev", 
+    temp <- c("n.risk", "n.event", "n.censor", "pstate", 
               "cumhaz", "std.err", "lower", "upper")
     sfun <- function(z) {
         if (is.null(j)) {
@@ -573,5 +587,15 @@ survmean2 <- function(x, scale, rmean) {
         else x$p0 <- x$p0[i,j]  
     }
     else if (!is.null(j)) x$p0 <- x$p0[j]
+    if (!is.null(x$influence)) {
+        if (length(i) >1) x$influence <- x$influence[i]
+        else if (is.list(x$influence)) x$influence <- x$influence[[i]]
+    
+        if (!is.null(j)) {
+            if (is.list(x$influence)) 
+                x$influence <- lapply(x$influence, function(x) x[,j,])
+            else x$influence <- x$influence[,j,]
+        }
+    }
     x
 }

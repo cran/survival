@@ -9,7 +9,8 @@ importFrom(stats, anova, approx, as.formula, coef, coefficients,
            resid, residuals, runif, stat.anova, terms, var, vcov,
            .checkMFClasses, .getXlevels)
 importFrom(graphics, plot, points, lines, axis, box, matlines, matplot, 
-           matpoints, par, segments)
+           matpoints, par, segments,
+           arrows, frame, strheight, strwidth, text)
 importFrom(Matrix, expm)
 importFrom(methods, as)
 importFrom(utils, getS3method, type.convert, methods)
@@ -24,7 +25,7 @@ export(Surv, aareg, agreg.fit,
        labels.survreg, match.ratetable, neardate,
        psurvreg, qsurvreg, dsurvreg,
        pspline, pyears, ratetable, ratetableDate, 
-       ridge, strata, survConcordance,
+       ridge, rsurvreg, statefig, strata, survConcordance,
        survSplit, survdiff, survexp,  survfit ,
        survfit.formula,
        survfitcoxph.fit, survfitKM, survfitCI,
@@ -60,6 +61,7 @@ S3method(attrassign, default)
 S3method(attrassign, lm)
 S3method(extractAIC,coxph.penal)
 S3method(dim, survfit)
+S3method(dim, survfitms)
 S3method(format, Surv)
 S3method(is.na, Surv)
 S3method(is.na, coxph.penalty)

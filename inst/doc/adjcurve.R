@@ -48,7 +48,7 @@ sfit1 <- survfit(Surv(futime, death) ~ group, fdata)
 plot(sfit1, mark.time=F, col=c(1,2,4), lty=1, lwd=2,
      xscale=365.25, xlab="Years from Sample", 
      ylab="Survival")
-text(c(11.1, 10.5, 7.5), c(.88, .57, .4),
+text(c(11.1, 10.5, 7.5)*365.25, c(.88, .57, .4),
      c("FLC < 3.38", "3.38 - 4.71", "FLC > 4.71"), col=c(1,2,4))     
 
 
@@ -98,12 +98,12 @@ for (j in 1:dd[2]) {
 
 data2 <- fdata[unlist(select),]
 sfit2 <- survfit(Surv(futime, death) ~ group, data2)
-plot(sfit2, mark.time=F, col=c(1,2,4), lty=1, lwd=2,
+plot(sfit2,col=c(1,2,4),  lty=1, lwd=2,
      xscale=365.25, xlab="Years from Sample", 
      ylab="Survival")
-lines(sfit1,  mark.time=F, col=c(1,2,4), lty=2, lwd=1,
+lines(sfit1, col=c(1,2,4), lty=2, lwd=1,
       xscale=365.25)
-legend(2,.4, levels(fdata$group), lty=1, col=c(1,2,4),
+legend(730, .4, levels(fdata$group), lty=1, col=c(1,2,4),
                bty='n', lwd=2)
 
 
@@ -182,7 +182,7 @@ lines(sfit3a,  mark.time=F, col=c(1,2,4), lty=1, lwd=1,
       xscale=365.25)
 lines(sfit1,  mark.time=F, col=c(1,2,4), lty=2, lwd=1,
       xscale=365.25)
-legend(2,.4, levels(fdata$group), lty=1, col=c(1,2,4),
+legend(730, .4, levels(fdata$group), lty=1, col=c(1,2,4),
                bty='n', lwd=2)
 
 
@@ -273,7 +273,7 @@ round(c(cfit2a$rscore, cfit2b$rscore),1)
 ###################################################
 ### code chunk number 17: strata
 ###################################################
-allfit <- survfit(Surv(futime/365.25, death) ~ group + 
+allfit <- survfit(Surv(futime, death) ~ group + 
                                age2 + sex, fdata)
 temp <- summary(allfit)$table
 temp[1:6, c(1,4)] #abbrev printout to fit page
@@ -283,7 +283,7 @@ temp[1:6, c(1,4)] #abbrev printout to fit page
 ### code chunk number 18: flc5
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
-xtime <- seq(0, 14, length=57)  #four points/year for 14 years
+xtime <- seq(0, 14, length=57)*365.25  #four points/year for 14 years
 smat <- matrix(0, nrow=57, ncol=3) # survival curves
 serr <- smat  #matrix of standard errors
 pi <- with(fdata, table(age2, sex))/nrow(fdata)  #overall dist
@@ -297,9 +297,9 @@ for (i in 1:3) {
     }
 serr <- sqrt(serr)
 
-matplot(xtime, smat, type='l', lwd=2, col=c(1,2,4), ylim=c(0,1),
-        lty=1, xlab="Years from sample", ylab="Survival")
-lines(sfit1, mark.time=F, lty=2, col=c(1,2,4), xscale=365.25)
+plot(sfit1, lty=2, col=c(1,2,4), xscale=365.25,
+     xlab="Years from sample", ylab="Survival")
+matlines(xtime, smat, type='l', lwd=2, col=c(1,2,4),lty=1)
 
 
 ###################################################
@@ -339,7 +339,7 @@ plot(sfit4a, mark.time=F, col=c(1,2,4), lty=1, lwd=2,
      ylab="Survival")
 lines(sfit3,  mark.time=F, col=c(1,2,4), lty=2, lwd=1,
       xscale=365.25)
-legend(2,.4, c("FLC low", "FLC med", "FLC high"), lty=1, col=c(1,2,4),
+legend(730,.4, c("FLC low", "FLC med", "FLC high"), lty=1, col=c(1,2,4),
                bty='n', lwd=2)
 
 

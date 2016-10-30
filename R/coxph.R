@@ -51,7 +51,7 @@ coxph <- function(formula, data, weights, subset, na.action,
         stop(paste("Cox model doesn't support \"", type,
                           "\" survival data", sep=''))
     data.n <- nrow(Y)   #remember this before any time transforms
-
+    Y <- normalizetime(Y, replace=TRUE)
     if (length(attr(Terms, 'variables')) > 2) { # a ~1 formula has length 2
         ytemp <- terms.inner(formula[1:2])
         xtemp <- terms.inner(formula[-2])
@@ -136,9 +136,10 @@ coxph <- function(formula, data, weights, subset, na.action,
                              as.integer(newstrat))
              tindex <- counts$index
          }
-         mf <- mf[tindex,]
          Y <- Surv(rep(counts$time, counts$nrisk), counts$status)
          type <- 'right'  # new Y is right censored, even if the old was (start, stop]
+
+         mf <- mf[tindex,]
          strats <- rep(1:length(counts$nrisk), counts$nrisk)
          weights <- model.weights(mf)
          if (!is.null(weights) && any(!is.finite(weights)))
@@ -158,7 +159,7 @@ coxph <- function(formula, data, weights, subset, na.action,
              }
          }
          attr(Terms, "predvars") <- pvars
-         }
+        }
 
     cluster<- attr(Terms, "specials")$cluster
     if (length(cluster)) {
@@ -340,7 +341,7 @@ coxph <- function(formula, data, weights, subset, na.action,
                 else     fit$strata <- strata.keep
             }
         }
-        if (y)     fit$y <- Y
+        if (y)  fit$y <- Y
     }
     if (!is.null(weights) && any(weights!=1)) fit$weights <- weights
     names(fit$means) <- names(fit$coefficients)

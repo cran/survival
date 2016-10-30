@@ -155,7 +155,7 @@ predict.coxph <- function(object, newdata,
             else {
                 pred <- se <- double(nrow(mf2))
                 newx <- newx - rep(object$means, each=nrow(newx))
-                newrisk <- c(exp(newx %*% object$coef))
+                newrisk <- c(exp(newx %*% object$coef) + newoffset)
                 }
 
             survtype<- ifelse(object$method=='efron', 3,2)

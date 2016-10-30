@@ -5,10 +5,10 @@
   Compute a Survival Curve for Censored Data 
 }
 \description{
-Computes an estimate of a survival curve for censored data 
-using either the Kaplan-Meier or the Fleming-Harrington method. 
-For competing risks data it computes the
-cumulative incidence curve. 
+  Computes an estimate of a survival curve for censored data.
+  More multi-state data the Andersen-Johansen estimate is use, for
+  ordinary survival either the Kaplan-Meier or Fleming-Harrington
+  estimate is produced.
 }
 \usage{
 \method{survfit}{formula}(formula, data, weights, subset, na.action,  
@@ -113,9 +113,19 @@ cumulative incidence curve.
       }
       \item{se.fit}{
 	a logical value indicating whether standard errors should be 
-	computed.  Default is \code{TRUE}. 
+	computed.  Default is \code{TRUE}.
       }
-      
+      \item{influence}{a logical value indicating whether to return the
+	infinitesimal jackknife (influence) values for each subject.
+	These contain the values of the derivative of each value
+	with respect to the case weights of each subject i:
+	\eqn{\partial p/\partial w_i}{dp/dw[i]},
+	evaluated at the vector of weights \eqn{w=1}.
+	The array will have dimensions (number of subjects, 1+ number of
+	unique times, number of states); be forewarned that this can be huge.
+	If the total number of elements is larger then the maximum
+	integer the underlying C program can not create it.
+      }
     }
   }
 }
@@ -253,7 +263,7 @@ fitCI <- survfit(Surv(stop, status*as.numeric(event), type="mstate") ~1,
 # CI curves are always plotted from 0 upwards, rather than 1 down
 plot(fitCI, xscale=365.25, xmax=7300, mark.time=FALSE,
             col=2:3, xlab="Years post diagnosis of MGUS")
-lines(fitKM, fun='event', xscale=365.25, xmax=7300, mark.time=FALSE,
+lines(fitKM, fun='event', xmax=7300, mark.time=FALSE,
             conf.int=FALSE)
 text(10, .4, "Competing risk: death", col=3)
 text(16, .15,"Competing risk: progression", col=2)

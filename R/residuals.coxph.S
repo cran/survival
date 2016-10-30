@@ -16,8 +16,8 @@ residuals.coxph <-
     rr <- object$residuals
     y <- object$y
     x <- object[['x']]  # avoid matching object$xlevels
-    vv <- object$naive.var
-    if (is.null(vv)) vv <- object$var
+    vv <- drop(object$naive.var)
+    if (is.null(vv)) vv <- drop(object$var)
     weights <- object$weights
     if (is.null(weights)) weights <- rep(1,n)
     strat <- object$strata
@@ -95,8 +95,7 @@ residuals.coxph <-
 	if (otype=='scaledsch') {
 	    ndead <- sum(deaths)
 	    coef <- ifelse(is.na(object$coefficients), 0, object$coefficients)
-	    if (nvar==1) rr <- rr*vv *ndead + coef
-	    else         rr <- rr %*%vv * ndead + outer(rep(1,nrow(rr)),coef)
+	    rr <- drop(rr %*% vv *ndead + rep(coef, each=nrow(rr)))
 	    }
 	return(rr)
 	}

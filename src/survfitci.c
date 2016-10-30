@@ -1,35 +1,24 @@
 /* Automatically generated from the noweb directory */
 #include "survS.h"
-/* allocate a ragged array of a given number of rows and columns */
-static double **dmatrix2(int nrow, int ncol) {
-    int i;
-    double **mat;
-    double *d;
-
-    mat = (double **) R_alloc(nrow, sizeof(double *));
-    d   = (double *) R_alloc(nrow*ncol, sizeof(double));
-    for (i=0; i<nrow; i++) {
-        mat[i] = d;
-        d += ncol;
-        }
-    return(mat);
-    }
+#include "survproto.h"
+#include <math.h>
 
 SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
                     SEXP status2, SEXP cstate2, SEXP wt2,  SEXP id2,
-                    SEXP p2,  SEXP sefit2) {   
+                    SEXP p2,      SEXP i02,     SEXP sefit2) {   
     int i, j, k, kk;   /* generic loop indices */
     int ck, itime, eptr; /*specific indices */
-    int ctime;      /*current time of interest, in the main loop */
-    int nprotect;   /* number of protect calls issued */
+    double ctime;      /*current time of interest, in the main loop */
     int oldstate, newstate; /*when changing state */
 
-    double temp, *temp2;  /* scratch */
+    double temp, *temp2;  /* scratch double, and vector of length nstate */
+    double *dptr;      /* reused in multiple contexts */
     double *p;         /* current prevalence vector */
     double **hmat;      /* hazard matrix at this time point */
     double **umat;     /* per subject leverage at this time point */
     int *atrisk;       /* 1 if the subject is currently at risk */
     int   *ns;         /* number curently in each state */
+    int   *nev;        /* number of events at this time, by state */
     double *ws;        /* weighted count of number state */
     double *wtp;       /* case weights indexed by subject */
     double wevent;     /* weighted number of events at current time */
@@ -39,28 +28,29 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
 
     /* pointers to the R variables */
     int *sort1, *sort2;  /*sort index for entry time, event time */
-    int *entry,* etime;  /*entry time, event time */
+    double *entry,* etime;  /*entry time, event time */
     int ntime;          /* number of unique event time values */
     int *status;        /*0=censored, 1,2,... new states */
     int *cstate;        /* current state for each subject */
+    int *dstate;        /* the next state, =cstate if not an event time */
     double *wt;         /* weight for each observation */
+    double *i0;         /* initial influence */
     int *id;            /* for each obs, which subject is it */
     int sefit;
         
     /* returned objects */
     SEXP rlist;         /* the returned list and variable names of same */  
     const char *rnames[]= {"nrisk","nevent","ncensor", "p", 
-                           "cumhaz", "var", ""};
-    SEXP pmat2, vmat2, cumhaz2;  /*list components */
-    SEXP nevent2, ncensor2, nrisk2;
-    double *pmat, *vmat, *cumhaz;
-    int  *ncensor, *nrisk, *nevent;
+                           "cumhaz", "std", "influence", ""};
+    SEXP setemp;
+    double **pmat, **vmat, *cumhaz, *usave;
+    int  *ncensor, **nrisk, **nevent;
     ntime= asInteger(ntime2);
-    nperson = LENGTH(cstate2);
-    n   = LENGTH(sort12);
+    nperson = LENGTH(cstate2); /* number of unique subjects */
+    n   = LENGTH(sort12);    /* number of observations in the data */
     PROTECT(cstate2 = duplicate(cstate2));
     cstate  = INTEGER(cstate2);
-    entry= INTEGER(ftime2);
+    entry= REAL(ftime2);
     etime= entry + n;
     sort1= INTEGER(sort12);
     sort2= INTEGER(sort22);
@@ -70,46 +60,79 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
     PROTECT(p2 = duplicate(p2));  /*copy of initial prevalence */
     p = REAL(p2);
     nstate = LENGTH(p2);  /* number of states */
+    i0 = REAL(i02);
     sefit = asInteger(sefit2);
 
-    /* allocate space for the output objects */
-    PROTECT(pmat2 = allocMatrix(REALSXP, nstate, ntime));
-    pmat = REAL(pmat2);
-    if (sefit >0)
-        PROTECT(vmat2 = allocMatrix(REALSXP, nstate, ntime));
-    else PROTECT(vmat2 = allocMatrix(REALSXP, 1, 1)); /* dummy object */
-    vmat = REAL(vmat2);
-    PROTECT(nevent2 = allocVector(INTSXP, ntime));
-    nevent = INTEGER(nevent2);
-    PROTECT(ncensor2= allocVector(INTSXP, ntime));
-    ncensor = INTEGER(ncensor2);
-    PROTECT(nrisk2 = allocMatrix(INTSXP, nstate, ntime));
-    nrisk = INTEGER(nrisk2);
-    PROTECT(cumhaz2= allocVector(REALSXP, nstate*nstate*ntime));
-    cumhaz = REAL(cumhaz2);
-    nprotect = 8;  
+    /* allocate space for the output objects
+    ** Ones that are put into a list do not need to be protected
+    */
+    PROTECT(rlist=mkNamed(VECSXP, rnames));
+    setemp = SET_VECTOR_ELT(rlist, 0, allocMatrix(INTSXP, ntime, nstate));
+    nrisk =  imatrix(INTEGER(setemp), ntime, nstate);  /* time by state */
+    setemp = SET_VECTOR_ELT(rlist, 1, allocMatrix(INTSXP, ntime, nstate));
+    nevent = imatrix(INTEGER(setemp), ntime, nstate);  /* time by state */
+    setemp = SET_VECTOR_ELT(rlist, 2, allocVector(INTSXP, ntime));
+    ncensor = INTEGER(setemp);  /* total at each time */
+    setemp  = SET_VECTOR_ELT(rlist, 3, allocMatrix(REALSXP, ntime, nstate));
+    pmat =   dmatrix(REAL(setemp), ntime, nstate);
+    setemp = SET_VECTOR_ELT(rlist, 4, allocVector(REALSXP, nstate*nstate*ntime));
+    cumhaz = REAL(setemp);
+
+    if (sefit >0) {
+        setemp = SET_VECTOR_ELT(rlist, 5,  allocMatrix(REALSXP, ntime, nstate));
+        vmat= dmatrix(REAL(setemp), ntime, nstate);
+    }
+    if (sefit >1) {
+        setemp = SET_VECTOR_ELT(rlist, 6, allocVector(REALSXP, n*nstate*(ntime+1)));
+        usave = REAL(setemp);
+    }
 
     /* allocate space for scratch vectors */
-    ws = (double *) R_alloc(2*nstate, sizeof(double));
+    ws = (double *) R_alloc(2*nstate, sizeof(double)); /*weighted number in state */
     temp2 = ws + nstate;
-    ns  = (int *) R_alloc(nstate, sizeof(int));
-    atrisk = (int *) R_alloc(nperson, sizeof(int));
+    ns    = (int *) R_alloc(2*nstate, sizeof(int));
+    nev   = ns + nstate;
+    atrisk = (int *) R_alloc(2*nperson, sizeof(int));
+    dstate = atrisk + nperson;
     wtp = (double *) R_alloc(nperson, sizeof(double));
-    hmat = (double**) dmatrix2(nstate, nstate);
-    if (sefit >0) umat = (double**) dmatrix2(nperson, nstate);
-    chaz = (double**) dmatrix2(nstate, nstate);
+    hmat = (double**) dmatrix((double *)R_alloc(nstate*nstate, sizeof(double)),
+                               nstate, nstate);
+    chaz = (double**) dmatrix((double *)R_alloc(nstate*nstate, sizeof(double)),
+                               nstate, nstate);
+    if (sefit >0)  
+        umat = (double**) dmatrix((double *)R_alloc(nperson*nstate, sizeof(double)),
+                               nstate, nperson);
 
     /* R_alloc does not zero allocated memory */
     for (i=0; i<nstate; i++) {
         ws[i] =0;
         ns[i] =0;
+        nev[i] =0;
         for (j=0; j<nstate; j++) {
                 hmat[i][j] =0;
                 chaz[i][j] =0;
         }
-        if (sefit) {for (j=0; j<nperson; j++) umat[j][i]=0;}
+    }
+    for (i=0; i<nperson; i++) {
+        atrisk[i] =0;
+        dstate[i] = cstate[i];  /* cstate starts as the initial state */
+    }
+    if (sefit ==1) {
+        dptr = i0;
+        for (j=0; j<nstate; j++) {
+            for (i=0; i<nperson; i++) umat[i][j] = *dptr++;
+        }
      }
-    for (i=0; i<nperson; i++) atrisk[i] =0;
+     else if (sefit>1) {
+         /* copy influence, and save it */
+         dptr = i0;
+         for (j=0; j<nstate; j++) {
+             for (i=0; i<nperson; i++) {
+                 umat[i][j] = *dptr;
+                 *usave++ = *dptr++;   /* save in the output */
+             }
+         }
+    } 
     itime =0; /*current time index, for output arrays */
     eptr  = 0; /*index to sort1, the entry times */
     for (i=0; i<n; ) {
@@ -136,7 +159,7 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
          }
 
         /* Count up the number of events and censored at this time point */
-        nevent[itime] =0;
+        for (k=0; k<nstate; k++) nev[k] =0;
         ncensor[itime] =0;
         wevent =0;
         for (j=i; j<n; j++) {
@@ -145,23 +168,27 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
                 if (status[k] >0) {
                     newstate = status[k] -1;  /* 0 based subscripts */
                     oldstate = cstate[id[k]];
-                    nevent[itime]++;
-                    wevent += wt[k];
-                    hmat[oldstate][newstate] += wt[k];
+                    if (oldstate != newstate) {
+                        /* A "move" to the same state does not count */
+                        dstate[id[k]] = newstate;
+                        nev[newstate]++;
+                        wevent += wt[k];
+                        hmat[oldstate][newstate] += wt[k];
+                    }
                 }
                 else ncensor[itime]++;
             }
             else break;
          }
                 
-        if (nevent[itime]> 0) { 
+        if (wevent > 0) {  /* there was at least one move with weight > 0 */
             /* finish computing H */
             for (j=0; j<nstate; j++) {
                 if (ns[j] >0) {
                     temp =0;
                     for (k=0; k<nstate; k++) {
                         temp += hmat[j][k];
-                        hmat[j][k] /= ws[j]; /* events/n */
+                        hmat[j][k] /= ws[j];  /* events/n */
                     }
                     hmat[j][j] =1 -temp/ws[j]; /*rows sum to one */
                 }
@@ -169,48 +196,33 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
          
             }
             if (sefit >0) {
-                /* Update U, part 1  U = U %*% H -- matrix multiplication */
-                for (j=0; j<nperson; j++) { /* row of U */
-                    for (k=0; k<nstate; k++) { /* column of U */
-                        temp2[k]=0;
-                        for (kk=0; kk<nstate; kk++) 
+                if (sefit >0) {
+                    /* Update U, part 1  U = U %*% H -- matrix multiplication */
+                    for (j=0; j<nperson; j++) { /* row of U */
+                        for (k=0; k<nstate; k++) { /* column of U */
+                            temp2[k]=0;
+                            for (kk=0; kk<nstate; kk++) 
                                 temp2[k] += umat[j][kk] * hmat[kk][k];
-                    }  
-                    for (k=0; k<nstate; k++) umat[j][k] = temp2[k];
-                 }
-
-                /* Update U, part 2, subtract from everyone at risk 
-                       For this I need H2 */
-                for (j=0; j<nstate; j++) hmat[j][j] -= 1;
-                for (j=0; j<nperson; j++) {
-                    if (atrisk[j]==1) {
-                        kk = cstate[j];
-                        for (k=0; k<nstate; k++) 
-                            umat[j][k] -= (p[kk]/ws[kk])* hmat[kk][k];
+                        }  
+                        for (k=0; k<nstate; k++) umat[j][k] = temp2[k];
                     }
-                 }
 
-                /* Update U, part 3.  An addition for each event */
-                for (j=i; j<n; j++) {
-                    k = sort2[j];
-                    if (etime[k] == ctime) {
-                        if (status[k] >0) {
-                            kk = id[k];  /* row number in U */
-                            oldstate= cstate[kk];
-                            newstate= status[k] -1;
-                            umat[kk][oldstate] -= p[oldstate]/ws[oldstate];
-                            umat[kk][newstate] += p[oldstate]/ws[oldstate];
+                    /* step 2, add in dH term */
+                    for (j=0; j<nperson; j++) {
+                        if (atrisk[j]==1) {
+                            oldstate = cstate[j];
+                            for (k=0; k<nstate; k++)
+                                umat[j][k] -= hmat[oldstate][k]* p[oldstate]/ ws[oldstate];
+                            umat[j][dstate[j]] += p[oldstate]/ws[oldstate];
                         }
                     }
-                    else break;
-                 }
+                }
             }
             /* Finally, update chaz and p.  */
             for (j=0; j<nstate; j++) {
-                if (sefit ==0) hmat[j][j] -= 1;  /* conversion to H2*/
                 for (k=0; k<nstate; k++) chaz[j][k] += hmat[j][k];
-                
-                hmat[j][j] +=1;  /* change from H2 to H */
+                chaz[j][j] -=1;  /* Update using H2 */
+
                 temp2[j] =0;
                 for (k=0; k<nstate; k++)
                     temp2[j] += p[k] * hmat[k][j];
@@ -219,15 +231,18 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
         }
         /* store into the matrices that will be passed back */
         for (j=0; j<nstate; j++) {
-            *pmat++ = p[j];
-            *nrisk++ = ns[j];
+            pmat[j][itime] = p[j];
+            nrisk[j][itime] = ns[j];
+            nevent[j][itime] = nev[j];
             for (k=0; k<nstate; k++) *cumhaz++ = chaz[k][j];
-            temp=0;
             if (sefit >0) {
+                temp =0;
                 for (k=0; k<nperson; k++) 
-                    temp += wtp[k]* umat[k][j]*umat[k][j];
-                *vmat++ = temp;
+                    temp += wtp[k]* wtp[k]*umat[k][j]*umat[k][j];
+                vmat[j][itime] = sqrt(temp);
             }
+            if (sefit > 1)
+                for (k=0; k<nperson; k++) *usave++ = umat[k][j];
          }
       
         /* Take the current events and censors out of the risk set */
@@ -245,13 +260,6 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
         itime++;  
     }  
     /* return a list */
-    PROTECT(rlist=mkNamed(VECSXP, rnames));
-    SET_VECTOR_ELT(rlist, 0, nrisk2);
-    SET_VECTOR_ELT(rlist, 1, nevent2);
-    SET_VECTOR_ELT(rlist, 2, ncensor2);
-    SET_VECTOR_ELT(rlist, 3, pmat2);
-    SET_VECTOR_ELT(rlist, 4, cumhaz2);
-    SET_VECTOR_ELT(rlist, 5, vmat2);
-    UNPROTECT(nprotect +1);
+    UNPROTECT(3);
     return(rlist);
 }

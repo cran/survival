@@ -172,7 +172,7 @@ print(mfit3, rmean=240, digits=2)
 mfit3$transitions
 plot(mfit3[,1], mark.time=FALSE, col=1:2, lty=1:2, lwd=2,
      xscale=12,
-     xlab="Years post MGUS diagnosis", ylab="Prevalence of PCM")
+     xlab="Years post MGUS diagnosis", ylab="Fraction in the PCM state")
 legend(48, .04, c("female", "male"), lty=1:2, col=1:2, lwd=2, bty='n') 
 
 
@@ -188,7 +188,7 @@ e2 <- factor(d2, labels=c("censor", "pcm", "death w/o pcm",
 mfit4 <- survfit(Surv(tstart, tstop, e2) ~ sex, data=newdata, id=id)
 plot(mfit2[2,], lty=c(1,2),
      xscale=12, mark.time=FALSE, lwd=2, 
-     xlab="Years post diagnosis", ylab="Prevalence")
+     xlab="Years post diagnosis", ylab="Probability in State")
 lines(mfit4[2,3], mark.time=FALSE, col=2, lty=1, lwd=2,
       conf.int=FALSE)
 
@@ -250,7 +250,7 @@ legend(10, .14, outer(c("female", "male   "),
 ### code chunk number 14: year20
 ###################################################
 # Print out a M/F results at 20 years
-temp <- summary(csurv, time=20*12)$prev
+temp <- summary(csurv, time=20*12)$pstate
 cbind(newdata, PCM= round(100*temp[,2], 1))
 
 

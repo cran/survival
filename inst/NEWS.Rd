@@ -1,6 +1,49 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 2.40-1}{
+  \itemize{
+    \item For multi-state survival with a big data set and the
+    influence=TRUE option, the resulting object could be so long that it
+    overflowed an integer counter in the C code.  Add a check in the R
+    code  and a caution in the help file.
+  }
+}
+\section{Changes in version 2.40-0}{
+  \itemize{
+    \item Code changes to void the new warnings for multiplication of a
+    vector * (1 by 1 matrix). 
+    
+    \item Add a more thorough test case for multi-state survival:
+    not all subjects start in the same state, delayed entry, and
+    case weights that change within a subject.  This uncovered some
+    errors.  More carefully document the influence option.
+    
+    \item Consistently deal with "almost tied" survival times in the survfit and
+    coxph routines.  Uses the same rule and tolerance as the all.equal
+    function to declare two time value equal.  The issue arises due to
+    round off errors, e.g., from cacluations using days/365.25.
+    
+    \item Add the statefig function and a multi-state vignette.
 
+    \item The rsurvreg function was not exported.  NAMESPACE fix.
+
+    \item Fix some labeling errors in the graphs for the adjusted
+    survival curves vignette (consequences of the xscale change in
+    2.38-5).
+
+    \item Update multi-state survival so that the robust (default)
+    variance for a weighted data set treats these as sampling weights
+    rather than case weights.  This makes it consistent with the
+    behavior of coxph.  (Multiplication of all the weights by a constant
+    now leaves the variance unchanged.) (9/2016)
+
+    \item Surv(time, status) would fail when status was a factor with
+    only two levels.  This was due to an assumption that no user would
+    ever want this, i.e., ever do it on purpose, and so it must be a mistake
+    which should be caught.  This was a bad assumption.
+
+    \item Add the start.time argument to survfit.coxph. 10Sep2017
+}}
 \section{Changes in version 2.39-5}{
   \itemize{
     \item The summary.survfit routine assumed that the times argument
@@ -19,7 +62,24 @@
     this single curve in the vignette).  Pointed out by E Lundt.
 
     \item print.summary.survfitms would complain if only a single time
-    was specified.  A case where drop=FALSE was needed.
+    was returned.  A case where drop=FALSE was needed.
+
+    \item Add a test for survSplit to ensure that it works with both the
+    formula based and old interface.  Add documention on
+    how variable names are chosen to the help file.
+
+    \item Error in subscripting survival curves: if fit was a survfit
+    curve from left-truncated data, fit[k] had an incorrect n.enter
+    component.  (An old error, which shows how rarely that component is
+    used.)  Pointed out by Beth Atkinson.
+
+    \item Remove n.enter from the default printout of summary.survfit,
+    to make the printout more compact.
+    It remains in the summary object but was very rarely used.
+    \item Update the points.survfit function to handle multiple colors
+    and/or plotting characters.  If a survfit object has multiple curves
+    we cycle through these in the same manner as matpoints would.
+    
 }}
 
 \section{Changes in version 2.39-4}{

@@ -14,7 +14,7 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
     if (missing(mark.time) & !missing(mark)) mark.time <- TRUE
   
     if (inherits(x, "survfitms")) {
-        x$surv <- 1- x$prev
+        x$surv <- 1- x$pstate
         if (is.matrix(x$surv)) {
             dimnames(x$surv) <- list(NULL, x$states)
             if (ncol(x$surv) > 1 && any(x$states == '')) {
@@ -381,7 +381,7 @@ lines.survfit <- function(x, type='s',
    if (missing(mark.time) & !missing(mark)) mark.time <- TRUE
  
     if (inherits(x, "survfitms")) {
-        x$surv <- 1- x$prev
+        x$surv <- 1- x$pstate
         if (is.matrix(x$surv)) {
             dimnames(x$surv) <- list(NULL, x$states)
             if (ncol(x$surv) > 1 && any(x$states == '')) {
@@ -659,10 +659,13 @@ lines.survfit <- function(x, type='s',
     invisible(list(x=xend, y=yend))
 }
 
-points.survfit <- function(x, xscale=1,
-                           xmax, fun, ...) {
+points.survfit <- function(x, xscale, xmax, fun, censor=FALSE,
+                           col=1, pch, ...) {
+    # this function is used rarely
+    conf.int <- FALSE  # never draw these with 'points'
+
     if (inherits(x, "survfitms")) {
-        x$surv <- 1- x$prev
+        x$surv <- 1- x$pstate
         if (is.matrix(x$surv)) {
             dimnames(x$surv) <- list(NULL, x$states)
             if (ncol(x$surv) > 1 && any(x$states == '')) {
@@ -678,8 +681,7 @@ points.survfit <- function(x, xscale=1,
         }
         if (missing(fun)) fun <- "event"
     }
-    firstx <- NA  # flag used in the common args
-    conf.int <- FALSE
+    firstx <- firsty <- NA # part of the common args, but irrelevant for points
     ssurv <- as.matrix(x$surv)
     stime <- x$time
     if( !is.null(x$upper)) {
@@ -766,6 +768,30 @@ points.survfit <- function(x, xscale=1,
             }
         firsty <- tfun(firsty)
     }
-    if (ncol(ssurv)==1) points(stime, ssurv, ...)
-    else  matpoints(stime, ssurv, ...)
+
+    if (ncurve==1 || (length(col)==1 && missing(pch))) {
+        if (censor) points(stime, ssurv, ...)
+        else points(stime[x$n.event>0], ssurv[x$n.event>0], ...)
+    }
+    else {
+        c2 <- 1  #cycles through the colors and characters
+        col <- rep(col, length=ncurve)
+        if (!missing(pch)) {
+            if (length(pch)==1)
+                pch2 <- rep(strsplit(pch, '')[[1]], length=ncurve)
+            else pch2 <- rep(pch, length=ncurve)
+        }
+        for (j in 1:ncol(ssurv)) {
+            for (i in unique(stemp)) {
+                if (censor) who <- which(stemp==i)
+                else who <- which(stemp==i & x$n.event >0)
+                if (missing(pch))
+                    points(stime[who], ssurv[who,j], col=col[c2], ...)
+                else
+                    points(stime[who], ssurv[who,j], col=col[c2], 
+                           pch=pch2[c2], ...) 
+                c2 <- c2+1
+            }
+        }
+    }
 }

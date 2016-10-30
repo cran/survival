@@ -103,7 +103,7 @@ model.frame.coxph <- function(formula, ...) {
        if (!is.null(attr(Terms, "specials")$tt)) {
           # Do time transform
           tt <- eval(formula$call$tt)
-          Y <- model.response(mf)
+          Y <- normalizetime(model.response(mf), replace=TRUE)
           strats <- attr(Terms, "specials")$strata
           if (length(strats)) {
               stemp <- untangle.specials(Terms, 'strata', 1)
@@ -174,9 +174,10 @@ model.frame.coxph <- function(formula, ...) {
                               as.integer(newstrat))
               tindex <- counts$index
           }
-          mf <- mf[tindex,]
           Y <- Surv(rep(counts$time, counts$nrisk), counts$status)
           type <- 'right'  # new Y is right censored, even if the old was (start, stop]
+
+          mf <- mf[tindex,]
           strats <- rep(1:length(counts$nrisk), counts$nrisk)
           weights <- model.weights(mf)
           if (!is.null(weights) && any(!is.finite(weights)))
