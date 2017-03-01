@@ -1,6 +1,6 @@
 # Automatically generated from the noweb directory
 finegray <- function(formula, data, subset, na.action= na.pass,
-                     etype, prefix="fg", count="", id) {
+                     etype, prefix="fg", count="", id, timefix=TRUE) {
     Call <- match.call()
     indx <- match(c("formula", "data", "subset", "id"),
               names(Call), nomatch=0) 
@@ -24,6 +24,7 @@ finegray <- function(formula, data, subset, na.action= na.pass,
         stop("Fine-Gray model requires a multi-state survival")
     nY <- ncol(Y)
     states <- attr(Y, "states")
+    if (timefix) Y <- aeqSurv(Y)
 
     strats <- attr(Terms, "specials")$strata
     if (length(strats)) {
@@ -90,7 +91,7 @@ finegray <- function(formula, data, subset, na.action= na.pass,
         if (!left.open) findInterval(x, vec, ...)
         else {
             # the left.open arg is a recent addition to findInterval, and I want
-            #  this to work in 3.2.0 (institutional installs).  In another cycle or
+            #  this to work in 3.2.0 (my employer's default).  In another cycle or
             #  so we can drop this workaround and call findInterval directly
             #
             length(vec) - findInterval(-x, rev(-vec), ...)
@@ -114,7 +115,6 @@ finegray <- function(formula, data, subset, na.action= na.pass,
         Hsurv <- survfit(Surv(-newtime[,2], -newtime[,1], first) ~ istrat, 
                          se.fit =FALSE)
     status <- Y[, 3]
-    maxtime <- max(Y[,2])
 
     # Do computations separately for each stratum
     stratfun <- function(i) {
@@ -122,8 +122,10 @@ finegray <- function(formula, data, subset, na.action= na.pass,
         times <- sort(unique(Y[keep & status == enum, 2])) #unique event times 
         if (length(times)==0) return(NULL)  #no events in this stratum
         tdata <- mf[keep, -1, drop=FALSE]
+        maxtime <- max(Y[keep, 2])
 
         if (dim(Gsurv)==1) {
+            # the phrase Gsurv[1] gives a warning when there is only one curve
             # keep only the event times, and convert back to the original time units
             if (delay) {
                 dtime <- rev(-Hsurv$time[Hsurv$n.event > 0])
@@ -168,10 +170,11 @@ finegray <- function(formula, data, subset, na.action= na.pass,
         ckeep <- rep(FALSE, length(ct2))
         ckeep[index] <- TRUE
         expand <- (Y[keep, 3] !=0 & Y[keep,3] != enum & last[keep]) #which rows to expand
-        split <- .Call("finegray", Y[keep,1], Y[keep,2], ct2, cp2, expand, 
+        split <- .Call(Cfinegray, Y[keep,1], Y[keep,2], ct2, cp2, expand, 
                        c(TRUE, ckeep)) 
         tdata <- tdata[split$row,,drop=FALSE]
-        tstat <- ifelse(status[split$row]== enum, 1, 0)
+        tstat <- ifelse((status[keep])[split$row]== enum, 1, 0)
+
 
         tdata[[oname[1]]] <- split$start
         tdata[[oname[2]]] <- split$end

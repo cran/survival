@@ -35,20 +35,20 @@ legend(1.5, .85, c("Responders", "Non-responders"),
 
 
 ###################################################
-### code chunk number 4: timedep.Rnw:183-185 (eval = FALSE)
+### code chunk number 4: timedep.Rnw:200-202 (eval = FALSE)
 ###################################################
 ## fit <- coxph(Surv(time1, time2, status) ~ age + creatinine, 
 ##              data=mydata)
 
 
 ###################################################
-### code chunk number 5: timedep.Rnw:256-257 (eval = FALSE)
+### code chunk number 5: timedep.Rnw:273-274 (eval = FALSE)
 ###################################################
 ## newdata <- tmerge(data1, data2, id, newvar=tdc(time, value), ...)
 
 
 ###################################################
-### code chunk number 6: timedep.Rnw:302-303
+### code chunk number 6: timedep.Rnw:319-320
 ###################################################
 cgd0[1:4,]
 
@@ -125,20 +125,20 @@ rbind('baseline fit' = coef(fit1),
 
 
 ###################################################
-### code chunk number 11: timedep.Rnw:565-566
+### code chunk number 11: timedep.Rnw:582-583
 ###################################################
 attr(pbc2, "tcount")
 
 
 ###################################################
-### code chunk number 12: timedep.Rnw:568-570
+### code chunk number 12: timedep.Rnw:585-587
 ###################################################
 #grab a couple of numbers for the paragraph below
 atemp <- attr(pbc2, "tcount")[2:3,]
 
 
 ###################################################
-### code chunk number 13: timedep.Rnw:651-657 (eval = FALSE)
+### code chunk number 13: timedep.Rnw:668-674 (eval = FALSE)
 ###################################################
 ## temp <- subset(pbc, id <= 312, select=c(id:sex, stage))
 ## pbc2 <- tmerge(temp, temp, id=id, death = event(time, status))
@@ -260,7 +260,18 @@ anova(pfit2)
 
 
 ###################################################
-### code chunk number 24: timedep.Rnw:1045-1052
+### code chunk number 24: expand
+###################################################
+dtimes <- sort(unique(with(pbc, time[status==2])))
+tdata <- survSplit(Surv(time, status==2) ~., pbc, cut=dtimes)
+tdata$c.age <- tdata$age + tdata$time/365.25 -50  #current age, centered at 50
+pfit3 <- coxph(Surv(tstart, time, event) ~ log(bili) + ascites + c.age +
+    I(c.age^2) + I(c.age^3), data=tdata)
+rbind(coef(pfit2), coef(pfit3))
+
+
+###################################################
+### code chunk number 25: timedep.Rnw:1078-1085
 ###################################################
 function(x, t, riskset, weights){ 
     obrien <- function(x) {
@@ -272,7 +283,7 @@ function(x, t, riskset, weights){
 
 
 ###################################################
-### code chunk number 25: timedep.Rnw:1062-1064
+### code chunk number 26: timedep.Rnw:1095-1097
 ###################################################
 function(x, t, riskset, weights) 
     unlist(tapply(x, riskset, rank))

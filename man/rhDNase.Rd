@@ -9,7 +9,7 @@
 \format{
   A data frame with 767 observations on the following 8 variables.
   \describe{
-    \item{\code{id}}{subeject id}
+    \item{\code{id}}{subject id}
     \item{\code{inst}}{enrolling institution}
     \item{\code{trt}}{treatment arm: 0=placebo, 1= rhDNase}
     \item{\code{entry.dt}}{date of entry into the study}
@@ -60,7 +60,7 @@ event during the course of antibiotics, nor for an additional 6 days
 after they end.  (If the symptoms reappear immediately after cessation
 then from a medical standpoint this would not be a new infection.)
 
-This data set reproduces the data in Therneau and Grambsh, is does not
+This data set reproduces the data in Therneau and Grambsch, is does not
 exactly reproduce those in Therneau and Hamilton due to data set updates.
 }
 \references{

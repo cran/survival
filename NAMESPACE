@@ -5,7 +5,7 @@ importFrom(stats, anova, approx, as.formula, coef, coefficients,
            logLik, makepredictcall, median, model.extract,
            model.frame, model.matrix, model.offset, model.response,
            model.weights, na.fail, na.pass, napredict, naprint, naresid,
-           pchisq, pnorm, printCoefmat, predict, qnorm, quantile,
+           pchisq, pnorm, printCoefmat, predict, qnorm, quantile, qgamma,
            resid, residuals, runif, stat.anova, terms, var, vcov,
            .checkMFClasses, .getXlevels)
 importFrom(graphics, plot, points, lines, axis, box, matlines, matplot, 
@@ -14,9 +14,9 @@ importFrom(graphics, plot, points, lines, axis, box, matlines, matplot,
 importFrom(Matrix, expm)
 importFrom(methods, as)
 importFrom(utils, getS3method, type.convert, methods)
-export(Surv, aareg, agreg.fit,
+export(Surv, aeqSurv, aareg, agreg.fit,
        agexact.fit, attrassign, 
-       basehaz, cch, clogit, cluster, cox.zph, 
+       basehaz, cch, clogit, cipoisson, cluster, cox.zph, 
        coxph, coxph.control, coxph.detail, coxph.fit,
        coxph.wtest, finegray, format.Surv, 
        frailty,  frailty.gamma, 
@@ -95,6 +95,7 @@ S3method(print, cox.zph)
 S3method(print, coxph)
 S3method(print, coxph.null)
 S3method(print, coxph.penal)
+S3method(print, pyears)
 S3method(print, ratetable)
 S3method(print, summary.cch)
 S3method(print, summary.coxph)

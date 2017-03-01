@@ -7,6 +7,18 @@ coxph <- function(formula, data, weights, subset, na.action,
 
     ties <- match.arg(ties)
     Call <- match.call()
+    ## We want to pass any ... args to coxph.control, but not pass things
+    ##  like "dats=mydata" where someone just made a typo.  The use of ...
+    ##  is simply to allow things like "eps=1e6" with easier typing
+    extraArgs <- list(...)
+    if (length(extraArgs)) {
+        controlargs <- names(formals(coxph.control)) #legal arg names
+        indx <- pmatch(names(extraArgs), controlargs, nomatch=0L)
+        if (any(indx==0L))
+            stop(gettextf("Argument %s not matched", 
+                          names(extraArgs)[indx==0L]), domain = NA)
+    }
+    if (missing(control)) control <- coxph.control(...)    
     # create a call to model.frame() that contains the formula (required)
     #  and any other of the relevant optional arguments
     # then evaluate it in the proper frame
@@ -31,19 +43,6 @@ coxph <- function(formula, data, weights, subset, na.action,
     Terms <- terms(mf)
 
 
-    ## We want to pass any ... args to coxph.control, but not pass things
-    ##  like "dats=mydata" where someone just made a typo.  The use of ...
-    ##  is simply to allow things like "eps=1e6" with easier typing
-    extraArgs <- list(...)
-    if (length(extraArgs)) {
-        controlargs <- names(formals(coxph.control)) #legal arg names
-        indx <- pmatch(names(extraArgs), controlargs, nomatch=0L)
-        if (any(indx==0L))
-            stop(gettextf("Argument %s not matched", names(extraArgs)[indx==0L]),
-                 domain = NA)
-    }
-    if (missing(control)) control <- coxph.control(...)
-
     Y <- model.extract(mf, "response")
     if (!inherits(Y, "Surv")) stop("Response must be a survival object")
     type <- attr(Y, "type")
@@ -51,7 +50,7 @@ coxph <- function(formula, data, weights, subset, na.action,
         stop(paste("Cox model doesn't support \"", type,
                           "\" survival data", sep=''))
     data.n <- nrow(Y)   #remember this before any time transforms
-    Y <- normalizetime(Y, replace=TRUE)
+    if (control$timefix) Y <- aeqSurv(Y)
     if (length(attr(Terms, 'variables')) > 2) { # a ~1 formula has length 2
         ytemp <- terms.inner(formula[1:2])
         xtemp <- terms.inner(formula[-2])

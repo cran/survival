@@ -29,7 +29,7 @@ data frame in which to interpret the variables named in the
 \code{subset}, and \code{weights} arguments.
 This may also be a single number to handle
 some speci al cases -- see below for details. If
-\code{data} is missi ng, the variables in the
+\code{data} is missing, the variables in the
 model formula should be in the search path.
 }
 \item{weights}{
@@ -46,7 +46,7 @@ exclude particular observations from the model, use the
 expression specifying which subset of observations should be used in
 the fit. Th is can be a logical vector (which is replicated to have
 length equal to the numb er of observations), a numeric vector
-indicating the observation numbers to be i ncluded, or a character
+indicating the observation numbers to be included, or a character
 vector of the observation names that should be included.  All
 observations are included by default.
 }
@@ -66,7 +66,7 @@ tolerance for detection of singularity in the QR decomposition
 minimum number of observations for an estimate; defaults to 3 times the
 number of covariates.
 This essentially truncates the computations near the tail of the data
-set, when n is small and the calcualtions can become numerically
+set, when n is small and the calculations can become numerically
 unstable.
 }
 \item{dfbeta}{
@@ -124,7 +124,7 @@ The Aalen model assumes that the cumulative hazard H(t) for a subject
 can be expressed as a(t) + X B(t), where a(t) is a time-dependent intercept
 term, X is the vector of covariates for the subject (possibly time-dependent),
 and B(t) is a time-dependent matrix of coefficients.
-The estimates are inheritly non-parametric; a fit of the model will normally
+The estimates are inherently non-parametric; a fit of the model will normally
 be followed by one or more plots of the estimates.
 
 The estimates may become unstable near the tail of a data set, since the

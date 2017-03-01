@@ -7,6 +7,8 @@ Surv <- function(time, time2, event,
 		       origin=0) {
 
     if (missing(time)) stop ("Must have a time argument")
+    if (class(time) =="difftime") time <- as.numeric(time)
+    if (!missing(time2) && class(time2)=="difftime") time2 <-as.numeric(time2)
     if (!is.numeric(time)) stop ("Time variable is not numeric")
     nn <- length(time)
 
@@ -102,9 +104,11 @@ Surv <- function(time, time2, event,
 	    if (!is.numeric(time2)) stop("Time2 must be numeric")
 	    if (length(time2) !=nn) 
 		    stop ("time and time2 are different lengths")
-            time  <- ifelse(time==Inf, NA, time)    #allow Inf for upper/lower
-            time2 <- ifelse(time2== -Inf, NA, time2)  
             backwards <- (!is.na(time) & !is.na(time2) & time > time2)
+            # allow for infinite times (important to do the backwards check
+            #  first)
+            time  <- ifelse(is.finite(time), time, NA)
+            time2 <- ifelse(is.finite(time2), time2, NA)
             unknown <-  (is.na(time) & is.na(time2))
  	    status <- ifelse(is.na(time),  2,
 		      ifelse(is.na(time2), 0,
@@ -249,9 +253,8 @@ as.character.Surv <- function(x, ...) {
         x
     }
     else { # return  a matrix or vector
-	if (is.R()) class(x) <- 'matrix'
-        else oldClass(x) <- NULL
-	NextMethod("[")
+	class(x) <- 'matrix'
+       	NextMethod("[")
     }
 }
 
@@ -271,3 +274,5 @@ as.matrix.Surv <- function(x, ...) {
     y
     }
 length.Surv <- function(x) nrow(x)
+format.Surv <- function(x, ...) format(as.character.Surv(x), ...)
+as.data.frame.Surv <- as.data.frame.model.matrix

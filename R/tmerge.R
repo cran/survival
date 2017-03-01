@@ -26,8 +26,8 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
         stop("the data1, data2, and id arguments are required")
     if (!inherits(data1, "data.frame")) stop("data1 must be a data frame")
     
-    tmerge.control <- function(idname="id", tstartname="tstart", tstopname="tstop",  
-                               delay =0, na.rm=TRUE, ...) {
+    tmerge.control <- function(idname="id", tstartname="tstart", tstopname="tstop",
+                               delay =0, na.rm=TRUE, tdcstart=NA, ...) {
         extras <- list(...)
         if (length(extras) > 0) 
             stop("unrecognized option(s):", paste(names(extras), collapse=', '))
@@ -42,7 +42,9 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
             stop("delay option must be a number >= 0")
         if (length(na.rm) !=1 || ! is.logical(na.rm))
             stop("na.rm option must be TRUE or FALSE")
-       list(idname=idname, tstartname=tstartname, tstopname=tstopname, delay=delay, na.rm=na.rm)
+        if (length(tdcstart) !=1) stop("tdcstart must be a single value")
+       list(idname=idname, tstartname=tstartname, tstopname=tstopname, 
+            delay=delay, na.rm=na.rm, tdcstart=tdcstart)
     }
 
     tname <- attr(data1, "tname")
@@ -122,34 +124,33 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
     if (is.null(tcens)) tcens <- vector('list', 0)
     newdata <- data1 #make a copy
     if (firstcall) {
-        # The line below finds id, tstop, and tstart variables in data1
+        # We don't look for topt$id.  What if the user had id=clinic, but their
+        #  starting data set also had a variable named "id".  We want clinic for
+        #  this first call.
+        idname <- Call[["id"]]
+        if (!is.name(idname)) 
+            stop("on the first call 'id' must be a single variable name")
+     
+        # The line below finds tstop and tstart variables in data1
         indx <- match(c(topt$idname, topt$tstartname, topt$tstopname), names(data1), 
                       nomatch=0)
-        if (any(indx[2:3]>0) && FALSE) {  # warning currently turned off. Be chatty?
+        if (any(indx[1:2]>0) && FALSE) {  # warning currently turned off. Be chatty?
             overwrite <- c(topt$tstartname, topt$tstopname)[indx[2:3]]
             warning("overwriting data1 variables", paste(overwrite, collapse=' '))
             }
         
-        if (indx[1] == 0) {
-            # the topt$id variable name is not in data1.  Deal with the
-            # fairly common case that data1 == data2.  If data1 contains the
-            # same variable used as 'id' in data2, add it to data1 under the
-            # new name
-            temp <- as.character(Call[["id"]])
-            if (is.name(Call[["id"]]) && !is.na(match(temp, names(data1)))) {
+        temp <- as.character(idname)
+        if (!is.na(match(temp, names(data1)))) {
                 data1[[topt$idname]] <- data1[[temp]]
                 baseid <- data1[[temp]]
                 }
-            else stop("id variable not found in data1")
-        }
-        else baseid <- data1[[indx[1]]]
+        else stop("id variable not found in data1")
 
         if (any(duplicated(baseid))) 
             stop("for the first call (that establishes the time range) data1 must have no duplicate identifiers")
 
-            
         if (length(baseid)== length(id) && all(baseid == id)) newdata <- data1
-        else {
+        else {  # Note: 'id' is the idlist for data 2
             indx2 <- match(id, baseid)
             if (any(is.na(indx2)))
                 stop("'id' has values not in data1")
@@ -221,6 +222,7 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
         etime <- etime[indx]
         if (!is.null(argi$value))
             yinc <- argi$value[indx]
+        else yinc <- NULL
             
         # indx1 points to the closest start time in the baseline data (data1)
         #  that is <= etime.  indx2 to the closest end time that is >=etime.
@@ -262,10 +264,7 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
 
         # count ties.  id and etime are not necessarily sorted
         tcount[ii,8] <- sum(tapply(etime, id, function(x) sum(duplicated(x))))
-        # Look to see if this term has one or two arguments.  If one arg
-        #  then the increment is 1, else it is the second arg.
-        if (!is.null(argi$value)) yinc <- argi$value
-        else yinc <- rep(1.0, length(etime))
+        if (is.null(yinc)) yinc <- rep(1.0, length(etime))
         indx4 <- which(itype==4)
         n4 <- length(indx4)
         if (n4 > 0) {
@@ -334,17 +333,41 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
             keep <- itype != 2  # changes after the last interval are ignored
             indx <- ifelse(subtype==1, indx1, 
                            ifelse(subtype==3, indx2+1L, indx2))
-
-            if (is.null(newvar)) {
+            
+            # we want to pass the right kind of NA to the C code
+            if (is.na(topt$tdcstart)) topt$tdcstart <- as.numeric(topt$tdcstart)
+            if (is.null(newvar)) {  # not overwriting a prior value
                 if (is.null(argi$value)) newvar <- rep(0.0, nrow(newdata))
-                else newvar <- rep(NA_real_, nrow(newdata))
+                else newvar <- rep(topt$tdcstart, nrow(newdata))
                 }
-            # id can be any data type; feed integers to the C routine
-            storage.mode(yinc) <- storage.mode(dstop) <- "double"
-            storage.mode(newvar) <- storage.mode(etime) <- "double"
-            newvar <- .Call("tmerge", match(baseid, baseid), dstop, newvar, 
+
+            if (is.numeric(yinc)) {
+                # this is the usual case
+                if (!is.numeric(newvar)) 
+                    stop("data and options$tdcstart do not agree on data type")
+                # id can be any data type; feed integers to the C routine
+                storage.mode(yinc) <- storage.mode(dstop) <- "double"
+                storage.mode(newvar) <- storage.mode(etime) <- "double"
+                newvar <- .Call(Ctmerge, match(baseid, baseid), dstop, newvar, 
+                                match(id, baseid)[keep], etime[keep], 
+                                yinc[keep], indx[keep])
+            }      
+            else {
+                # deal with a factor or character
+                if (!(is.factor(yinc) || is.factor(yinc)))
+                    stop("the second argument of tdc must be numeric, character, or factor")
+                newlev <- unique(c(levels(as.factor(yinc)), levels(as.factor(newvar))))
+                y2 <- factor(yinc, levels=newlev)
+                newvar <- factor(newvar, levels=newlev)
+
+                storage.mode(dstop) <- storage.mode(etime) <- "double"
+                new <- .Call(Ctmerge, match(baseid, baseid), dstop, as.numeric(newvar), 
                             match(id, baseid)[keep], etime[keep], 
-                            yinc[keep], indx[keep])
+                            as.numeric(yinc[keep]), indx[keep])
+
+                if (is.factor(yinc)) newvar <- factor(new, labels=newlev)
+                else newvar <- newlev[new]
+            }
         }
 
         newdata[[argname[ii]]] <- newvar

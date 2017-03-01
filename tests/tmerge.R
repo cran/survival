@@ -7,7 +7,7 @@ test2 <- tmerge(test1, data2, id=idd, zed=tdc(age, x2))
 all.equal(test2$id, c(1,1,1,5,5,4,3,2,2,2,6))
 all.equal(test2$tstop, c(44, 46, 50, 47, 51, 52, 53, 45, 48, 54, 55))
 all.equal(test2$death, c(0,0,1,0,1,1,1,0,0,1,1))
-all.equal(test2$zed, c(NA, 5, 4,NA, 3, NA, NA, NA, 2, 1, NA))
+all.equal(test2$zed, c(NA, 1, 3,NA, 4, NA, NA, NA, 2, 5, NA))
 
 #add in a cumtdc variable and cumevent variable
 data3 <- data.frame(idd=c(5,5,1,1,6,4,3,2), 
@@ -15,7 +15,7 @@ data3 <- data.frame(idd=c(5,5,1,1,6,4,3,2),
                     x = c(1,5,2,3,7, 4,6,8))
 test3 <- tmerge(test2, data3, id=idd, x=cumtdc(age, x),
                 esum = cumevent(age))
-all.equal(test3$x, c(NA,1,1,6,NA, 2,2,5,7,4, NA, 6,6,6, NA,8))
+all.equal(test3$x, c(NA,2,2,5,NA, 1,1,6,4,6, NA, 8,8,8, NA,7))
 all.equal(test3$esum, c(1,0,2,0,1,0,2,0,0,0,1,0,0,0,1,0)) 
 
 

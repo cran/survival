@@ -103,7 +103,7 @@ model.frame.coxph <- function(formula, ...) {
        if (!is.null(attr(Terms, "specials")$tt)) {
           # Do time transform
           tt <- eval(formula$call$tt)
-          Y <- normalizetime(model.response(mf), replace=TRUE)
+          Y <- aeqSurv(model.response(mf))
           strats <- attr(Terms, "specials")$strata
           if (length(strats)) {
               stemp <- untangle.specials(Terms, 'strata', 1)

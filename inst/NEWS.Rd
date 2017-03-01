@@ -1,11 +1,52 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 2.41-0}{
+  \itemize{
+    \item Per request if the R-core, add R_useDynamicSymbols(dll,FALSE)
+      to the initialization.  This prevents .Call from accessing the
+      library when its first argument is a character string.  The reason
+      is to stop accidental linking to the routines.
+    \item Fix a bug in tmerge, if data2 was not sorted by time within id
+      then a tdc(time, x) call's outcomte was incorrect.  Add the ability
+      to use a factor as the second variable in a tdc call, and add the
+      tdcstart option.
+    \item Expose the aeqSurv routine, which is used rectify tied
+     time issues.
+     \item The survfit routines now save the start.time option (if used) in
+     the output object.  This is then used as a default starting point for
+     the x-axis in any plots.
+     \item Allow survfit.matrix to use different p0 values for different
+     curves.
+     \item Add type="survival" to predict.coxph
+ }}
+ 
+\section{Changes in version 2.40-2}{
+  \itemize{
+    \item Fix an error in the finegray routine: with strata() the
+    resulting data sets could have incorrect status values.  Pointed out
+    by Mark Donoghoe.  Added a strata test to tests/finegray.R.  
+
+    \item Remove many "is.R" and "oldClass" calls (vestiges of Splus).
+    \item The summary.pyears routine now prints pandoc style tables.
+    \item Fix multiple spelling errors in the Rd files; contributed by
+    Luca Braglia.
+    \item For a multi-state curve, the cumhaz component accidentally had
+    the final state removed.  All values were correct, simply an
+    overzealous trimming of the final result.
+
+    \item Add a short vignette describing the issue with round off error
+    and tied survival times.
+
+    \item Errors in survSplit: a factor status was not propogated, and a
+    missing time gave a spurious error message.
+}}
+
 \section{Changes in version 2.40-1}{
   \itemize{
     \item For multi-state survival with a big data set and the
     influence=TRUE option, the resulting object could be so long that it
     overflowed an integer counter in the C code.  Add a check in the R
-    code  and a caution in the help file.
+    code and a caution in the help file.
   }
 }
 \section{Changes in version 2.40-0}{

@@ -46,12 +46,14 @@ survSplit <- function(formula, data, subset, na.action=na.pass,
     mf <- eval.parent(temp)      
 
     Y <- model.response(mf)
+    states <- attr(Y, "states")
     if (!is.Surv(Y)) stop ("the model must have a Surv object as the response")
     if (!(attr(Y, "type") %in% c("right", "mright", "counting", "mcounting")))
         stop(paste("not valid for", attr(Y, "type"), "censored survival data"))
     nY <- ncol(Y)
     if (nY ==2) Y <- cbind(zero, Y)
-    if (any(Y[,1] >= Y[,2]))    stop("start time must be < stop time")
+    temp <- (Y[,1] >= Y[,2])
+    if (any(temp & !is.na(temp))) stop("start time must be < stop time")
         
     if (!is.numeric(cut) || any(!is.finite(cut)))
         stop("cut must be a vector of finite numbers")
@@ -68,15 +70,15 @@ survSplit <- function(formula, data, subset, na.action=na.pass,
     }
 
     storage.mode(Y) <- "double"
-    index <- .Call("survsplit", Y[,1], Y[,2], as.double(cut))
+    index <- .Call(Csurvsplit, Y[,1], Y[,2], as.double(cut))
     newdata <- mf[index$row, -1, drop=FALSE]
     row.names(newdata) <- NULL    # erase R's manufactured row names
     attr(newdata, "terms") <- NULL
 
     status <- Y[index$row, 3]
     status[index$censor] <- 0
-    if (!is.null(attr(Y, "states")))  
-        status <- factor(status, labels=c("censor", attr(Y, "states")))
+    if (!is.null(states))  
+        status <- factor(status, labels=c("censor", states))
 
     # Did the user hand me a Surv call with multiple variables, or a
     #  premade Surv object?
@@ -104,6 +106,8 @@ survSplit <- function(formula, data, subset, na.action=na.pass,
                 end <- as.character(temp$time2)
             if (missing(event) && !is.null(temp$event) && is.name(temp$event))
                 event <- as.character(temp$event)
+            if (missing(start) && !is.null(temp$time) && is.name(temp$time))
+                start <- as.character(temp$time)
         }
 
         newdata[[start]] <- index$start

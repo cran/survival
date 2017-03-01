@@ -25,7 +25,7 @@ tmerge(data1, data2,  id,\dots, tstart, tstop, options)
     each subject, only used on an initial call}
   
   \item{options}{a list of options.  Valid ones are idname, tstartname,
-    tstopname, delay and na.rm.  See the explanation below.}
+    tstopname, delay, na.rm, and tdcstart.  See the explanation below.}
 }
 \details{
  The program is often run in multiple passes, the first of which
@@ -42,20 +42,22 @@ tmerge(data1, data2,  id,\dots, tstart, tstop, options)
    \item{newname = tdc(y, x)}{ A new time dependent covariate
      variable will created. 
    The argument \code{y} is assumed to be on the
-   scale of the start and end time, and each instance decribes the
-   occurent of a "condition" at that time.
+   scale of the start and end time, and each instance describes the
+   occurrent of a "condition" at that time.
    The second argument \code{x} is optional. In the  case where
    \code{x} is missing the count variable starts at 0 for each subject
-   and becomes 1 at the time of the event; if \code{x} is present the
-   count is set to the value of \code{x}.
+   and becomes 1 at the time of the event.
+   If \code{x} is present the value of the time dependent covariate
+   is initialized to the \code{tdcstart} option and is reset to the
+   value of \code{x} at each observation.
    If the option \code{na.rm=TRUE} missing values of \code{x} are
-   first removed.
+   first removed.  
 
  \item{newname = cumtdc(y,x)}{ Similar to tdc, except that the event
    count is accumulated over time for each subject.}
 
  \item{newname = event(y,x)}{ Mark an event at time y.
-   In the ususal case that \code{x} is missing the new 0/1 variable
+   In the usual case that \code{x} is missing the new 0/1 variable
    will be similar to the 0/1 status variable of a survival time.
  }
  \item{newname = cumevent(y,x)}{ Cumulative events}.
@@ -72,6 +74,8 @@ observation with a value of NA?  The default value leads to
 "last value carried forward" behavior.
 The \code{delay} option causes a time-dependent covariate's new
 value to be delayed, see the vignette for an example.
+
+
 }
 
 \value{a data frame with two extra attributes \code{tname} and
@@ -94,12 +98,12 @@ value to be delayed, see the vignette for an example.
   (min, max] time for a subject are counted
   as being on a "leading" edge, "trailing" edge or "boundary".
   The first corresponds for instance
-  to an occurence at 17 for someone with an intervals of (0,15] and (17, 35].
+  to an occurrence at 17 for someone with an intervals of (0,15] and (17, 35].
   A \code{tdc} at time 17  will affect this interval
   but an \code{event} at 17 would be ignored.  An \code{event}
-  occurence at 15 would count in the (0,15] interval.
+  occurrence at 15 would count in the (0,15] interval.
   The last case is where the main data set has touching
-  intervals for a subject, e.g. (17, 28] and (28,35] and a new occurence
+  intervals for a subject, e.g. (17, 28] and (28,35] and a new occurrence
   lands at the join.  Events will go to the earlier interval and counts
   to the latter one.  A last column shows the number of additions where
   where the id and time point were identical.

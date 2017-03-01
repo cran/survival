@@ -75,7 +75,7 @@ a list with components:
 \item{pyears}{
 an array containing the person-years of exposure. (Or other units, depending 
 on the rate table and the scale).
-The dimension and dimmanes of the array correspond to the variables on
+The dimension and dimnames of the array correspond to the variables on
 the right hand side of the model equation.
 }
 \item{n}{
@@ -104,6 +104,7 @@ if
 there is a mismatch of units between two variables, nearly all the person 
 years may be off table. 
 }
+\item{tcut}{whether the call included any time-dependent cutpoints.}
 \item{summary}{
 a summary of the rate-table matching. This is also useful as an error 
 check. 

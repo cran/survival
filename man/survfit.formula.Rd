@@ -12,7 +12,7 @@
 }
 \usage{
 \method{survfit}{formula}(formula, data, weights, subset, na.action,  
-        etype, id, istate, ...)
+        etype, id, istate, timefix=TRUE, ...)
 }
 \arguments{
   \item{formula}{
@@ -50,7 +50,10 @@
     lines of data.
   }
   \item{istate}{for multi-state models, identifies the initial state of
-  each subject} 
+    each subject}
+  \item{timefix}{process times through the \code{aeqSurv} function to
+  eliminate potential roundoff issues.}
+
 
   \item{\dots}{
     The following additional arguments are passed to internal functions
@@ -192,7 +195,7 @@ Fleming, T. H. and Harrington, D. P. (1984).  Nonparametric estimation of the
 survival distribution in censored data.  \emph{Comm. in Statistics}  
 \bold{13}, 2469-86. 
 
-Kablfleisch, J. D. and Prentice, R. L. (1980).  
+Kalbfleisch, J. D. and Prentice, R. L. (1980).
 \emph{The Statistical Analysis of Failure Time Data.}
 New York:Wiley. 
 

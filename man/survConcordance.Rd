@@ -47,7 +47,7 @@ For continuous covariates concordance is equivalent to Kendall's tau,
 and for logistic regression is is equivalent to the area under the ROC
 curve.  A value of 1 signifies perfect agreement, .6-.7 is
 a common result for survival data, .5 is an agreement that is no
-better than chance, and .3-.4 is the performace of some stock market analysts.
+better than chance, and .3-.4 is the performance of some stock market analysts.
 
 The computation involves all n(n-1)/2 pairs of data points in the
 sample.
@@ -57,7 +57,7 @@ We do not know whether the first survival time is greater than or less than
 the second.
 Among observations that are comparable, pairs may also be tied on
 survival time (but only if both are uncensored) or on the predictor.
-The final concondance is (agree + tied/2)/(agree + disagree + tied).
+The final concordance is (agree + tied/2)/(agree + disagree + tied).
 
 There is, unfortunately, one aspect of the formula above that is unclear.
 Should the count of ties include observations that are tied on survival time y,

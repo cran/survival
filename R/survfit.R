@@ -97,7 +97,9 @@ dim.survfit <- function(x) {
     x
 }
 survfit.formula <- function(formula, data, weights, subset, 
-                            na.action, etype, id, istate, ...) {
+                            na.action, etype, id, istate, 
+                            timefix=TRUE, ...) {
+
     Call <- match.call()
     Call[[1]] <- as.name('survfit')  #make nicer printout for the user
     # create a copy of the call that has only the arguments we want,
@@ -169,7 +171,11 @@ survfit.formula <- function(formula, data, weights, subset,
     }
                          
     # Deal with the near-ties problem
-    newY <- normalizetime(Y)
+    if (!is.logical(timefix) || length(timefix) > 1)
+        stop("invalid value for timefix option")
+    if (timefix) newY <- aeqSurv(Y)
+    
+    # Call the appropriate helper function
     if (attr(Y, 'type') == 'left' || attr(Y, 'type') == 'interval')
         temp <-  survfitTurnbull(X, newY, casewt, ...)
     else if (attr(Y, 'type') == "right" || attr(Y, 'type')== "counting")

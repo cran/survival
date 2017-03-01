@@ -45,6 +45,17 @@ i1 <- sfit$n.event[,2] > 0
 i2 <- sfit2$n.event > 0
 all.equal(sfit$pstate[i1, 2], 1- sfit2$surv[i2])
 
+# Test strata.  Make a single data set that has fdata for the first 19
+#  rows, then fdata with outcomes switched for the second 19.  It should
+#  reprise test1 and test2 in a single call.
+fdata2 <- rbind(fdata, fdata)
+fdata2$group <- rep(1:2, each=nrow(fdata))
+temp <- c(1,3,2)[as.numeric(fdata$status)]
+fdata2$status[fdata2$group==2] <- factor(temp, 1:3, levels(fdata$status))
+test3 <- finegray(Surv(time, status) ~ .+ strata(group), fdata2)
+vtemp <- c("fgstart", "fgstop", "fgstatus", "fgwt")
+all.equal(test3[1:19, vtemp], test1[,vtemp])
+all.equal(test3[20:38, vtemp], test2[,vtemp], check.attributes=FALSE)
 
 #
 # Test data set 2: use the larger MGUS data set
@@ -129,6 +140,7 @@ all.equal(tdata$fgwt,  Gwt*Hwt/(Gwt*Hwt)[index])
 
 #
 # Test data 4: mgus2 data on age scale
+#  The answer is incorrect due to roundoff, but consistent
 #
 start <- mgus2$age  # age in years
 end   <- start + etime/12  #etime in months
@@ -147,7 +159,7 @@ G <- cumprod(1 - Gevent/pmax(1, Grisk))         # pmax to avoid 0/0
 H <- rev(cumprod(rev(1-Hevent/pmax(1,Hrisk))))
 H <- c(H[-1], 1)  #make it right continuous
 
-wdata <- finegray(Surv(start, end, e2) ~ ., id=id, mgus2)
+wdata <- finegray(Surv(start, end, e2) ~ ., id=id, mgus2, timefix=FALSE)
 type2 <- event[wdata$id]==2  # the rows to be expanded
 tdata <- wdata[type2,]
 first <- match(tdata$id, tdata$id)

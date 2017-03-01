@@ -37,7 +37,7 @@ survfitCI(X, Y, weights,  id, istate,
                        conf.int= .95,
                        conf.type=c('log',  'log-log',  'plain', 'none'),
                        conf.lower=c('usual', 'peto', 'modified'),
-                       influence=FALSE)
+                       influence=FALSE, start.time)
 survfitKM(x, y, casewt=rep(1,length(x)),
                        type=c('kaplan-meier', 'fleming-harrington', 'fh2'),
                        error=c('greenwood', "tsiatis"), se.fit=TRUE,
@@ -53,7 +53,7 @@ survfitTurnbull(x, y, casewt,
                        conf.lower=c('usual', 'peto', 'modified'),
                        start.time)
 }
-\details{The arguments to these routines are not guarranteed to stay the
+\details{The arguments to these routines are not guaranteed to stay the
 same from release to release -- call them at your own risk!}
 \keyword{survival}
 \keyword{internal}

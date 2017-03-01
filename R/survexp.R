@@ -6,7 +6,7 @@ survexp <- function(formula, data,
         cohort=TRUE,  conditional=FALSE,
         ratetable=survival::survexp.us, scale=1, se.fit,
         model=FALSE, x=FALSE, y=FALSE) {
-    call <- match.call()
+    Call <- match.call()
     m <- match.call(expand.dots=FALSE)
         
     # keep the first element (the call), and the following selected arguments
@@ -208,11 +208,11 @@ survexp <- function(formula, data,
     newtime <- newtime/scale
     if (is.matrix(surv)) {
         dimnames(surv) <- list(NULL, levels(X))
-        out <- list(call=call, surv= drop(surv), n.risk=drop(n.risk),
+        out <- list(call=Call, surv= drop(surv), n.risk=drop(n.risk),
                         time=newtime)
         }
     else {
-         out <- list(call=call, surv=c(surv), n.risk=c(n.risk),
+         out <- list(call=Call, surv=c(surv), n.risk=c(n.risk),
                        time=newtime)
          }
     if (model) out$model <- m

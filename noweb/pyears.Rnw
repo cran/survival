@@ -17,8 +17,7 @@ The arguments for pyears are
   \item[scale] Scale the resulting output times, e.g., 365.25 to turn days into
     years.
   \item[expect] Should the output table include the expected number of 
-    events, or the
-    expected number of person-years of observation?
+    events, or the expected number of person-years of observation?
   \item[model, x, y] as usual
   \item[data.frame] if true the result is returned as a data frame, if false
     as a set of tables.
@@ -43,11 +42,16 @@ section on the [[survexp]] function so we need not repeat the
 explantation here.
 <<pyears-setup>>=
 expect <- match.arg(expect)
-call <- match.call()
-m <- match.call(expand.dots=FALSE)
-m <- m[c(1, match(c('formula', 'data', 'weights', 'subset', 'na.action'),
-    	      names(m), nomatch=0))]
-m[[1L]] <- quote(stats::model.frame)
+Call <- match.call()
+    
+# create a call to model.frame() that contains the formula (required)
+#  and any other of the relevant optional arguments
+# then evaluate it in the proper frame
+indx <- match(c("formula", "data", "weights", "subset", "na.action"),
+                  names(Call), nomatch=0) 
+if (indx[1] ==0) stop("A formula argument is required")
+m <- Call[c(1,indx)]  # only keep the arguments we wanted
+m[[1L]] <- quote(stats::model.frame)  # change the function called
 
 Terms <- if(missing(data)) terms(formula, 'ratetable')
          else              terms(formula, 'ratetable',data=data)
@@ -65,8 +69,7 @@ if (length(rate) >0 || !missing(rmap) || !missing(ratetable)) {
     }
 else has.ratetable <- FALSE
 
-if (is.R())  m <- eval(m, parent.frame())
-else         m <- eval(m, sys.parent())
+m <- eval(m, parent.frame())
 
 Y <- model.extract(m, 'response')
 if (is.null(Y)) stop ("Follow-up time must appear in the formula")
@@ -309,6 +312,7 @@ else {   #no expected
 
 Create the output object.
 <<pyears-finish>>=
+has.tcut <- any(sapply(m, function(x) inherits(x, 'tcut')))
 if (data.frame) {
     # Create a data frame as the output, rather than a set of
     #  rate tables
@@ -332,15 +336,16 @@ if (data.frame) {
     if (expect=='pyears') df$expected <- df$expected/scale
     if (docount) df$event <- temp$pcount[keep]
 
-    out <- list(call=call,
-                data= df, offtable=temp$offtable/scale)  
+    out <- list(call=Call,
+                data= df, offtable=temp$offtable/scale,
+                tcut=has.tcut)
     if (has.ratetable && !is.null(rtemp$summ))
         out$summary <- rtemp$summ
     }
 
 else if (prod(odims) ==1) {  #don't make it an array
-    out <- list(call=call, pyears=temp$pyears/scale, n=temp$pn,
-    	    offtable=temp$offtable/scale)
+    out <- list(call=Call, pyears=temp$pyears/scale, n=temp$pn,
+    	    offtable=temp$offtable/scale, tcut = has.tcut)
     if (has.ratetable) {
         out$expected <- temp$pexpect
         if (expect=='pyears') out$expected <- out$expected/scale
@@ -349,10 +354,10 @@ else if (prod(odims) ==1) {  #don't make it an array
     if (docount) out$event <- temp$pcount
     }
 else {
-    out <- list(call = call,
+    out <- list(call = Call,
     	pyears= array(temp$pyears/scale, dim=odims, dimnames=outdname),
     	n     = array(temp$pn,     dim=odims, dimnames=outdname),
-    	offtable = temp$offtable/scale)
+    	offtable = temp$offtable/scale, tcut=has.tcut)
     if (has.ratetable) {
         out$expected <- array(temp$pexpect, dim=odims, dimnames=outdname)
         if (expect=='pyears') out$expected <- out$expected/scale
@@ -370,6 +375,6 @@ else {
     if (x) out$x <- X
     if (y) out$y <- Y
     }
-oldClass(out) <- 'pyears'
+class(out) <- 'pyears'
 out
 @ 

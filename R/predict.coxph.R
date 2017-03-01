@@ -1,6 +1,6 @@
 # Automatically generated from the noweb directory
 predict.coxph <- function(object, newdata, 
-                       type=c("lp", "risk", "expected", "terms"),
+                       type=c("lp", "risk", "expected", "terms", "survival"),
                        se.fit=FALSE, na.action=na.pass,
                        terms=names(object$assign), collapse, 
                        reference=c("strata", "sample"), ...) {
@@ -9,6 +9,12 @@ predict.coxph <- function(object, newdata,
 
     Call <- match.call()
     type <-match.arg(type)
+    if (type=="survival") {
+        survival <- TRUE
+        type == "expected"  #this is to stop lots of "or" statements
+    }
+    else survival <- FALSE
+
     n <- object$n
     Terms <-  object$terms
 
@@ -43,7 +49,7 @@ predict.coxph <- function(object, newdata,
     if (missing(reference) && type=="terms") reference <- "sample"
     else reference <- match.arg(reference)
     have.mf <- FALSE
-    if (type == 'expected') {
+    if (type == "expected") {
         y <- object[['y']]
         if (is.null(y)) {  # very rare case
             mf <- stats::model.frame(object)
@@ -143,7 +149,7 @@ predict.coxph <- function(object, newdata,
         na.action.used <- attr(mf2, 'na.action')
         } 
     else n2 <- n
-    if (type=="expected") {
+    if (type=="expected" || type== "surv") {
         if (missing(newdata))
             pred <- y[,ncol(y)] - object$residuals
         if (!missing(newdata) || se.fit) {
@@ -232,6 +238,10 @@ predict.coxph <- function(object, newdata,
                     }
                 }
             }
+        if (survival) { #it actually was type= survival, do one more step
+            if (se.fit) se <- se * exp(-pred)
+            pred <- exp(-pred)  # probablility of being in state 0
+        }
         }
     else {
         if (is.null(object$coefficients))

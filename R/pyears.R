@@ -5,11 +5,16 @@ pyears <- function(formula, data,
         model=FALSE, x=FALSE, y=FALSE, data.frame=FALSE) {
 
     expect <- match.arg(expect)
-    call <- match.call()
-    m <- match.call(expand.dots=FALSE)
-    m <- m[c(1, match(c('formula', 'data', 'weights', 'subset', 'na.action'),
-                      names(m), nomatch=0))]
-    m[[1L]] <- quote(stats::model.frame)
+    Call <- match.call()
+        
+    # create a call to model.frame() that contains the formula (required)
+    #  and any other of the relevant optional arguments
+    # then evaluate it in the proper frame
+    indx <- match(c("formula", "data", "weights", "subset", "na.action"),
+                      names(Call), nomatch=0) 
+    if (indx[1] ==0) stop("A formula argument is required")
+    m <- Call[c(1,indx)]  # only keep the arguments we wanted
+    m[[1L]] <- quote(stats::model.frame)  # change the function called
 
     Terms <- if(missing(data)) terms(formula, 'ratetable')
              else              terms(formula, 'ratetable',data=data)
@@ -72,8 +77,7 @@ pyears <- function(formula, data,
         }
     else has.ratetable <- FALSE
 
-    if (is.R())  m <- eval(m, parent.frame())
-    else         m <- eval(m, sys.parent())
+    m <- eval(m, parent.frame())
 
     Y <- model.extract(m, 'response')
     if (is.null(Y)) stop ("Follow-up time must appear in the formula")
@@ -257,6 +261,7 @@ pyears <- function(formula, data,
                         pcount=double(if (docount) osize else 1),
                         offtable=double(1)) [11:14]
         }
+    has.tcut <- any(sapply(m, function(x) inherits(x, 'tcut')))
     if (data.frame) {
         # Create a data frame as the output, rather than a set of
         #  rate tables
@@ -280,15 +285,16 @@ pyears <- function(formula, data,
         if (expect=='pyears') df$expected <- df$expected/scale
         if (docount) df$event <- temp$pcount[keep]
 
-        out <- list(call=call,
-                    data= df, offtable=temp$offtable/scale)  
+        out <- list(call=Call,
+                    data= df, offtable=temp$offtable/scale,
+                    tcut=has.tcut)
         if (has.ratetable && !is.null(rtemp$summ))
             out$summary <- rtemp$summ
         }
 
     else if (prod(odims) ==1) {  #don't make it an array
-        out <- list(call=call, pyears=temp$pyears/scale, n=temp$pn,
-                    offtable=temp$offtable/scale)
+        out <- list(call=Call, pyears=temp$pyears/scale, n=temp$pn,
+                    offtable=temp$offtable/scale, tcut = has.tcut)
         if (has.ratetable) {
             out$expected <- temp$pexpect
             if (expect=='pyears') out$expected <- out$expected/scale
@@ -297,10 +303,10 @@ pyears <- function(formula, data,
         if (docount) out$event <- temp$pcount
         }
     else {
-        out <- list(call = call,
+        out <- list(call = Call,
                 pyears= array(temp$pyears/scale, dim=odims, dimnames=outdname),
                 n     = array(temp$pn,     dim=odims, dimnames=outdname),
-                offtable = temp$offtable/scale)
+                offtable = temp$offtable/scale, tcut=has.tcut)
         if (has.ratetable) {
             out$expected <- array(temp$pexpect, dim=odims, dimnames=outdname)
             if (expect=='pyears') out$expected <- out$expected/scale
@@ -318,6 +324,6 @@ pyears <- function(formula, data,
         if (x) out$x <- X
         if (y) out$y <- Y
         }
-    oldClass(out) <- 'pyears'
+    class(out) <- 'pyears'
     out
     }

@@ -65,7 +65,7 @@ survfit.coxph <-
             if (ncol(y2) != ncol(y) || length(y2) != length(y))
                 stop("Could not reconstruct the y vector")
             if (FALSE) {
-                # removed in 2.40-1.  With the addition of normalizetime
+                # removed in 2.40-1.  With the addition of aeqSurv
                 #  other packages were being flagged due to tiny discrpancies
                 if (ncol(y2) != ncol(y) || length(y2) != length(y) ||
                     !(isTRUE(all.equal(y[,1], y2[,1]))) ||
@@ -140,6 +140,7 @@ survfit.coxph <-
             if (length(stangle$vars) ==1) strata <- mf[[stangle$vars]]
             else strata <- strata(mf[, stangle$vars], shortlabel=TRUE)
         }
+        if (!missing(start.time)) strata <- strata[keep]
     }
     if (has.strata) {
         temp <- attr(Terms, "specials")$strata
@@ -163,7 +164,7 @@ survfit.coxph <-
             risk <- c(exp(x%*% coef + offset - mean(offset)))
             }
        else {
-           keep <- !is.na(match(dimnames(x)[[2]], names(coef)))
+           keep <- !grepl("frailty(", dimnames(x)[[2]], fixed=TRUE)
            x <- x[,keep, drop=F]
     #       varmat <- varmat[keep,keep]  #coxph already has trimmed it
            risk <- exp(object$linear.predictor)
@@ -380,12 +381,12 @@ survfit.coxph <-
             }
         }
 
+    if (!missing(start.time)) result$start.time <- start.time
     result$call <- Call
 
     # The "type" component is in the middle -- match history
     indx <- match('surv', names(result))
     result <- c(result[1:indx], type=attr(y, 'type'), result[-(1:indx)])
-    if (is.R()) class(result) <- c('survfit.cox', 'survfit')
-    else        oldClass(result) <- 'survfit.cox'
+    class(result) <- c('survfit.cox', 'survfit')
     result
     }
