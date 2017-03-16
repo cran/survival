@@ -7,8 +7,9 @@ the code.
 The method is an ordinary Cox model coupled with modification of the input
 data along with additional computation for the variance.  
 A case-cohort study begins with a cohort of interest for which complete
-sampling is infeasable, .e.g., too costly.  A random subcohort is chosen
-for follow up, and then that subcohort is augmented by all of the events.
+sampling is infeasable.  A random subcohort is chosen
+for follow up, and then that subcohort is augmented by any subjects for
+whom an event occurs.
 Let $n$ be the number in the study and $m$ the number who were sampled.
 Consider an event at day 100 who was not part of the subcohort.  Who is
 the risk set for this event?
@@ -21,14 +22,14 @@ the risk set for this event?
       that no other events fall in the interval, but large enough to preclude
       round off error.
     \item The Self-Prentice estimate was developed in a later paper on the
-      asymptotic variance, I suspect because it made the math easier.
-      For this the risk set does not include the non-subcohrt failre.
+      asymptotic variance.
+      For this the risk set does not include the non-subcohrt failure.
       This can be effectively accomplished by giving non-sucohort failures
       an offset of -100.  They are still in the risk set, but with an effective
       weight of $\exp(-100) < 10^{-40}$ so have no effect.
     \item The Yin-Ling method leaves everyone in the sample, but reweights
       the non-events.  Let $n$ be the number of non-events in the cohort
-      and $m$ the number in the subcohort, and reweight all non-events by
+      and $m$ the non-events in the subcohort, and reweight all non-events by
       $n/m$.  The events have weight 1, since they will always be included.
       This is a simple survey sampling correction.
     \item Borgan et. al. considered estimates for the case where stratified
@@ -39,8 +40,8 @@ the risk set for this event?
       Estimator II is the same, but using the Prentice estimate; non-subcohort
       events have a weight of 1.
     \item Borgan et. al. consider several other estimators which are not
-      included here.  Method III uses subsampling, and variants of I and II
-      that use time dependent stratum weights.  
+      included here.  Method III uses subsampling, and there are variants 
+      of I and II that use time dependent stratum weights.  
 \end{itemize}
 
 The historical input arguments are a bit of a mess: the three that could
@@ -125,6 +126,7 @@ cch <- function(formula, data, weights, subset, na.action,
     <<coxph-make-X>>
     <<cch-setup>>
     <<cch-compute>>
+    <<cch-var>>
     <<cch-finish>>
 }
 @
@@ -181,16 +183,21 @@ if (length(stratum) > 0) {
 
 The computation has 3 branches, Prentice, Self-Prentice, and Lin-Ying.
 <<cch-compute>>=
-if (ncol(Y) ==2)  etime <- Y[,1]
-else etime <- Y[,2]
+if (ncol(Y) ==2)  {
+    etime <- Y[,1]
+    status <- Y[,2]
+}
+else {
+    etime <- Y[,2]
+    status <- Y[,3]
 }
 
 if (method=="Prentice" || method=="II.Borgan") {
     # construct fake entry times for the non-cohort
-    delta <- min(diff(sort(unique(etime)))) # min time between times
+    delta <- min(diff(sort(unique(etime[status==1])))) # min time between times
     fake <- etime[subco==0] - delta/2
     if (ncol(Y) ==2) {
-        temp <- rep(0. n) 
+        temp <- rep(0., n) 
         temp[subco==0] <- fake
         Y <- cbind(temp, Y)
     }
@@ -199,24 +206,36 @@ if (method=="Prentice" || method=="II.Borgan") {
     fit <- agreg.fit(X, Y, strata, offset, init, control, weights,
                      method, rownames)
 }
-else {
-    if (method== "Lin-Ying") {
-        if (missing(cohort.size)) 
-            stop("Lin-Ying method requires the cohort size")
-        else if (!numeric(cohort.size)) stop("cohort size must be numeric")
-        else if (length(cohort.size) > 1)
-            stop("cohort size must be numeric, with one value per stratum")
-        nd <- sum(status)  # number of events
-        nc <- sum(subcoh)  # number in subcohort
-        ncd <- sum(status*subcoh)  # number of events in subcohort
-        lyweight <- (cohort.size - nd)/(nc - ncd)
-        weight[status==0] <- weight[status==0]* lyweight
-    }
-    else offset[subco==0] <- offset[subco==0] - 100
-    
-    if (ncol(Y) ==2) fit <- coxph.fit(X, Y, strata, offset, init, control,
-                                      weights, row.names(mf))
-    else fit <- agreg.fit(X, Y, strata, offset, init,  control,
-                          weights, row.names(mf))
+else if (method== "Self-Prentice" || method= "I.Borgan") {
+    # Use an offset
+    offset[subco==1] <- offset[subco==0] - 100
+    if (ncol(Y) ==2)
+        fit <- coxph.fit(X, Y, strata, offset, init, control, weights,
+                         method, rownames)
+    else
+        fit <- coxph.fit(X, Y, strata, offset, init, control, weights,
+                         method, rownames)
 }
+else { # Lin-Ying method
+    if (missing(cohort.size)) 
+        stop("Lin-Ying method requires the cohort size")
+    else if (!numeric(cohort.size)) stop("cohort size must be numeric")
+    else if (length(cohort.size) > 1)
+        stop("cohort size must be numeric, with one value per stratum")
+    nd <- sum(status)  # number of events
+    nc <- sum(subcoh)  # number in subcohort
+    ncd <- sum(status*subcoh)  # number of events in subcohort
+    lyweight <- (cohort.size - nd)/(nc - ncd)
+    weight[status==0] <- weight[status==0]* lyweight
+
+    if (ncol(Y) ==2)
+        fit <- coxph.fit(X, Y, strata, offset, init, control, weights,
+                         method, rownames)
+    else
+        fit <- coxph.fit(X, Y, strata, offset, init, control, weights,
+                         method, rownames)
+    }
 @ 
+
+There are two possible variances for the estimate.  The asymptotic
+variance

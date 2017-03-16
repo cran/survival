@@ -62,6 +62,8 @@ agreg.fit <- function(x, y, strata, offset, init, control,
 
     var <- matrix(agfit$imat,nvar,nvar)
     coef <- agfit$coef
+    if (any(!is.finite(coef)) || any(!is.finite(var)))
+        stop("routine failed due to numeric overflow.  This should never happen.  Please contact the author.")
     if (agfit$flag[1] < nvar) which.sing <- diag(var)==0
     else which.sing <- rep(FALSE,nvar)
 

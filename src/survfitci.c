@@ -115,6 +115,7 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
     }
     for (i=0; i<nperson; i++) {
         atrisk[i] =0;
+        wtp[i] = 0.0;
         dstate[i] = cstate[i];  /* cstate starts as the initial state */
     }
     if (sefit ==1) {
