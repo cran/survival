@@ -44,6 +44,7 @@ summary.survfit <- function(object, times, censored=FALSE,
         nstrat <-  length(fit$strata)
     }    
     delta <- function(x, indx) {  # sums between chosen times
+        if (is.logical(indx)) indx <- which(indx)
         if (!is.null(x) && length(indx) >0) {
             fx <- function(x, indx) diff(c(0, c(0, cumsum(x))[indx+1]))
             if (is.matrix(x)) {
@@ -58,7 +59,7 @@ summary.survfit <- function(object, times, censored=FALSE,
 
     if (missing(times)) {
         if (!censored) {
-            index <- which(rowSums(as.matrix(fit$n.event)) >0)
+            index <- (rowSums(as.matrix(fit$n.event)) >0)
             for (i in c("time","n.risk", "n.event", "surv", "pstate", "std.err", 
                                 "upper", "lower", "cumhaz")) {
                 if (!is.null(fit[[i]])) {  # not all components in all objects
@@ -232,6 +233,7 @@ summary.survfitms <- function(object, times, censored=FALSE,
         sindx <- rep(1:nstrat, fit$strata)
     }    
     delta <- function(x, indx) {  # sums between chosen times
+        if (is.logical(indx)) indx <- which(indx)
         if (!is.null(x) && length(indx) >0) {
             fx <- function(x, indx) diff(c(0, c(0, cumsum(x))[indx+1]))
             if (is.matrix(x)) {
@@ -245,7 +247,7 @@ summary.survfitms <- function(object, times, censored=FALSE,
 
     if (missing(times)) {
         if (!censored) {
-            index <- which(rowSums(as.matrix(fit$n.event)) >0)
+            index <- (rowSums(as.matrix(fit$n.event)) >0)
             for (i in c("time","n.risk", "n.event", "surv", "pstate", "std.err", 
                                 "upper", "lower", "cumhaz")) {
                 if (!is.null(fit[[i]])) {  # not all components in all objects

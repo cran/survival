@@ -44,7 +44,7 @@ agreg.fit <- function(x, y, strata, offset, init, control,
         }
 
     # the returned value of agfit$coef starts as a copy of init, so make sure
-    #  is is a vector and not a matrix; as.double does so.
+    #  is is a vector and not a matrix; as.double suffices.
     # Solidify the storage mode of other arguments
     storage.mode(y) <- storage.mode(x) <- "double"
     storage.mode(offset) <- storage.mode(weights) <- "double"
@@ -62,13 +62,14 @@ agreg.fit <- function(x, y, strata, offset, init, control,
 
     var <- matrix(agfit$imat,nvar,nvar)
     coef <- agfit$coef
-    if (any(!is.finite(coef)) || any(!is.finite(var)))
-        stop("routine failed due to numeric overflow.  This should never happen.  Please contact the author.")
     if (agfit$flag[1] < nvar) which.sing <- diag(var)==0
     else which.sing <- rep(FALSE,nvar)
 
-    infs <- abs(agfit$u %*% var)
     if (maxiter >1) {
+        infs <- abs(agfit$u %*% var)
+        if (any(!is.finite(coef)) || any(!is.finite(var)))
+            stop("routine failed due to numeric overflow.",
+                 "This should never happen.  Please contact the author.")   
         if (agfit$iter > maxiter)
             warning("Ran out of iterations and did not converge")
         else {

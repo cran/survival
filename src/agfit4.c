@@ -434,7 +434,7 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
             /* on iteration 1 the cholesky has already been done */
             rank2 = cholesky2(imat, nvar, tol_chol);
             /* Are we done? */
-            fail = isnan(loglik[1]) + isinf(loglik[1]) + (rank-rank2);
+            fail = isnan(newlk) + isinf(newlk) + abs(rank-rank2);
             if (fail ==0 && halving ==0 &&
                 fabs(1-(loglik[1]/newlk)) <= eps) break;
         }
