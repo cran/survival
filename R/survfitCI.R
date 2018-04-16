@@ -73,7 +73,8 @@ survfitCI <- function(X, Y, weights, id, istate,
                       type=c('kaplan-meier', 'fleming-harrington', 'fh2'),
                       se.fit=TRUE,
                       conf.int= .95,
-                      conf.type=c('log',  'log-log',  'plain', 'none'),
+                      conf.type=c('log',  'log-log',  'plain', 'none', 
+                                  'logit', "arcsin"),
                       conf.lower=c('usual', 'peto', 'modified'),
                       influence = FALSE, start.time){
 
@@ -101,9 +102,10 @@ survfitCI <- function(X, Y, weights, id, istate,
         if (!is.numeric(start.time) || length(start.time) !=1
             || !is.finite(start.time))
             stop("start.time must be a single numeric value")
-        toss <- which(Y[,ncol(Y)] <= start.time)
+        toss <- which(Y[,ncol(Y)-1] <= start.time)
         if (length(toss)) {
             n <- nrow(Y)
+            if (length(toss)==n) stop("start.time has removed all observations")
             Y <- Y[-toss,,drop=FALSE]
             X <- X[-toss]
             weights <- weights[-toss]
@@ -173,7 +175,7 @@ survfitCI <- function(X, Y, weights, id, istate,
             indx <- which(X==i)
             curves[[i]] <- docurve2(entry[indx], Y[indx,1], status[indx], 
                                     istate[indx], weights[indx], states, 
-                                    id[indx], se.fit)
+                                    id[indx], se.fit, influence)
          }
     }
     else {
@@ -272,42 +274,12 @@ survfitCI <- function(X, Y, weights, id, istate,
     kfit$transitions <- transitions
     #       
     # Last bit: add in the confidence bands:
-    #   modeled on survfit.km, though for P instead of S
-    #   
-    #
-    if (se.fit) {
-        std.err <- kfit$std.err
-        zval <- qnorm(1- (1-conf.int)/2, 0,1)
-
-        if (conf.type=='plain') {
-            temp <- zval* kfit$std.err
-            kfit <- c(kfit, list(lower =pmax(kfit$pstate-temp, 0), 
-                                 upper=pmin(kfit$pstate+temp, 1),
-                             conf.type='plain', conf.int=conf.int))
-            }
-
-        if (conf.type=='log') {
-            #avoid some "log(0)" messages
-            xx <- ifelse(kfit$pstate==1, 1, 1- kfit$pstate)  
-
-            temp1 <- ifelse(kfit$pstate==1, NA, exp(log(xx) + zval* kfit$std.err/xx))
-            temp2 <- ifelse(kfit$pstate==1, NA, exp(log(xx) - zval* kfit$std.err/xx))
-            kfit <- c(kfit, list(lower=pmax(1-temp1,0), upper= 1- temp2,
-                             conf.type='log', conf.int=conf.int))
-            }
-
-        if (conf.type=='log-log') {
-            who <- (kfit$pstate==0 | kfit$pstate==1) #special cases
-            temp3 <- ifelse(kfit$pstate==1, NA, 1)
-            xx <- ifelse(who, .1,kfit$pstate)  #avoid some "log(0)" messages
-            temp1 <- exp(-exp(log(-log(xx)) + zval*kfit$std.err/(xx*log(xx))))
-            temp1 <- ifelse(who, temp3, temp1)
-            temp2 <- exp(-exp(log(-log(xx)) - zval*kfit$std.err/(xx*log(xx))))
-            temp2 <- ifelse(who, temp3, temp2)
-            kfit <- c(kfit, list(lower=1-temp1, upper=1-temp2,
-                             conf.type='log-log', conf.int=conf.int))
-            }
-        }
+    #  
+    if (se.fit && conf.type != "none") {
+        ci <- survfit_confint(kfit$pstate, kfit$std.err, logse=FALSE, 
+                              conf.type, conf.int)
+        kfit <- c(kfit, ci, conf.type=conf.type, conf.int=conf.int)
+    }
 
     kfit$states <- state.names
     kfit$type   <- attr(Y, "type")

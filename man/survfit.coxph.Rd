@@ -12,8 +12,8 @@ hazards model.
         se.fit=TRUE, conf.int=.95,
         individual=FALSE, 
         type,vartype,
-        conf.type=c("log","log-log","plain","none"), censor=TRUE, id,
-        start.time,
+        conf.type=c("log","log-log","plain","none", "logit", "arcsin"),
+        censor=TRUE, id, start.time,
         na.action=na.pass, ...)
 }
 \arguments{
@@ -65,14 +65,15 @@ hazards model.
  
   \item{conf.type}{
     One of \code{"none"}, \code{"plain"}, \code{"log"} (the default),
-    or \code{"log-log"}.  Only
+    \code{"log-log"} or \code{"logit"}.  Only
     enough of the string to uniquely identify it is necessary.
     The first option causes confidence intervals not to be
     generated.  The second causes the standard intervals
     \code{curve +- k *se(curve)}, where k is determined from
     \code{conf.int}.  The log option calculates intervals based on the
-    cumulative hazard or log(survival). The last option bases
-    intervals on the log hazard or log(-log(survival)). 
+    cumulative hazard or log(survival). The log-log option uses
+    the log hazard or log(-log(survival)), and the logit
+    log(survival/(1-survival)).
   }
   \item{censor}{if FALSE time points at which there are no events (only
     censoring) are not included in the result.}
@@ -238,7 +239,7 @@ fit  <- survfit(Surv(time, time, status, type='interval') ~1,
 #
 # Time to progression/death for patients with monoclonal gammopathy
 #  Competing risk curves (cumulative incidence)
-fit1 <- survfit(Surv(stop, event=='progression') ~1, data=mgus1,
+fit1 <- survfit(Surv(stop, event=='pcm') ~1, data=mgus1,
                     subset=(start==0))
 fit2 <- survfit(Surv(stop, status) ~1, data=mgus1,
                     subset=(start==0), etype=event) #competing risks

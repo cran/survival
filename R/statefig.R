@@ -1,7 +1,7 @@
 # Automatically generated from the noweb directory
 statefig <- function(layout, connect, margin=.03, box=TRUE,
                      cex=1, col=1, lwd=1, lty=1, bcol= col,
-                     acol=col, alwd = lwd, alty= lty) {
+                     acol=col, alwd = lwd, alty= lty, offset=0) {
     # set up an empty canvas
     frame();  # new environment
     par(usr=c(0,1,0,1))
@@ -16,6 +16,19 @@ statefig <- function(layout, connect, margin=.03, box=TRUE,
         stop("connect must have the state names as dimnames")
     else statenames <- dd[[2]]
 
+    # expand out all of the graphical parameters.  This lets users
+    #  use a vector of colors, line types, etc
+    narrow <- sum(connect!=0) 
+    acol <- rep(acol, length=narrow)
+    alwd <- rep(alwd, length=narrow)
+    alty <- rep(alty, length=narrow)
+
+    bcol <- rep(bcol, length=nstate)
+    lty  <- rep(lty, length=nstate)
+    lwd  <- rep(lwd, length=nstate)
+    
+    col <- rep(col, length=nstate)  # text colors
+ 
     if (is.matrix(layout) && ncol(layout)==2 && nrow(layout) > 1) {
         # the user provided their own
         if (any(layout <0) || any(layout >1))
@@ -49,14 +62,13 @@ statefig <- function(layout, connect, margin=.03, box=TRUE,
     dy <- margin * temp[1]/mean(temp)  # extra to add in y
 
     if (box) {
-        drawbox <- function(x, y, dx, dy, col) {
+        drawbox <- function(x, y, dx, dy, lwd, lty, col) {
             lines(x+ c(-dx, dx, dx, -dx, -dx),
                   y+ c(-dy, -dy, dy, dy, -dy), lwd=lwd, lty=lty, col=col)
         }
-        bcol <- rep(bcol, length=nstate)
         for (i in 1:nstate) 
             drawbox(cbox[i,1], cbox[i,2], textwd[i]/2 + dx, textht[i]/2 + dy,
-                    col=bcol[i])
+                    col=bcol[i], lwd=lwd[i], lty=lty[i])
         dx <- 2*dx; dy <- 2*dy   # move arrows out from the box
         }
     arrow2 <- function(...) arrows(..., angle=20, length=.1)
@@ -77,36 +89,60 @@ statefig <- function(layout, connect, margin=.03, box=TRUE,
         }
         else {
             temp <- phi(x1[1], x1[2], x2[1], x2[2], d, delta1, delta2)
-            phi <- seq(temp$angle[1], temp$angle[2], length=21)
-            lines(temp$center[1] + temp$r*cos(phi),
-                  temp$center[2] + temp$r*sin(phi), lwd=lwd, lty=lty, col=col)
-            arrow2(temp$center[1] + temp$r*cos(phi[20]),
-                   temp$center[2] + temp$r*sin(phi[20]),
-                   temp$center[1] + temp$r*cos(phi[21]),
-                   temp$center[2] + temp$r*sin(phi[21]),
-                   lwd=lwd, lty=lty, col=col)
+            if (d==0) {        
+                arrow2(temp$center[1] + temp$r*cos(temp$angle[1]),
+                       temp$center[2] + temp$r*sin(temp$angle[1]),
+                       temp$center[1] + temp$r*cos(temp$angle[2]),
+                       temp$center[2] + temp$r*sin(temp$angle[2]),
+                       lwd=lwd, lty=lty, col=col)
+            }
+            else {
+                # approx the curve with 21 segments
+                #  arrowhead on the last one
+                phi <- seq(temp$angle[1], temp$angle[2], length=21)
+                lines(temp$center[1] + temp$r*cos(phi),
+                      temp$center[2] + temp$r*sin(phi), lwd=lwd, lty=lty, col=col)
+                arrow2(temp$center[1] + temp$r*cos(phi[20]),
+                       temp$center[2] + temp$r*sin(phi[20]),
+                       temp$center[1] + temp$r*cos(phi[21]),
+                       temp$center[2] + temp$r*sin(phi[21]),
+                       lwd=lwd, lty=lty, col=col)
+            }
         }
     }
-    for (i in 1:nstate) {
-        for (j in 1:nstate) {
+    k <- 1
+    for (j in 1:nstate) {
+        for (i in 1:nstate) {
             if (i != j && connect[i,j] !=0) {
-                doline(cbox[i,], cbox[j,], connect[i,j]-1,
-                       delta1 = c(textwd[i]/2 + dx, textht[i]/2 + dy),
-                       delta2 = c(textwd[j]/2 + dx, textht[j]/2 + dy),
-                       lty=alty[1], lwd=alwd[1], col=acol[1])
+                if (connect[i,j] == 2-connect[j,i] && offset>0) {
+                    #add an offset
+                    toff <- c(cbox[j,2] - cbox[i,2], cbox[i,1] - cbox[j,1])
+                    toff <- offset *toff/sqrt(sum(toff^2))
+                    doline(cbox[i,]+toff, cbox[j,]+toff, connect[i,j]-1,
+                           delta1 = c(textwd[i]/2 + dx, textht[i]/2 + dy),
+                           delta2 = c(textwd[j]/2 + dx, textht[j]/2 + dy),
+                           lty=alty[k], lwd=alwd[k], col=acol[k])
+                    }
+                else doline(cbox[i,], cbox[j,], connect[i,j]-1,
+                            delta1 = c(textwd[i]/2 + dx, textht[i]/2 + dy),
+                            delta2 = c(textwd[j]/2 + dx, textht[j]/2 + dy),
+                            lty=alty[k], lwd=alwd[k], col=acol[k])
+                k <- k +1
             }
         }
     }
     invisible(cbox)
 }
 statefigx <- function(x, C, r, a1, a2) {
-    amax <- max(a1, a2)
-    amin <- min(a1, a2)
     temp <-(x - C[1])/r
     if (abs(temp) >1) return(NULL)  # no intersection of the arc and x
     phi <- acos(temp)  # this will be from 0 to pi
+    if (x > C[1]) phi <-  c(phi, pi - phi)
+    else          phi <- -c(phi, pi - phi)
     # Add reflection about the X axis, in both forms
     phi <- c(phi, -phi, 2*pi - phi) 
+    amax <- max(a1, a2)
+    amin <- min(a1, a2)
     phi[phi<amax & phi > amin]
 }
 statefigy <-  function(y, C, r, a1, a2) {
@@ -130,10 +166,14 @@ phi <- function(x1, y1, x2, y2, d, delta1, delta2) {
     if (d >0) C  <- ab + (r - d*z)* c(-sin(theta), cos(theta)) # center of arc
     else      C  <- ab + (r + d*z)* c( sin(theta), -cos(theta))
 
-    a1 <- atan2(y1-C[2], x1-C[1])
-    a2 <- atan2(y2-C[2], x2-C[1])
-    if (abs(a2-a1) > pi) a2 <- a2 + 2*pi
-
+    a1 <- atan2(y1-C[2], x1-C[1])   # starting angle
+    a2 <- atan2(y2-C[2], x2-C[1])   # ending angle
+    if (abs(a2-a1) > pi) {
+        # a1= 3 and a2=-3, we don't want to include 0
+        # nor for a1=-3 and a2=3
+        if (a1>0) a2 <- a2 + 2 *pi 
+        else a1 <- a1 + 2*pi
+    }
     if (d > 0) { #counterclockwise
         phi1 <- min(statefigx(x1 + delta1[1], C, r, a1, a2),
                     statefigx(x1 - delta1[1], C, r, a1, a2),

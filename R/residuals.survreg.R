@@ -1,5 +1,4 @@
 # Automatically generated from the noweb directory
-# $Id$
 #
 #  Residuals for survreg objects
 residuals.survreg <- function(object, type=c('response', 'deviance',
@@ -23,7 +22,6 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
         Terms <- Terms[-cluster]
 
     strata <- attr(Terms, 'specials')$strata
-    coef <- object$coefficients
     intercept <- attr(Terms, "intercept") 
     response  <- attr(Terms, "response")
     weights <- object$weights

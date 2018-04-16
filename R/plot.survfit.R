@@ -1,12 +1,13 @@
 # Automatically generated from the noweb directory
 plot.survfit<- function(x, conf.int,  mark.time=FALSE,
-                        mark=3, col=1,lty=1, lwd=1, 
+                        pch=3,  col=1,lty=1, lwd=1, 
                         cex=1, log=FALSE,
                         xscale=1, yscale=1, 
                         firstx=0, firsty=1,
                         xmax, ymin=0,
                         fun, xlab="", ylab="", xaxs='S', 
-                        conf.times, conf.cap=.005, conf.offset=.012, ...) {
+                        conf.times, conf.cap=.005, conf.offset=.012, 
+                        mark, ...) {
 
     dotnames <- names(list(...))
     if (any(dotnames=='type'))
@@ -31,6 +32,8 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
         if (missing(fun)) fun <- "event"
     }
     if (missing(firsty) && !is.null(x$p0)) firsty <- 1-x$p0
+    if (missing(pch) && !missing(mark)) pch <- mark
+    if (length(pch)==1 && is.character(pch)) pch <- strsplit(pch, "")[[1]]
     if (is.logical(log)) {
         ylog <- log
         xlog <- FALSE
@@ -170,8 +173,8 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
         if (temp=="only") plot.surv <- FALSE  else plot.surv <- TRUE
     }
     # Marks are not placed on confidence bands
-    mark <- rep(mark, length.out=ncurve)
-    mcol <- rep(col,  length.out=ncurve)
+    pch  <- rep(pch, length.out=ncurve)
+    mcol <- rep(col, length.out=ncurve)
     if (is.numeric(mark.time)) mark.time <- sort(mark.time)
 
     # The actual number of curves is ncurve*3 if there are confidence bands,
@@ -286,8 +289,13 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
 
     drawmark <- function(x, y, mark.time, censor, cex, ...) {
         if (!is.numeric(mark.time)) {
-            xx <- x[censor]
-            yy <- y[censor]
+            xx <- x[censor>0]
+            yy <- y[censor>0]
+            if (any(censor >1)) {  # tied death and censor, put it on the midpoint
+                j <- pmax(1, which(censor>1) -1)
+                i <- censor[censor>0]
+                yy[i>1] <- (yy[i>1] + y[j])/2
+            }
         }
         else { #interpolate
             xx <- mark.time
@@ -301,16 +309,19 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
     c2 <- 1  # keeps track of the lty, col, etc
     xend <- yend <- double(ncurve)
     if (length(conf.offset) ==1) 
-        temp.offset <- (1:ncurve - (ncurve-1)/2)* conf.offset* diff(par("usr")[1:2])
+        temp.offset <- (1:ncurve - (ncurve+1)/2)* conf.offset* diff(par("usr")[1:2])
     else temp.offset <- rep(conf.offset, length=ncurve) *  diff(par("usr")[1:2])
     temp.cap    <-  conf.cap    * diff(par("usr")[1:2])
 
     for (j in 1:ncol(ssurv)) {
         for (i in unique(stemp)) {  #for each strata
             who <- which(stemp==i)
-            censor <- if (is.null(x$n.censor))
-                (x$n.event[who] ==0)  else 
-                (x$n.event[who] ==0 & x$n.censor[who] >0) #censoring ties
+            # if n.censor is missing, then assume any line that does not have an
+            #   event would not be present but for censoring, so there must have
+            #   been censoring then
+            # otherwise categorize is 0= no censor, 1=censor, 2=censor and death
+            if (is.null(x$n.censor)) censor <- ifelse(x$n.event[who]==0, 1, 0)
+            else censor <- ifelse(x$n.censor[who]==0, 0, 1 + (x$n.event[who] > 0))
             xx <- c(firstx, stime[who])
             censor <- c(FALSE, censor)  #no mark at firstx
         
@@ -320,7 +331,7 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
                     lines(dostep(xx, yy), lty=lty[c2], col=col[c2], lwd=lwd[c2]) 
                 else lines(xx, yy, type=type, lty=lty[c2], col=col[c2], lwd=lwd[c2])
                 if (is.numeric(mark.time) || mark.time) 
-                    drawmark(xx, yy, mark.time, censor, pch=mark[c1], col=mcol[c1],
+                    drawmark(xx, yy, mark.time, censor, pch=pch[c1], col=mcol[c1],
                              cex=cex)
             }
             xend[c1] <- max(xx)
@@ -371,12 +382,12 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
 }
 
 lines.survfit <- function(x, type='s', 
-                          mark=3, col=1, lty=1, lwd=1,
+                          pch=3, col=1, lty=1, lwd=1,
                           cex=1,
                           mark.time=FALSE, xscale=1, 
                           firstx=0, firsty=1, xmax,
                           fun,  conf.int=FALSE,  
-                          conf.times, conf.cap=.005, conf.offset=.012, ...) {
+                          conf.times, conf.cap=.005, conf.offset=.012, mark, ...) {
     xlog <- par("xlog")
    if (missing(mark.time) & !missing(mark)) mark.time <- TRUE
  
@@ -484,6 +495,8 @@ lines.survfit <- function(x, type='s',
             }
         firsty <- tfun(firsty)
     }
+    if (missing(pch) && !missing(mark)) pch <- mark
+    if (length(pch)==1 && is.character(pch)) pch <- strsplit(pch, "")[[1]]
     if (missing(firstx)) {
         if (!is.null(x$start.time)) 
             firstx <- x$start.time
@@ -510,8 +523,8 @@ lines.survfit <- function(x, type='s',
         if (temp=="only") plot.surv <- FALSE  else plot.surv <- TRUE
     }
     # Marks are not placed on confidence bands
-    mark <- rep(mark, length.out=ncurve)
-    mcol <- rep(col,  length.out=ncurve)
+    pch  <- rep(pch, length.out=ncurve)
+    mcol <- rep(col, length.out=ncurve)
     if (is.numeric(mark.time)) mark.time <- sort(mark.time)
 
     # The actual number of curves is ncurve*3 if there are confidence bands,
@@ -577,8 +590,13 @@ lines.survfit <- function(x, type='s',
 
     drawmark <- function(x, y, mark.time, censor, cex, ...) {
         if (!is.numeric(mark.time)) {
-            xx <- x[censor]
-            yy <- y[censor]
+            xx <- x[censor>0]
+            yy <- y[censor>0]
+            if (any(censor >1)) {  # tied death and censor, put it on the midpoint
+                j <- pmax(1, which(censor>1) -1)
+                i <- censor[censor>0]
+                yy[i>1] <- (yy[i>1] + y[j])/2
+            }
         }
         else { #interpolate
             xx <- mark.time
@@ -590,16 +608,19 @@ lines.survfit <- function(x, type='s',
     c2 <- 1  # keeps track of the lty, col, etc
     xend <- yend <- double(ncurve)
     if (length(conf.offset) ==1) 
-        temp.offset <- (1:ncurve - (ncurve-1)/2)* conf.offset* diff(par("usr")[1:2])
+        temp.offset <- (1:ncurve - (ncurve+1)/2)* conf.offset* diff(par("usr")[1:2])
     else temp.offset <- rep(conf.offset, length=ncurve) *  diff(par("usr")[1:2])
     temp.cap    <-  conf.cap    * diff(par("usr")[1:2])
 
     for (j in 1:ncol(ssurv)) {
         for (i in unique(stemp)) {  #for each strata
             who <- which(stemp==i)
-            censor <- if (is.null(x$n.censor))
-                (x$n.event[who] ==0)  else 
-                (x$n.event[who] ==0 & x$n.censor[who] >0) #censoring ties
+            # if n.censor is missing, then assume any line that does not have an
+            #   event would not be present but for censoring, so there must have
+            #   been censoring then
+            # otherwise categorize is 0= no censor, 1=censor, 2=censor and death
+            if (is.null(x$n.censor)) censor <- ifelse(x$n.event[who]==0, 1, 0)
+            else censor <- ifelse(x$n.censor[who]==0, 0, 1 + (x$n.event[who] > 0))
             xx <- c(firstx, stime[who])
             censor <- c(FALSE, censor)  #no mark at firstx
         
@@ -609,7 +630,7 @@ lines.survfit <- function(x, type='s',
                     lines(dostep(xx, yy), lty=lty[c2], col=col[c2], lwd=lwd[c2]) 
                 else lines(xx, yy, type=type, lty=lty[c2], col=col[c2], lwd=lwd[c2])
                 if (is.numeric(mark.time) || mark.time) 
-                    drawmark(xx, yy, mark.time, censor, pch=mark[c1], col=mcol[c1],
+                    drawmark(xx, yy, mark.time, censor, pch=pch[c1], col=mcol[c1],
                              cex=cex)
             }
             xend[c1] <- max(xx)

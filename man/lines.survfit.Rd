@@ -10,10 +10,10 @@ Often used to add the expected survival curve(s) to a Kaplan-Meier plot
 generated with \code{plot.survfit}. 
 }
 \usage{
-\method{lines}{survfit}(x, type="s", mark=3, col=1, lty=1,
+\method{lines}{survfit}(x, type="s", pch=3, col=1, lty=1,
         lwd=1, cex=1, mark.time=FALSE, 
 	xscale=1,  firstx=0, firsty=1, xmax, fun, conf.int=FALSE,
-        conf.times, conf.cap=.005, conf.offset=.012,  ...)
+        conf.times, conf.cap=.005, conf.offset=.012, mark, ...)
 \method{lines}{survexp}(x, type="l", ...)
 \method{points}{survfit}(x, xscale, xmax, fun, censor=FALSE, col=1, pch,
 ...)
@@ -30,7 +30,7 @@ objects.
 All other arguments for \code{lines.survexp} are identical to those
 for \code{lines.survfit}.
 }
-\item{mark, col, lty, lwd, cex}{
+\item{col, lty, lwd, cex}{
   vectors giving the mark symbol, color, line type, line width and
   character size for the added curves.  Of this set only color is
   applicable to \code{points}.
@@ -40,6 +40,7 @@ for \code{lines.survfit}.
   the first will be used for the first curve, etc; or a vector
   of characters or integers, one element per curve.
 }
+\item{mark}{a historical alias for \code{pch}}
 \item{censor}{should censoring times be displayed for the \code{points}
   function?
 }  
@@ -123,8 +124,8 @@ lines(fit[1], lwd=2)    #darken the first curve and add marks
 # Add expected survival curves for the two groups,
 #   based on the US census data
 # The data set does not have entry date, use the midpoint of the study
-efit <- survexp(~ ratetable(sex=sex,age=age*365.35,year=as.Date('1979/1/1')) +
-            sex, data=pbc,  times=(0:24)*182)
+efit <- survexp(~sex, data=pbc, times= (0:24)*182, ratetable=survexp.us, 
+                 rmap=list(sex=sex, age=age*365.35, year=as.Date('1979/01/01')))
 temp <- lines(efit, lty=2, lwd=2:1)
 text(temp, c("Male", "Female"), adj= -.1) #labels just past the ends
 title(main="Primary Biliary Cirrhosis, Observed and Expected")

@@ -8,7 +8,7 @@ Surv <- function(time, time2, event,
 
     if (missing(time)) stop ("Must have a time argument")
     if (inherits(time ,"difftime")) time <- unclass(time)
-    if (!missing(time2) && class(time2)=="difftime") time2 <-as.numeric(time2)
+    if (!missing(time2) && inherits(time2, "difftime")) time2 <-as.numeric(time2)
     if (!is.numeric(time)) stop ("Time variable is not numeric")
     nn <- length(time)
 
@@ -77,7 +77,7 @@ Surv <- function(time, time2, event,
 	    time[temp] <- NA
 	    warning("Stop time must be > start time, NA created")
 	    }
-        if (mtype=="mstate" || (is.factor(event) && length(levels(event))>2)) {
+        if (mtype=="mstate" || is.factor(event)) {
             mstat <- as.factor(event)
             status <- as.numeric(mstat) -1
             type <- "mcounting"
@@ -265,6 +265,17 @@ is.na.Surv <- function(x) {
 Math.Surv <- function(...)  stop("Invalid operation on a survival time")
 Ops.Surv  <- function(...)  stop("Invalid operation on a survival time")
 Summary.Surv<-function(...) stop("Invalid operation on a survival time")
+
+# The Ops.Surv method could in theory define == and >, to allow sorting
+#  but I've left them out since it is the xtfrm method that explicitly
+#  is used for this.  For (start, stop) data we order by event within
+#  ending time.  Start time is included as a last index, but it is not
+#  clear that we need to do so.
+xtfrm.Surv <- function(x) {
+    if (ncol(x)==2) order(x[,1], x[,2])  # events after censor
+    else order(x[,2], x[,3], x[,1])      # order by ending time
+}
+
 is.Surv <- function(x) inherits(x, 'Surv')
 as.matrix.Surv <- function(x, ...) {
     y <- unclass(x)
@@ -276,3 +287,22 @@ as.matrix.Surv <- function(x, ...) {
 length.Surv <- function(x) nrow(x)
 format.Surv <- function(x, ...) format(as.character.Surv(x), ...)
 as.data.frame.Surv <- as.data.frame.model.matrix
+
+# tail.default gets confused by length(x) for a Surv object.  We need to
+#  use nrow as "n", but non-matrix subscript at the end to preserve it as a
+#  Surv object.  Thus this is a mix of tail.default and tail.matrix
+tail.Surv <- function(x, n=6L, ...) {
+    stopifnot(length(n) == 1L)
+    nrx <- nrow(x)
+    n <- if (n < 0L) 
+        max(nrx + n, 0L)
+    else min(n, nrx)
+    sel <- as.integer(seq.int(to = nrx, length.out = n))
+    x[sel]
+}
+
+# The above led to a search for other matrix-like methods
+anyDuplicated.Surv <- function(x, ...) anyDuplicated(as.matrix(x), ...)
+duplicated.Surv    <- function(x, ...) duplicated(as.matrix(x), ...)
+unique.Surv  <- function(x, ...)
+    x[!duplicated(as.matrix(x), ...)]

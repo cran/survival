@@ -26,6 +26,7 @@ model.matrix.coxph <- function(object, data=NULL,
     
     attr(Terms, "intercept") <- 1
     adrop <- 0  #levels of "assign" to be dropped; 0= intercept
+    dropterms <- NULL
     stemp <- untangle.specials(Terms, 'strata', 1)
     if (length(stemp$vars) > 0) {  #if there is a strata statement
         hasinteractions <- FALSE
@@ -36,8 +37,7 @@ model.matrix.coxph <- function(object, data=NULL,
             if (any(attr(Terms, 'order')[attr(Terms, "factors")[i,] >0] >1))
                 hasinteractions <- TRUE  
             }
-        if (!hasinteractions) 
-            dropterms <- c(dropterms, stemp$terms)
+        if (!hasinteractions) dropterms <- stemp$terms 
         else adrop <- c(0, match(stemp$var, colnames(attr(Terms, 'factors'))))
     }
 
@@ -56,6 +56,10 @@ model.matrix.coxph <- function(object, data=NULL,
         attr(X, "assign") <- c(0, renumber)[1+attr(X, "assign")]
     }
     else X <- model.matrix(Terms, mf, contrasts=contrast.arg)
+
+    # infinite covariates are not screened out by the na.omit routines
+    if (!all(is.finite(X)))
+        stop("data contains an infinite predictor")
 
     # drop the intercept after the fact, and also drop strata if necessary
     Xatt <- attributes(X) 

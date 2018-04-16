@@ -78,6 +78,7 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
         stop("two data sets are required")
     id <- eval(Call[["id"]], data2, enclos=emptyenv()) #don't find it elsewhere
     if (is.null(id)) stop("id variable not found in data2")
+    if (any(is.na(id))) stop("id variable cannot have missing values")
 
     if (firstcall) {
         if (!missing(tstop)) {
@@ -165,9 +166,14 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
         # at this point newdata and data2 are in the same order, same # rows
         if (any(is.na(tstop))) 
             stop("missing time value, when that variable defines the span")
-        if (missing(tstart)) tstart <- rep(0, length(id))
+        if (missing(tstart)) {
+            indx <- which(tstop <=0)
+            if (length(indx) >0) stop("found an ending time of ", tstop[indx[1]],
+                                      ", the default starting time of 0 is invalid")
+            tstart <- rep(0, length(tstop))
+        }
         if (any(tstart >= tstop)) 
-            stop("tstart must be > tstop")
+            stop("tstart must be < tstop")
         newdata[[topt$tstartname]] <- tstart
         newdata[[topt$tstopname]] <- tstop
         if (any(duplicated(id))) {
@@ -305,20 +311,22 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
             itype[itype==4]   <- 5  
         }
         # add it in
+        newvar <- newdata[[argname[ii]]]  # prior value (for sequential tmerge calls)
         if (argclass[ii] %in% c("cumtdc", "cumevent")) {
             if (!is.numeric(yinc)) stop("invalid increment for cumtdc or cumevent")
             yinc <- unlist(tapply(yinc, match(id, baseid), cumsum))
             }
 
-        newvar <- newdata[[argname[ii]]]  #does the variable exist? 
         if (argclass[ii] %in% c("event", "cumevent")) {
-            if (is.null(newvar)) {
-                if (is.factor(yinc)) 
+            #if (is.null(newvar)) {
+                if (is.numeric(yinc)) newvar <- rep(0L, nrow(newdata))
+                else if (is.factor(yinc)) 
                     newvar <- factor(rep(levels(yinc)[1], nrow(newdata)),
                                      levels(yinc))
+                else if (is.character(yinc)) newvar <- rep('', nrow(newdata))
                 else if (is.numeric(yinc)) newvar <- rep(0L, nrow(newdata))
                 else stop("invalid value for a status variable")
-            }
+            #}
             keep <- (subtype==1 | subtype==3) # all other events are thrown away
             newvar[indx2[keep]] <- yinc[keep]
             
@@ -339,7 +347,7 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
             if (is.null(newvar)) {  # not overwriting a prior value
                 if (is.null(argi$value)) newvar <- rep(0.0, nrow(newdata))
                 else newvar <- rep(topt$tdcstart, nrow(newdata))
-                }
+            }
 
             if (is.numeric(yinc)) {
                 # this is the usual case
@@ -354,7 +362,7 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
             }      
             else {
                 # deal with a factor or character
-                if (!(is.factor(yinc) || is.factor(yinc)))
+                if (!(is.factor(yinc) || is.character(yinc)))
                     stop("the second argument of tdc must be numeric, character, or factor")
                 newlev <- unique(c(levels(as.factor(yinc)), levels(as.factor(newvar))))
                 y2 <- factor(yinc, levels=newlev)

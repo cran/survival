@@ -2,11 +2,11 @@ useDynLib(survival, .registration = TRUE)
 importFrom(splines, spline.des, ns)
 importFrom(stats, anova, approx, as.formula, coef, coefficients,
            contr.treatment, cor, delete.response, extractAIC, formula, 
-           logLik, makepredictcall, median, model.extract,
+           family, lm, logLik, makepredictcall, median, model.extract,
            model.frame, model.matrix, model.offset, model.response,
            model.weights, na.fail, na.pass, napredict, naprint, naresid,
            pchisq, pnorm, printCoefmat, predict, qnorm, quantile, qgamma,
-           resid, residuals, runif, stat.anova, terms, var, vcov,
+           resid, residuals, rnorm, runif, stat.anova, terms, var, vcov,
            .checkMFClasses, .getXlevels)
 importFrom(graphics, plot, points, lines, axis, box, matlines, matplot, 
            matpoints, par, segments,
@@ -16,30 +16,30 @@ importFrom(methods, as)
 importFrom(utils, getS3method, type.convert, methods)
 export(Surv, aeqSurv, aareg, agreg.fit,
        agexact.fit, attrassign, 
-       basehaz, cch, clogit, cipoisson, cluster, cox.zph, 
-       coxph, coxph.control, coxph.detail, coxph.fit,
+       basehaz, cch, clogit, cipoisson, cluster,
+       coxph, cox.zph, coxph.control, coxph.detail, coxph.fit,
        coxph.wtest, finegray, format.Surv, 
        frailty,  frailty.gamma, 
        frailty.gaussian, frailty.t, is.Surv, 
        is.na.Surv, is.ratetable, 
        labels.survreg, match.ratetable, neardate,
        psurvreg, qsurvreg, dsurvreg,
-       pspline, pyears, ratetable, ratetableDate, 
+       pspline, pyears, ratetableDate, 
        ridge, rsurvreg, statefig, strata, survConcordance,
-       survSplit, survdiff, survexp,  survfit ,
+       survSplit, survdiff, survexp,  survfit,
        survfit.formula,
        survfitcoxph.fit, survfitKM, survfitCI,
        survobrien,  
        survpenal.fit, survConcordance.fit,
        survreg, survreg.control, survreg.fit,
        survreg.distributions, survregDtest, tcut,
-       tmerge, untangle.specials)
+       tmerge, untangle.specials, yates, yates_setup)
+export(Surv, ratetable)
 S3method('[', aareg)
 S3method('[', Surv)
 S3method('[', cox.zph)
 S3method('[', coxph.penalty)
 S3method('[', ratetable)
-S3method('[', ratetable2)
 S3method('[', survfit)
 S3method('[', survfitms)
 S3method('[', tcut)
@@ -111,12 +111,14 @@ S3method(print, survfit)
 S3method(print, survfitms)
 S3method(print, survreg)
 S3method(print, survreg.penal)
+S3method(print, yates)
 S3method(quantile, survfit)
 S3method(quantile, survfitms)
 S3method(ratetableDate, POSIXt)
 S3method(ratetableDate, Date)
 S3method(ratetableDate, date)
 S3method(ratetableDate, chron)
+S3method(ratetableDate, default)
 S3method(rep, Surv)
 S3method(residuals, coxph)
 S3method(residuals, coxph.null)
@@ -140,3 +142,8 @@ S3method(survfit, Surv)
 S3method(vcov, cch)
 S3method(vcov, coxph)
 S3method(vcov, survreg)
+S3method(yates_setup, default)
+S3method(yates_setup, glm)
+S3method(yates_setup, coxph)
+S3method('[', ratetable2)
+S3method(is.na,ratetable2)

@@ -42,11 +42,14 @@ pyears <- function(formula, data,
             if (!is.call(rcall) || rcall[[1]] != as.name('list'))
                 stop ("Invalid rcall argument")
             }
-        else rcall <- NULL   # A ratetable, but not rcall argument
+        else rcall <- NULL   # A ratetable, but no rcall argument
 
         # Check that there are no illegal names in rcall, then expand it
         #  to include all the names in the ratetable
-        if(is.ratetable(ratetable))   varlist <- attr(ratetable, "dimid")
+        if (is.ratetable(ratetable))   {
+            varlist <- names(dimnames(ratetable))
+            if (is.null(varlist)) varlist <- attr(ratetable, "dimid") # older style
+        }
         else if(inherits(ratetable, "coxph")) {
             ## Remove "log" and such things, to get just the list of
             #   variable names
@@ -165,7 +168,11 @@ pyears <- function(formula, data,
     osize <- prod(odims)
     if (has.ratetable) {  #include expected
         atts <- attributes(ratetable)
-        cuts <- atts$cutpoints
+        datecheck <- function(x) 
+            inherits(x, c("Date", "POSIXt", "date", "chron"))
+        cuts <- lapply(attr(ratetable, "cutpoints"), function(x)
+            if (!is.null(x) & datecheck(x)) ratetableDate(x) else x)
+
         if (is.null(atts$type)) {
             #old stlye table
             rfac <- atts$factor
@@ -176,39 +183,29 @@ pyears <- function(formula, data,
             us.special <- (atts$type==4)
             }
         if (any(us.special)) {  #special handling for US pop tables
-            # Now, the 'entry' date on a US rate table is the number of days 
-            #  since 1/1/1960, and the user data has been aligned to the
-            #  same system by match.ratetable and marked as "year".
-            # The birth date is entry date - age in days (based on 1/1/1960).
-            # I don't much care which date functions I use to do the arithmetic
-            #  below.  Unfortunately R and Splus don't share one.  My "date"
-            #  class is simple, but is also one of the earlier date class
-            #  attempts, has less features than others, and will one day fade
-            #  away; so I don't want to depend on it alone.
+            if (sum(us.special) > 1) stop("more than one type=4 in a rate table")
+            # Someone born in June of 1945, say, gets the 1945 US rate until their
+            #  next birthday.  But the underlying logic of the code would change
+            #  them to the 1946 rate on 1/1/1946, which is the cutpoint in the
+            #  rate table.  We fudge by faking their enrollment date back to their
+            #  birth date.
             #
-            cols <- match(c("age", "year"), atts$dimid)
-                  if (any(is.na(cols))) 
-                 stop("Ratetable does not have expected shape")
-            if (exists("as.Date")) {  # true for modern version of R
-                bdate <- as.Date('1960/1/1') + (R[,cols[2]] - R[,cols[1]])
-                byear <- format(bdate, "%Y")
-                offset <- bdate - as.Date(paste(byear, "01/01", sep='/'), 
-                                          origin="1960/01/01")
-                }
-            #else if (exists('month.day.year')) { # Splus, usually
-            #    bdate <- R[,cols[2]] - R[,cols[1]]
-            #    byear <- month.day.year(bdate)$year
-            #    offset <- bdate - julian(1,1,byear)
-            #    }
-            #else if (exists('date.mdy')) { # Therneau's date class is available
-            #    bdate <- as.date(R[,cols[2]] - R[,cols[1]])
-            #    byear <- date.mdy(bdate)$year
-            #    offset <- bdate - mdy.date(1,1,byear)
-            #    }
-            else stop("Can't find an appropriate date class\n") 
-            R[,cols[2]] <- R[,cols[2]] - offset
+            # The cutpoint for year has been converted to days since 1/1/1960 by
+            #  the ratetableDate function.  (Date objects in R didn't exist when 
+            #  rate tables were conceived.) 
+            if (is.null(atts$dimid)) dimid <- names(atts$dimnames)
+            else dimid <- atts$dimid
+            cols <- match(c("age", "year"), dimid)
+            if (any(is.na(cols))) 
+                stop("ratetable does not have expected shape")
 
-            # Doctor up "cutpoints" - only needed for old style rate tables
+            # The format command works for Dates, use it to get an offset
+            bdate <- as.Date("1960-01-01") + (R[,cols[2]] - R[,cols[1]])
+            byear <- format(bdate, "%Y")
+            offset <- as.numeric(bdate - as.Date(paste0(byear, "-01-01")))
+            R[,cols[2]] <- R[,cols[2]] - offset
+       
+            # Doctor up "cutpoints" - only needed for (very) old style rate tables
             #  for which the C code does interpolation on the fly
             if (any(rfac >1)) {
                 temp <-  which(us.special)
@@ -265,21 +262,28 @@ pyears <- function(formula, data,
     if (data.frame) {
         # Create a data frame as the output, rather than a set of
         #  rate tables
-        keep <- (temp$pyears >0)  # what rows to keep in the output
-        names(outdname) <- ovars
-        if (length(outdname) ==1) {
-            # if there is only one variable, the call to "do.call" loses
-            #  the variable name, since expand.grid returns a factor
-            df <- data.frame((outdname[[1]])[keep], 
-                             pyears= temp$pyears[keep]/scale,
-                             n = temp$pn[keep])
-            names(df) <- c(names(outdname), 'pyears', 'n')
-            }
+        if (length(ovars) ==0) {  # no variables on the right hand side
+            keep <- TRUE
+            df <- data.frame(pyears= temp$pyears/scale,
+                             n = temp$n)
+        }
         else {
-            df <- cbind(do.call("expand.grid", outdname)[keep,],
-                             pyears= temp$pyears[keep]/scale,
-                             n = temp$pn[keep])
+            keep <- (temp$pyears >0)  # what rows to keep in the output
+            names(outdname) <- ovars
+            if (length(outdname) ==1) {
+                # if there is only one variable, the call to "do.call" loses
+                #  the variable name, since expand.grid returns a factor
+                df <- data.frame((outdname[[1]])[keep], 
+                                 pyears= temp$pyears[keep]/scale,
+                                 n = temp$pn[keep])
+                names(df) <- c(names(outdname), 'pyears', 'n')
             }
+            else {
+                df <- cbind(do.call("expand.grid", outdname)[keep,],
+                            pyears= temp$pyears[keep]/scale,
+                            n = temp$pn[keep])
+            }
+        }
         row.names(df) <- 1:nrow(df)
         if (has.ratetable) df$expected <- temp$pexpect[keep]
         if (expect=='pyears') df$expected <- df$expected/scale
@@ -290,7 +294,7 @@ pyears <- function(formula, data,
                     tcut=has.tcut)
         if (has.ratetable && !is.null(rtemp$summ))
             out$summary <- rtemp$summ
-        }
+    }
 
     else if (prod(odims) ==1) {  #don't make it an array
         out <- list(call=Call, pyears=temp$pyears/scale, n=temp$pn,
@@ -299,9 +303,9 @@ pyears <- function(formula, data,
             out$expected <- temp$pexpect
             if (expect=='pyears') out$expected <- out$expected/scale
             if (!is.null(rtemp$summ)) out$summary <- rtemp$summ
-            }
-        if (docount) out$event <- temp$pcount
         }
+        if (docount) out$event <- temp$pcount
+    }
     else {
         out <- list(call = Call,
                 pyears= array(temp$pyears/scale, dim=odims, dimnames=outdname),
@@ -311,10 +315,10 @@ pyears <- function(formula, data,
             out$expected <- array(temp$pexpect, dim=odims, dimnames=outdname)
             if (expect=='pyears') out$expected <- out$expected/scale
             if (!is.null(rtemp$summ)) out$summary <- rtemp$summ
-            }
+        }
         if (docount)
                 out$event <- array(temp$pcount, dim=odims, dimnames=outdname)
-        }
+    }
     out$observations <- nrow(m)
     out$terms <- Terms
     na.action <- attr(m, "na.action")
@@ -323,7 +327,7 @@ pyears <- function(formula, data,
     else {
         if (x) out$x <- X
         if (y) out$y <- Y
-        }
+    }
     class(out) <- 'pyears'
     out
     }

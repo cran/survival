@@ -1,10 +1,8 @@
 \name{coxph}
 \alias{coxph}
-\alias{vcov.coxph}
 \alias{print.coxph.null}
 \alias{print.coxph.penal}
 \alias{coxph.penalty}
-\alias{[.coxph.penalty}
 \alias{coxph.getdata}
 \alias{summary.coxph.penal}
 \title{
@@ -35,7 +33,8 @@ coxph(formula, data=, weights, subset,
     argument. 
   }
   \item{weights}{
-    vector of case weights.  For a thorough discussion of these see the
+    vector of case weights, see the note below.
+    For a thorough discussion of these see the
     book by Therneau and Grambsch.
   }
   \item{subset}{
@@ -134,7 +133,22 @@ the argument to the exponential function.  These actions do not change
 the result, but lead to more numerical stability.
 However, arguments to offset are not scaled since there are situations
 where a large offset value is a purposefully used.
-Users should not use normally allow large numeric offset values.
+In general, however, users should not avoid very large numeric values
+for an offset due to possible loss of precision in the estimates.
+}
+\section{Case weights}{
+Case weights are treated as replication weights, i.e., a case weight of
+2 is equivalent to having 2 copies of that subject's observation.
+When computers were much smaller grouping like subjects together was a
+common trick to used to conserve memory.  Setting all weights to 2 for
+instance will give the same coefficient estimate but halve the variance.
+When the Efron approximation for ties (default) is employed replication
+of the data will not give exactly the same coefficients as the weights option,
+and in this case the weighted fit is arguably the correct one.
+
+When the model includes a \code{cluster} term or the \code{robust=TRUE}
+option the computed variance treats any weights as sampling weights;
+setting all weights to 2 will in this case give the same variance as weights of 1.
 }
 \section{Special terms}{
 There are three special terms that may be used in the model equation. 
@@ -143,7 +157,7 @@ hazard functions are fit for each strata.
 The \code{cluster} term is used to compute a robust variance for the model. 
 The term \code{+ cluster(id)} where each value of \code{id} is unique is
 equivalent to 
-specifying the \code{robust=T} argument.
+specifying the \code{robust=TRUE} argument.
 If the \code{id} variable is not 
 unique, it is assumed that it identifies clusters of correlated
 observations.
@@ -194,12 +208,17 @@ only a few unique values, and some packages refer to this as the
 Prentice which is not implemented here.
 
 The calculation of the exact partial likelihood is numerically intense.
-Say for instance 15 of 180 subjects at risk had an event on day 7; then
+Say for instance 180 subjects are at risk on day 7 of which 15 had an event; then
 the code needs to compute sums over all 180-choose-15 > 10^43 different
 possible subsets of size 15.  There is an efficient recursive algorithm
 for this task, but even with this the computation can be insufferably
 long.  With (start, stop) data it is much worse since the recursion
 needs to start anew for each unique start time.
+
+A second issue is that of artificial ties due to floating-point
+imprecision. See the vignette on this topic for a full explanation or
+the \code{timefix} option in \code{coxph.control}.
+Users may need to add \code{timefix=FALSE} for simulated data sets.
 }
 \section{Penalized regression}{
   \code{coxph} can now maximise a penalised partial likelihood with
@@ -217,8 +236,9 @@ Therneau, T., Grambsch, P., Modeling Survival Data: Extending the Cox Model.
 Springer-Verlag, 2000.
 }
 \seealso{
+\code{\link{coxph.object}}, \code{\link{coxph.control}},
 \code{\link{cluster}},  \code{\link{strata}},  \code{\link{Surv}},
-\code{\link{survfit}}, \code{\link{pspline}}, \code{\link{frailty}},
+\code{\link{survfit}}, \code{\link{pspline}}, 
 \code{\link{ridge}}.   
 }
 \examples{

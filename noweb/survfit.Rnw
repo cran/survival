@@ -87,15 +87,15 @@ dim.survfit <- function(x) {
         stop("survfit object does not have 2 dimensions")
     
     if (is.null(x$strata)) {
+        if (is.null(j) && !is.null(i)) j <- i #special case noted above
         if (is.matrix(x$surv)) {
-            if (is.null(j) && !is.null(i)) j <- i #special case noted above
             x$surv <- x$surv[,j,drop=drop]
             if (!is.null(x$std.err)) x$std.err <- x$std.err[,j,drop=drop]
             if (!is.null(x$upper)) x$upper <- x$upper[,j,drop=drop]
             if (!is.null(x$lower)) x$lower <- x$lower[,j,drop=drop]
             if (!is.null(x$cumhaz)) x$cumhaz <- x$cumhaz[,j,drop=drop]
         }
-        else warning("survfit object has only a single survival curve")
+        else if (j>1) stop("subscript out of bounds") # x[1] is always legal
     }
     else {
         if (is.null(i)) keep <- seq(along.with=x$time)
@@ -242,7 +242,7 @@ survfit.formula <- function(formula, data, weights, subset,
     # Deal with the near-ties problem
     if (!is.logical(timefix) || length(timefix) > 1)
         stop("invalid value for timefix option")
-    if (timefix) newY <- aeqSurv(Y)
+    if (timefix) newY <- aeqSurv(Y) else newY <- Y
     
     # Call the appropriate helper function
     if (attr(Y, 'type') == 'left' || attr(Y, 'type') == 'interval')
@@ -278,4 +278,83 @@ The method below helps give a useful error message in some cases.
 <<survfit-Surv>>=
 survfit.Surv <- function(formula, ...)
     stop("the survfit function requires a formula as its first argument")
+@ 
+
+
+The last peice in this file is the function to create confidence
+intervals.  It is called from multiple different places so it is well to
+have one copy. 
+If $p$ is the survival probability and $s(p)$ its standard error,
+we can do confidence intervals on the simple scale of
+$ p \pm 1.96 s(p)$, but that does not have very good properties.
+Instead use a transformation $y = f(p)$ for which the standard error is
+$s(p) f'(p)$, leading to the confidence interval
+\begin{equation*}
+ f^{-1}\left(f(p) +- 1.96 s(p)f'(p) \right)
+ \end{equation*}
+Here are the supported transformations.
+\begin{center}
+  \begin{tabular}{rccc} 
+    &$f$& $f'$ & $f^{-1}$ \\ \hline
+log & $\log(p)$ & $1/p$ & $ \exp(y)$ \\
+log-log & $\log(-\log(p))$ & $1/\left[ p \log(p) \right]$ &
+   $\exp(-\exp(y)) $  \\
+logit & $\log(p/1-p)$ & $1/[p (1-p)]$ & $1- 1/\left[1+ \exp(y)\right]$ \\
+arcsin & $\arcsin(\sqrt{p})$ & $1/(2 \sqrt{p(1-p)})$ &$\sin^2(y)$ \\
+
+\end{tabular} \end{center}
+Plain intervals can give limits outside of (0,1), we truncate them when this
+happens.  The log intervals can give an upper limit greater than 1, but the
+lower limit is always valid, and the log-log and logit.  The arcsin require
+truncation in the middle of the formula.
+In all cases we return NA as the CI for survival=0: it makes the graphs look
+better.
+
+Some of the underlying routines compute the standard error of $p$ and some
+the standard error of $\log(p)$.  The \code{selow} argument is used for the 
+modified lower limits of Dory and Korn.
+
+<<survfit>>=
+survfit_confint <- function(p, se, logse=TRUE, conf.type, conf.int,
+                            selow) {
+    zval <- qnorm(1- (1-conf.int)/2, 0,1)
+    if (missing(selow)) scale <- 1.0
+    else scale <- ifelse(selow==0, 1.0, selow/se)  # avoid 0/0 at the origin
+    if (!logse) se <- se/p   # se of log(survival) = log(p)
+
+    if (conf.type=='plain') {
+        se2 <- se* p * zval  # matches equation 4.3.1 in Klein & Moeschberger
+        list(lower= pmax(p -se2*scale, 0), upper = pmin(p + se2, 1))
+    }
+    else if (conf.type=='log') {
+        #avoid some "log(0)" messages
+        xx <- ifelse(p==0, NA, p)  
+        se2 <- zval* se 
+        temp1 <- exp(log(xx) - se2*scale)
+        temp2 <- exp(log(xx) + se2)
+        list(lower= temp1, upper= pmin(temp2, 1))
+    }
+    else if (conf.type=='log-log') {
+        xx <- ifelse(p==0 | p==1, NA, p)
+        se2 <- zval * se/log(xx)
+        temp1 <- exp(-exp(log(-log(xx)) - se2*scale))
+        temp2 <- exp(-exp(log(-log(xx)) + se2))
+        list(lower = temp1 , upper = temp2)
+    }
+    else if (conf.type=='logit') {
+        xx <- ifelse(p==0, NA, p)  # avoid log(0) messages
+        se2 <- zval * se *(1 + xx/(1-xx))
+ 
+        temp1 <- 1- 1/(1+exp(log(p/(1-p)) - se2*scale))
+        temp2 <- 1- 1/(1+exp(log(p/(1-p)) + se2))
+        list(lower = temp1, upper=temp2)
+    }
+    else if (conf.type=="arcsin") {
+        xx <- ifelse(p==0, NA, p)
+        se2 <- .5 *zval*se * sqrt(xx/(1-xx))
+        list(lower= (sin(pmax(0, asin(sqrt(xx)) - se2*scale)))^2,
+             upper= (sin(pmin(pi/2, asin(sqrt(xx)) + se2)))^2)
+    }
+    else stop("invalid conf.int type")
+}
 @ 

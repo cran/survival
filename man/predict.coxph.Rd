@@ -74,6 +74,11 @@ of a constant to any covariate, either overall or only within a
 particular stratum, has no effect on the fitted results.
 Using the \code{reference="strata"} option causes this to be true for
 predictions as well.
+(There have been occasional requests for reference="zero", i.e., a
+hypothetical subject with all covariates equal to zero, in order to
+match certain other packages' results.
+The issue is that the results are often silly, e.g., risk relative to
+a subject with height, weight, or blood pressure of zero.)
 
 When the results of \code{predict} are used in further calculations it
 may be desirable to use a fixed reference level.
@@ -87,6 +92,11 @@ the sample as the reference.
 Predictions of type "expected" incorporate the baseline hazard and are
 thus absolute instead of relative; the
 \code{reference} option has no effect on these.
+These values depend on the follow-up time for the future subjects as
+well as covariates so the \code{newdata} argument needs to include both
+the right and \emph{left} hand side variables from the formula.
+(The status variable will not be used, but is required since the
+underlying code needs to reconstruct the entire formula.)
 
 Models that contain a \code{frailty} term are a special case: due
 to the technical difficulty, when there is a \code{newdata} argument the
@@ -123,5 +133,9 @@ predict(fit,type="lp")
 predict(fit,type="expected")
 predict(fit,type="risk",se.fit=TRUE)
 predict(fit,type="terms",se.fit=TRUE)
+
+# For someone who demands reference='zero'
+pzero <- function(fit)
+  predict(fit, reference="sample") + sum(coef(fit) * fit$means, na.rm=TRUE)
 }
 \keyword{survival}

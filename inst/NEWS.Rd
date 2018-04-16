@@ -1,5 +1,119 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 2.42-3}{
+  \itemize{
+    \item Remove the coxph warning "X matrix deemed to be singular".
+    The coefficients are NA, just as before, we simply say less.
+
+    \item Fix minor bug in coxph: a covariate that was a constant would
+    have its coefficent reported as 0 rather than NA, iff it was the
+    only variable in the model, e.g., coxph(Surv(1:10) ~ rep(4,10)).
+}}
+
+\section{Changes in version 2.42-1}{
+  \itemize{
+    \item Add xtfrm method for Surv objects.
+    \item Fix error in logLik.coxph.null (incorrect class)
+    \item Fix error in pyears, would fail for a model with no
+    predictors and dataframe=TRUE.
+    \item tmerge would fail if an id was missing, give a message
+    instead
+    \item Stronger date checks in survexp, i.e., that the column
+    of a data frame is a date if and only if the matching ratetable
+    dimension is a date.
+    \item Restore the order of the elements of coxph objects; as some
+    other packages depend on both the names and the order.  It had been
+    modified when the residual argument was added to coxph.fit.
+    \item Add a more rigorous check for overflow in the coxph iteration:
+    M Tsagris supplied an edge case example where the information matrix
+    fails one iteration before anything else.  
+}}
+
+    
+\section{Changes in version 2.42-0}{
+  \itemize{
+    \item Fix a bug in the agfit4.c routine, based on data sets from Ivo
+    Sousa Ferreira and Marloes Derks.  This was introduced in 2.39-1 and
+    leads to incorrect solutions for selected data sets.  Such data sets
+    are a rare edge case, however.  In detail:
+    In a start stop data set with strata assume two adjacent event times
+    in one stratum of d1 and d2, say, and a set of k censored intervals
+    (a,b) also in that stratum such that a>=d1 and b<d2.  (Such intervals are
+    never at risk for an event and could be elminated from the data set
+    without loss.) If k >= the number of intervals that overlap both d1
+    and d2, and in the prior stratum the smallest time was an event,
+    some variables that track who is in the risk set got out of sync,
+    and contributions to the loglik, first and second derivative at d1
+    would be incorrect.  I expect such data sets are extremely rare.
+    However, the survSplit routine and mstate packages can generate data
+    sets with a LOT of the unneeded intervals.  (The data set in
+    question came from mstate.)
+
+    \item Use format.pval() and printCoefmat in more of the print
+    functions.  This aligns the format with that of base R.
+
+    \item Update the vcov function to accept the new complete= argument.
+    \item Update statefig to accept vectors of colors.
+
+    \item The [.survfit routine would complain on the use of fit[1]
+    when fit contained a single curve.  This is now legal.
+    \item Change NAMED() to MAYBE_REFERENCED() at the suggestion of R
+    core
+
+    \item Add the yates() routine for population prediction,
+    and accompanying vignette.
+    \item Update the survival rate tables (survexp.mn, survexp.us,
+    survexp.usr), to add data for more calendar years.
+
+    \item Bow to user pressure: marks now appear on survival curves for
+    censoring times that are tied with an event time, plotted at the
+    midpoint of the vertical step.  Also, replace the outdated
+    \code{mark} option with \code{pch}.
+  }
+}
+
+\section{Changes in version 2.41-5}{
+  \itemize{
+    \item Update the survexp.us and survexp.usr rate tables.  They now
+    contain years 1940 to 2012.  They however lost the breakdown of the
+    first year of life into smaller intervals as the recent US census data
+    lacks that information.  Update the code for ratetables: a cutpoint
+    attribute vector can now be of class Date, and names(dimnames) can
+    supplant the dimid attribute.  (Only creators of rate tables are impacted
+    by these last two.)
+
+    \item Change all instances of "1-pchisq(...)" to instead use the
+    lower.tail=FALSE argument.
+}}
+
+\section{Changes in version 2.41-4}{
+  \itemize{
+    \item The coxph routine did not check for infinite predictors (these
+    are not screened out by na.action), and these could cause the
+    iteration to fail.  Added a check and stop() statement.  The example
+    was provided by Glenn Tisdale.
+
+    \item When conf.times was used in plot.survfit, the bars were not
+    perfectly centered on the target values
+
+    \item Add the residual and concordance argument to coxph.fit and
+    agreg.fit, at the request of S Venkat.  These speed up the function
+    when a calling routine only needs the partial likelihood.
+
+    \item Fix error in survfit: if timefix=FALSE was specified we forgot
+    to set a key variable and the routine fails.  Pointed out by Sarah
+    Streett. 8Apr2017.
+
+    \item Change the scale argument of summary.coxph so that it affects
+    the coefficient and se(coef), not just the confidence interval.
+
+    \item Fix an error in survfitCI when using the start.time argument, and
+    add a test case for it.
+
+    \item Add tail.Surv method per a request from Michael Lawrence.
+    Also add duplicated, anyDuplicated, and unique methods.
+}}
+
 \section{Changes in version 2.41-3}{
   \itemize{
     \item A check for infinite loglik was incorrect in agfit4.c, and could
@@ -19,7 +133,7 @@
 
     \item Pointed out by Mikko Korpela: the dynamic symbols check added
     in 2.41-0 requires R version 2.16 or later.  Add an ifdef to init.c
-    that checks the version of R, mimicing a similar line in the MASS library.
+    that checks the version of R, mimicking a similar line in the MASS library.
 }}
 
 \section{Changes in version 2.41-2}{
@@ -89,7 +203,7 @@
 }
 \section{Changes in version 2.40-0}{
   \itemize{
-    \item Code changes to void the new warnings for multiplication of a
+    \item Code changes to avoid the new warnings for multiplication of a
     vector * (1 by 1 matrix). 
     
     \item Add a more thorough test case for multi-state survival:

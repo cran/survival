@@ -167,13 +167,12 @@ coxph <- function(formula, data, weights, subset, na.action,
         ord <- attr(Terms, 'order')[tempc$terms]
         if (any(ord>1)) stop ("Cluster can not be used in an interaction")
         cluster <- strata(mf[,tempc$vars], shortlabel=TRUE)  #allow multiples
-        dropterms <- tempc$terms  #we won't want this in the X matrix
+        Terms <- Terms[-tempc$terms]  # toss it away
         # Save away xlevels after removing cluster (we don't want to save upteen
         #  levels of that variable, which we will never need).
-        xlevels <- .getXlevels(Terms[-tempc$terms], mf)
+        xlevels <- .getXlevels(Terms, mf)
     }
     else {
-        dropterms <- NULL
         if (missing(robust)) robust <- FALSE
         xlevels <- .getXlevels(Terms, mf)
     }
@@ -181,6 +180,7 @@ coxph <- function(formula, data, weights, subset, na.action,
     contrast.arg <- NULL  #due to shared code with model.matrix.coxph
     attr(Terms, "intercept") <- 1
     adrop <- 0  #levels of "assign" to be dropped; 0= intercept
+    dropterms <- NULL
     stemp <- untangle.specials(Terms, 'strata', 1)
     if (length(stemp$vars) > 0) {  #if there is a strata statement
         hasinteractions <- FALSE
@@ -191,8 +191,7 @@ coxph <- function(formula, data, weights, subset, na.action,
             if (any(attr(Terms, 'order')[attr(Terms, "factors")[i,] >0] >1))
                 hasinteractions <- TRUE  
             }
-        if (!hasinteractions) 
-            dropterms <- c(dropterms, stemp$terms)
+        if (!hasinteractions) dropterms <- stemp$terms 
         else adrop <- c(0, match(stemp$var, colnames(attr(Terms, 'factors'))))
     }
 
@@ -211,6 +210,10 @@ coxph <- function(formula, data, weights, subset, na.action,
         attr(X, "assign") <- c(0, renumber)[1+attr(X, "assign")]
     }
     else X <- model.matrix(Terms, mf, contrasts=contrast.arg)
+
+    # infinite covariates are not screened out by the na.omit routines
+    if (!all(is.finite(X)))
+        stop("data contains an infinite predictor")
 
     # drop the intercept after the fact, and also drop strata if necessary
     Xatt <- attributes(X) 
@@ -275,18 +278,19 @@ coxph <- function(formula, data, weights, subset, na.action,
            vars <- (1:length(fit$coefficients))[is.na(fit$coefficients)]
            msg <-paste("X matrix deemed to be singular; variable",
                            paste(vars, collapse=" "))
-           if (singular.ok) warning(msg)
-           else             stop(msg)
+           if (!singular.ok) stop(msg)
+           # else warning(msg)  # stop being chatty
         }
         fit$n <- data.n
         fit$nevent <- sum(Y[,ncol(Y)])
         fit$terms <- Terms
         fit$assign <- assign
-        class(fit) <- fit$method        
+        class(fit) <- fit$class
+        fit$class <- NULL
 
-        if (robust) {
+        # don't compute a robust variance if there are no coefficients
+        if (robust && !is.null(fit$coefficients) && !all(is.na(fit$coefficients))) {
             fit$naive.var <- fit$var
-            fit$method    <- method
             # a little sneaky here: by calling resid before adding the
             #   na.action method, I avoid having missings re-inserted
             # I also make sure that it doesn't have to reconstruct X and Y
@@ -301,12 +305,12 @@ coxph <- function(formula, data, weights, subset, na.action,
                 else fit2$linear.predictors <- c(X %*% init)
                 temp0 <- residuals.coxph(fit2, type='score', collapse=cluster,
                                          weighted=TRUE)
-        }
+            }
             else {
                 temp <- residuals.coxph(fit2, type='dfbeta', weighted=TRUE)
                 fit2$linear.predictors <- 0*fit$linear.predictors
                 temp0 <- residuals.coxph(fit2, type='score', weighted=TRUE)
-        }
+            }
             fit$var <- t(temp) %*% temp
             u <- apply(as.matrix(temp0), 2, sum)
             fit$rscore <- coxph.wtest(t(temp0)%*%temp0, u, control$toler.chol)$test
@@ -350,6 +354,5 @@ coxph <- function(formula, data, weights, subset, na.action,
     fit$contrasts <- contr.save
     if (any(offset !=0)) fit$offset <- offset
     fit$call <- Call
-    fit$method <- method
     fit
     }

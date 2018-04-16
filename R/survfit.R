@@ -31,15 +31,15 @@ dim.survfit <- function(x) {
         stop("survfit object does not have 2 dimensions")
     
     if (is.null(x$strata)) {
+        if (is.null(j) && !is.null(i)) j <- i #special case noted above
         if (is.matrix(x$surv)) {
-            if (is.null(j) && !is.null(i)) j <- i #special case noted above
             x$surv <- x$surv[,j,drop=drop]
             if (!is.null(x$std.err)) x$std.err <- x$std.err[,j,drop=drop]
             if (!is.null(x$upper)) x$upper <- x$upper[,j,drop=drop]
             if (!is.null(x$lower)) x$lower <- x$lower[,j,drop=drop]
             if (!is.null(x$cumhaz)) x$cumhaz <- x$cumhaz[,j,drop=drop]
         }
-        else warning("survfit object has only a single survival curve")
+        else if (j>1) stop("subscript out of bounds") # x[1] is always legal
     }
     else {
         if (is.null(i)) keep <- seq(along.with=x$time)
@@ -173,7 +173,7 @@ survfit.formula <- function(formula, data, weights, subset,
     # Deal with the near-ties problem
     if (!is.logical(timefix) || length(timefix) > 1)
         stop("invalid value for timefix option")
-    if (timefix) newY <- aeqSurv(Y)
+    if (timefix) newY <- aeqSurv(Y) else newY <- Y
     
     # Call the appropriate helper function
     if (attr(Y, 'type') == 'left' || attr(Y, 'type') == 'interval')
@@ -198,3 +198,45 @@ survfit.formula <- function(formula, data, weights, subset,
     }
 survfit.Surv <- function(formula, ...)
     stop("the survfit function requires a formula as its first argument")
+survfit_confint <- function(p, se, logse=TRUE, conf.type, conf.int,
+                            selow) {
+    zval <- qnorm(1- (1-conf.int)/2, 0,1)
+    if (missing(selow)) scale <- 1.0
+    else scale <- ifelse(selow==0, 1.0, selow/se)  # avoid 0/0 at the origin
+    if (!logse) se <- se/p   # se of log(survival) = log(p)
+
+    if (conf.type=='plain') {
+        se2 <- se* p * zval  # matches equation 4.3.1 in Klein & Moeschberger
+        list(lower= pmax(p -se2*scale, 0), upper = pmin(p + se2, 1))
+    }
+    else if (conf.type=='log') {
+        #avoid some "log(0)" messages
+        xx <- ifelse(p==0, NA, p)  
+        se2 <- zval* se 
+        temp1 <- exp(log(xx) - se2*scale)
+        temp2 <- exp(log(xx) + se2)
+        list(lower= temp1, upper= pmin(temp2, 1))
+    }
+    else if (conf.type=='log-log') {
+        xx <- ifelse(p==0 | p==1, NA, p)
+        se2 <- zval * se/log(xx)
+        temp1 <- exp(-exp(log(-log(xx)) - se2*scale))
+        temp2 <- exp(-exp(log(-log(xx)) + se2))
+        list(lower = temp1 , upper = temp2)
+    }
+    else if (conf.type=='logit') {
+        xx <- ifelse(p==0, NA, p)  # avoid log(0) messages
+        se2 <- zval * se *(1 + xx/(1-xx))
+ 
+        temp1 <- 1- 1/(1+exp(log(p/(1-p)) - se2*scale))
+        temp2 <- 1- 1/(1+exp(log(p/(1-p)) + se2))
+        list(lower = temp1, upper=temp2)
+    }
+    else if (conf.type=="arcsin") {
+        xx <- ifelse(p==0, NA, p)
+        se2 <- .5 *zval*se * sqrt(xx/(1-xx))
+        list(lower= (sin(pmax(0, asin(sqrt(xx)) - se2*scale)))^2,
+             upper= (sin(pmin(pi/2, asin(sqrt(xx)) + se2)))^2)
+    }
+    else stop("invalid conf.int type")
+}

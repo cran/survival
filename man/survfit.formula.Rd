@@ -75,22 +75,22 @@
       }
       \item{conf.type}{
 	One of \code{"none"}, \code{"plain"}, \code{"log"} (the default),
-	or \code{"log-log"}.  Only
+	\code{"log-log"} or \code{"logit"}.  Only
 	enough of the string to uniquely identify it is necessary.
 	The first option causes confidence intervals not to be
 	generated.  The second causes the standard intervals
 	\code{curve +- k *se(curve)}, where k is determined from
 	\code{conf.int}.  The log option calculates intervals based on the
-	cumulative hazard or log(survival). The last option bases
-	intervals on the log hazard or log(-log(survival)). 
+	cumulative hazard or log(survival). The log-log option bases the
+	intervals on the log hazard or log(-log(survival)), and the
+	logit option on log(survival/(1-survival)). 
       }
       \item{conf.lower}{
 	a character string to specify modified lower limits to the curve, the 
 	upper limit remains unchanged.  
 	Possible values are \code{"usual"} (unmodified), 
 	\code{"peto"}, 
-	and \code{"modified"}.  T
-	he modified lower limit 
+	and \code{"modified"}.  The modified lower limit 
 	is based on an "effective n" argument.  The confidence 
 	bands will agree with the usual calculation at each death time, but unlike 
 	the usual bands the confidence interval becomes wider at each censored 
@@ -257,7 +257,7 @@ fit  <- survfit(Surv(time, time, status, type='interval') ~1,
 #
 # Time to progression/death for patients with monoclonal gammopathy
 #  Competing risk curves (cumulative incidence)
-fitKM <- survfit(Surv(stop, event=='progression') ~1, data=mgus1,
+fitKM <- survfit(Surv(stop, event=='pcm') ~1, data=mgus1,
                     subset=(start==0))
 
 fitCI <- survfit(Surv(stop, status*as.numeric(event), type="mstate") ~1,

@@ -66,8 +66,11 @@ void chinv2  (double **matrix, int n);
 int cholesky2(double **matrix, int n, double toler);
 void chsolve2(double **matrix, int n, double *y);
 void chinv3(double **matrix , int n, int m, double *fdiag);
+void chinv5(double **matrix , int n, int flag);
 int cholesky3(double **matrix, int n, int m, double *diag, double toler);
+int cholesky5(double **matrix, int n, double toler);
 void chsolve3(double **matrix, int n, int m, double *diag, double *y);
+void chsolve5(double **matrix, int n, double *y, int flag);	
 
 SEXP concordance1(SEXP y, SEXP wt2,  SEXP indx2, SEXP ntree2);
  
@@ -140,6 +143,10 @@ int    **imatrix(int *array, int nrow, int ncol);
 
 SEXP finegray(SEXP tstart2, SEXP tstop2,   SEXP ctime2,   SEXP cprob2, 
 	      SEXP extend2, SEXP keep2);
+
+SEXP gchol(SEXP matrix2, SEXP toler2);
+SEXP gchol_solve(SEXP x2, SEXP y2, SEXP flag2);
+SEXP gchol_inv(SEXP matrix, SEXP flag2);
 
 void init_doloop(int min, int max);
 int doloop      (int nloops, int *index);

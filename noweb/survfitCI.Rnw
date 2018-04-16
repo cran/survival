@@ -47,7 +47,8 @@ survfitCI <- function(X, Y, weights, id, istate,
                       type=c('kaplan-meier', 'fleming-harrington', 'fh2'),
                       se.fit=TRUE,
                       conf.int= .95,
-                      conf.type=c('log',  'log-log',  'plain', 'none'),
+                      conf.type=c('log',  'log-log',  'plain', 'none', 
+                                  'logit', "arcsin"),
                       conf.lower=c('usual', 'peto', 'modified'),
                       influence = FALSE, start.time){
 
@@ -75,9 +76,10 @@ survfitCI <- function(X, Y, weights, id, istate,
         if (!is.numeric(start.time) || length(start.time) !=1
             || !is.finite(start.time))
             stop("start.time must be a single numeric value")
-        toss <- which(Y[,ncol(Y)] <= start.time)
+        toss <- which(Y[,ncol(Y)-1] <= start.time)
         if (length(toss)) {
             n <- nrow(Y)
+            if (length(toss)==n) stop("start.time has removed all observations")
             Y <- Y[-toss,,drop=FALSE]
             X <- X[-toss]
             weights <- weights[-toss]
@@ -154,7 +156,7 @@ The status vector will have values of 0 for censored.
             indx <- which(X==i)
             curves[[i]] <- docurve2(entry[indx], Y[indx,1], status[indx], 
                                     istate[indx], weights[indx], states, 
-                                    id[indx], se.fit)
+                                    id[indx], se.fit, influence)
          }
     }
     else {
@@ -190,22 +192,23 @@ vector of length 2 with state 1 = alive and state 2 = dead.
 The variance is based on per-subject influence.  Since $p(t)$ is a vector
 the influence can be written as a matrix with one row per subject and
 one column per state.
-$$ U_{ij}(t) \equiv \frac{partial p_j(t)}{\partial w_i}. $$
+$$ U_{ij}(t) \equiv \frac{\partial p_j(t)}{\partial w_i}. $$
 This can be calculate using a recursive formula.
 First, the derivative of a matrix product $AB$ is $d(A)B + Ad(B)$ where
 $d(A)$ is the elementwise derivative of $A$ and similarly for $B$.
 (Write out each element of the matrix product.)
 Since $p(t) = p(t-)H(t)$, the $i$th row of U satisfies
 \begin{align}
-  U_i(t) &= \frac{partial p(t)}{\partial w_i} \nonumber \\
+  U_i(t) &= \frac{\partial p(t)}{\partial w_i} \nonumber \\
          &= \frac{\partial p(t-)}{\partial w_i} H(t) + 
-           p(t-) \frac{\partial H(t}{\partial w_i} \nonumber \\
-         &= U_i(t-) H(t) +  p(t-) \frac{\partial H(t}{\partial w_i} 
+           p(t-) \frac{\partial H(t)}{\partial w_i} \nonumber \\
+         &= U_i(t-) H(t) +  p(t-) \frac{\partial H(t)}{\partial w_i} 
            \label{ci}
 \end{align}  
 The first term of \ref{ci} collapses to ordinary matrix multiplication. 
 The second term does not: each at risk subject has a unique matrix derivative
-$\partial H$; $n$ vectors of length $p$ arrange into a matrix but $n$
+$\partial H$; $n$ vectors of length $p$ can be arranged into a matrix, making
+the code simple, but $n$
 $p$ by $p$ matrices are not so neat.
 However, note that
 \begin{enumerate}
@@ -217,8 +220,8 @@ However, note that
 \end{enumerate}
 Say that the subject enters the given event time in state $j$ and ends it
 in state $k$.
-(For most $k=j$: if there are 100 at risk at time $t$ and 1 changes state,
-the other 99 stay put.)
+(For most subjects at most time poinnts $k=j$: if there are 100 at risk at 
+time $t$ and 1 changes state, the other 99 stay put.)
 Let $n_j(t)= \sum_i Y_{ij}(t)w_i$ be the weighted number of subjects
 in state $j$, these are the contributers to row $j$ of $H$.
 Using equation \ref{H}, the derivative of row $j$
@@ -253,7 +256,7 @@ cstate and U objects have only one row per subject;
 any given subject is only in one state at a time.
 This leads to indices of [[atrisk]] for the set of rows in the risk set but
 [[aindx]] for the subjects in the risk set, [[death]] for the rows that have
-an event as some given time and [[dindx]] for the corresponding subjects.
+an event this time and [[dindx]] for the corresponding subjects.
 
 The setup for (start, stop] data is a bit more work.  
 We want to ensure that a given subject remains in the same group,
@@ -362,51 +365,16 @@ else {
 kfit$transitions <- transitions
 @ 
 
-Add the confidence bands.  The idea is modeled on survfitKM but with
-the important differences that we are dealing with $P$ instead of $S$,
-and the ``modified lower limit'' logic does not apply.
-We make the assumption that $\log(1-P)$ will have better CI behavior
-than $P$, with standard error of ${rm se}(P)/(1-P)$.
 
 <<survfitCI-finish>>=
 #       
 # Last bit: add in the confidence bands:
-#   modeled on survfit.km, though for P instead of S
-#   
-#
-if (se.fit) {
-    std.err <- kfit$std.err
-    zval <- qnorm(1- (1-conf.int)/2, 0,1)
-
-    if (conf.type=='plain') {
-        temp <- zval* kfit$std.err
-        kfit <- c(kfit, list(lower =pmax(kfit$pstate-temp, 0), 
-                             upper=pmin(kfit$pstate+temp, 1),
-                         conf.type='plain', conf.int=conf.int))
-        }
-
-    if (conf.type=='log') {
-        #avoid some "log(0)" messages
-        xx <- ifelse(kfit$pstate==1, 1, 1- kfit$pstate)  
-
-        temp1 <- ifelse(kfit$pstate==1, NA, exp(log(xx) + zval* kfit$std.err/xx))
-        temp2 <- ifelse(kfit$pstate==1, NA, exp(log(xx) - zval* kfit$std.err/xx))
-        kfit <- c(kfit, list(lower=pmax(1-temp1,0), upper= 1- temp2,
-                         conf.type='log', conf.int=conf.int))
-        }
-
-    if (conf.type=='log-log') {
-        who <- (kfit$pstate==0 | kfit$pstate==1) #special cases
-        temp3 <- ifelse(kfit$pstate==1, NA, 1)
-        xx <- ifelse(who, .1,kfit$pstate)  #avoid some "log(0)" messages
-        temp1 <- exp(-exp(log(-log(xx)) + zval*kfit$std.err/(xx*log(xx))))
-        temp1 <- ifelse(who, temp3, temp1)
-        temp2 <- exp(-exp(log(-log(xx)) - zval*kfit$std.err/(xx*log(xx))))
-        temp2 <- ifelse(who, temp3, temp2)
-        kfit <- c(kfit, list(lower=1-temp1, upper=1-temp2,
-                         conf.type='log-log', conf.int=conf.int))
-        }
-    }
+#  
+if (se.fit && conf.type != "none") {
+    ci <- survfit_confint(kfit$pstate, kfit$std.err, logse=FALSE, 
+                          conf.type, conf.int)
+    kfit <- c(kfit, ci, conf.type=conf.type, conf.int=conf.int)
+}
 
 kfit$states <- state.names
 kfit$type   <- attr(Y, "type")

@@ -87,11 +87,11 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
     **  Set up the ragged arrays
     **  covar2 might not need to be duplicated, even though
     **  we are going to modify it, due to the way this routine was
-    **  was called.  In this case NAMED(covar2) will =0
+    **  was called.  But check
     */
     PROTECT(imat2 = allocVector(REALSXP, nvar*nvar));
     nprotect =1;
-    if (NAMED(covar2)>0) {
+    if (MAYBE_REFERENCED(covar2)) {
         PROTECT(covar2 = duplicate(covar2)); 
         nprotect++;
         }
@@ -166,36 +166,41 @@ SEXP agfit4(SEXP surv2,      SEXP covar2,    SEXP strata2,
         for (i=0; i<nvar; i++) beta[i] /= scale[i]; /* rescale initial betas */
         }
     else {for (i=0; i<nvar; i++) scale[i] = 1.0;}
+    /* keep[] will have number of event times for which this subject is at risk */
     indx1 =0;
-    person =0;
-    for (k=0; k<nused; k++) keep[k] =1;
-    for (istrat=0; istrat<nstrat; istrat++) {
-       while(person < strata[istrat]) {
-           /* find the next death */
-           for (k=person; k< strata[istrat]; k++) {
-               p = sort2[k];
-               if (event[p] ==1) {
-                   dtime = tstop[p];
-                   break;
-               }
-           }
-           if (k== strata[istrat]) {
-               /* no more deaths in this strata */
-               person = k;
-               indx1 =k;  /* we can move on */
-           }
-
-           for (; indx1 < strata[istrat]; indx1++) {
-               p1 = sort1[indx1];
-               if (start[p1] < dtime) break;
-               keep[p1]--;
-           }
-           for (; person < strata[istrat]; person++) {
-               p = sort2[person];
-               if (tstop[p] < dtime) break;
-               if (keep[p] ==1) keep[p] =2;
-           }
-       }
+    deaths =0;
+    istrat =0;
+    for (person=0; person < nused;) {
+        if (person == strata[istrat]) {  /* first subject in a new stratum */
+            /* finish the work for the prior stratum */
+            for (; indx1<person; indx1++) {
+                p1 = sort1[indx1];
+                keep[p1] += deaths;
+            }
+            deaths=0;
+            istrat++;
+        }
+        p = sort2[person];
+        keep[p] = - deaths;
+        if (event[p]) {
+            dtime = tstop[p];
+            for(person =person+1; person < strata[istrat]; person++) {
+                /* walk forward over any tied times */
+                p = sort2[person];
+                if (tstop[p] != dtime) break;
+                keep[p] = -deaths;
+                }
+            for (; indx1<person; indx1++) {
+                p1 = sort1[indx1];
+                if (start[p1] < dtime) break;
+                keep[p1] += deaths;
+            }
+            deaths++;
+        } else person++;
+    }
+    for (; indx1<nused; indx1++) {  /* finish up the last strata */
+        p1 = sort1[indx1];
+        keep[p1] += deaths;
     }
     /* First iteration, which has different ending criteria */
     for (person=0; person<nused; person++) {
