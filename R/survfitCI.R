@@ -149,7 +149,6 @@ survfitCI <- function(X, Y, weights, id, istate,
     if (length(istate) !=n) stop ("wrong length for istate")
 
     # The states of the status variable are the first columns in the output
-    #  any extra initial states are later in the list
     states <- unique(c(1:nstate, istate))
     curves <- vector("list", ncurve)
     names(curves) <- levels(X)
@@ -198,38 +197,29 @@ survfitCI <- function(X, Y, weights, id, istate,
         }
         if (any(Y[,1] == Y[,2])) 
             stop("cannot have start time == stop time")
+
+        if (any(same & (Y[indx1,3] == Y[indx2,3]) & (Y[indx1,3] !=0))) {
+            who <-  min(which(same & (Y[indx1,3] == Y[indx2,3]) & (Y[indx1,3] !=0)))
+            warning("subject changes to the same state, id ", id[indx1[who]])
+        }
+
+        # Make the table of transitions
+        nst <- length(state.names)
+        first <- indx[!duplicated(id[indx])]
+        transitions <- table(factor(istate[first], 1:nst), 
+                             factor(Y[first,3], 1:nstate))
+        if (any(same))
+            transitions <- transitions + table(factor(Y[indx1[same],3], 1:nst),
+                                               factor(Y[indx2[same],3], 1:nstate))
+        dimnames(transitions) = list(from=state.names, to=state.names[1:nstate])
         # We only want to pay attention to the istate variable for the very first
         #  observation of any given subject, but the program logic does better with
         #  a full one.  So construct one that will do this
-        indx <- order(id, Y[,2])
+        indx <- order(Y[,2])
         uid <- unique(id)
         temp <- (istate[indx])[match(uid, id[indx])]  #first istate for each subject
         istate <- temp[match(id, uid)]  #replicate it to full length
 
-        # extra censors
-        last <- !duplicated(id[indx], fromLast=TRUE)
-        extra <- (Y[indx,3]==0 & !last)
-        if (any(extra)) {
-            e2 <- indx[extra]
-            Y <- cbind(Y[-(1+e2),1], Y[-e2,2])
-            status <- status[-e2]
-            X <- X[-e2]
-            id <- id[-e2]
-            istate <- istate[-e2]
-            weights <- weights[-e2]
-            indx <- order(id, Y[,2])
-        }
-            
-        # Make the table of transitions
-        nst <- length(state.names)
-        first <- (!duplicated(id[indx]))
-        last  <- (!duplicated(id[indx], fromLast=TRUE))
-        transitions <- table(factor(istate[indx[first]], 1:nst), 
-                             factor(status[indx[first]], 1:nstate))
-        if (any(!last))
-            transitions <- transitions + table(factor(status[indx[!last]], 1:nst),
-                                               factor(status[indx[!first]], 1:nstate))
-        dimnames(transitions) = list(from=state.names, to=state.names[1:nstate])
         # Now to work
         for (i in levels(X)) {
             indx <- which(X==i)

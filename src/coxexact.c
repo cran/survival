@@ -67,7 +67,7 @@ SEXP coxexact(SEXP maxiter2,  SEXP y2,
     double  newlk=0;
     double  temp;
     int     halving;    /*are we doing step halving at the moment? */
-    int     nrisk =0;   /* number of subjects in the current risk set */
+    int     nrisk;   /* number of subjects in the current risk set */
     int dsize,       /* memory needed for one coxc0, coxc1, or coxd2 array */
         dmemtot,     /* amount needed for all arrays */
         ndeath;      /* number of deaths at the current time point */
@@ -121,35 +121,33 @@ SEXP coxexact(SEXP maxiter2,  SEXP y2,
     PROTECT(loglik2 = allocVector(REALSXP, 5)); /* loglik, sctest, flag,maxiter*/
     loglik = REAL(loglik2);
     nprotect = 5;
-    strata[0] =1;  /* in case the parent forgot (e.g., no strata case)*/
+    strata[0] =1;  /* in case the parent forgot */
     temp = 0;      /* temp variable for dsize */
 
     maxdeath =0;
     j=0;   /* start of the strata */
     for (i=0; i<nused;) {
-        if (strata[i]==1) { /* first obs of a new strata */
-           if (i>0) {
-               /* assign data for the prior stratum, just finished */
-               /* If maxdeath <2 leave the strata alone at it's current value of 1 */
-               if (maxdeath >1) strata[j] = maxdeath;
-               j = i;
-               if (maxdeath*nrisk > temp) temp = maxdeath*nrisk;
-           }
-           maxdeath =0;  /* max tied deaths at any time in this strata */
-           nrisk=0;
-           ndeath =0;
-        }
-        dtime = time[i];
-        ndeath =0;  /*number tied here */
-        while (time[i] ==dtime) {
-            nrisk++;
-            ndeath += status[i];
-            i++;
-            if (i>=nused || strata[i] >0) break;  /*tied deaths don't cross strata */
-        }
-        if (ndeath > maxdeath) maxdeath = ndeath;
-    }
-    /* data for the final stratum */
+      if (strata[i]==1) { /* first obs of a new strata */
+          if (i>0) {
+              /* If maxdeath <2 leave the strata alone at it's current value of 1 */
+              if (maxdeath >1) strata[j] = maxdeath;
+              j = i;
+              if (maxdeath*nrisk > temp) temp = maxdeath*nrisk;
+              }
+          maxdeath =0;  /* max tied deaths at any time in this strata */
+          nrisk=0;
+          ndeath =0;
+          }
+      dtime = time[i];
+      ndeath =0;  /*number tied here */
+      while (time[i] ==dtime) {
+          nrisk++;
+          ndeath += status[i];
+          i++;
+          if (i>=nused || strata[i] >0) break;  /*tied deaths don't cross strata */
+          }
+      if (ndeath > maxdeath) maxdeath=ndeath;
+      }
     if (maxdeath*nrisk > temp) temp = maxdeath*nrisk;
     if (maxdeath >1) strata[j] = maxdeath;
 
@@ -176,7 +174,6 @@ SEXP coxexact(SEXP maxiter2,  SEXP y2,
         for (j=0; j<nvar; j++)
             imat[i][j] =0 ;
         }
-    sstart =0;  /* a line to make gcc stop complaining */
     for (i=0; i<nused; ) {
         if (strata[i] >0) { /* first obs of a new strata */
             maxdeath= strata[i];
@@ -282,7 +279,6 @@ SEXP coxexact(SEXP maxiter2,  SEXP y2,
             for (j=0; j<nvar; j++)
                     imat[i][j] =0;
             }
-        sstart =0;  /* a line to make gcc stop complaining */
         for (i=0; i<nused; ) {
             if (strata[i] >0) { /* first obs of a new strata */
                 maxdeath= strata[i];

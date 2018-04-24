@@ -61,5 +61,6 @@ terms.inner <- function(x) {
     }
     else(deparse(x))
 }
-   
+
+
     

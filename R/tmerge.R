@@ -314,12 +314,11 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
         newvar <- newdata[[argname[ii]]]  # prior value (for sequential tmerge calls)
         if (argclass[ii] %in% c("cumtdc", "cumevent")) {
             if (!is.numeric(yinc)) stop("invalid increment for cumtdc or cumevent")
-            ykeep <- (yinc !=0)  # ignore the addition of a censoring event
             yinc <- unlist(tapply(yinc, match(id, baseid), cumsum))
             }
 
         if (argclass[ii] %in% c("event", "cumevent")) {
-            if (is.null(newvar)) {
+            #if (is.null(newvar)) {
                 if (is.numeric(yinc)) newvar <- rep(0L, nrow(newdata))
                 else if (is.factor(yinc)) 
                     newvar <- factor(rep(levels(yinc)[1], nrow(newdata)),
@@ -327,10 +326,8 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
                 else if (is.character(yinc)) newvar <- rep('', nrow(newdata))
                 else if (is.numeric(yinc)) newvar <- rep(0L, nrow(newdata))
                 else stop("invalid value for a status variable")
-            }
-
+            #}
             keep <- (subtype==1 | subtype==3) # all other events are thrown away
-            if (argclass[ii] == "cumevent") keep <- (keep & ykeep)
             newvar[indx2[keep]] <- yinc[keep]
             
             if (!(argname[ii] %in% tevent)) {
