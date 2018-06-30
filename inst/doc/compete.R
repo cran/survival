@@ -205,7 +205,6 @@ cfit2 <- coxph(Surv(etime, event=="death") ~ age + sex + mspike, mgus2)
 summary(cfit2, scale=c(10, 1, 1))   # scale age in decades 
 
 
-
 ###################################################
 ### code chunk number 11: cfit2
 ###################################################
