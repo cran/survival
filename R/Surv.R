@@ -188,22 +188,22 @@ print.Surv <- function(x, quote=FALSE, ...) {
     }
 
 as.character.Surv <- function(x, ...) {
-    switch(attr(x, "type"),
+    new <- switch(attr(x, "type"),
            "right"={
                temp <- x[,2]
-               temp <- ifelse(is.na(temp), "?", ifelse(temp==0, "+"," "))
-               paste(format(x[,1]), temp, sep='')
+               temp <- ifelse(is.na(temp), "?", ifelse(temp==0, "+",""))
+               paste0(format(x[,1]), temp)
            },
            "counting"= {
                temp <- x[,3]
                temp <- ifelse(is.na(temp), "?", ifelse(temp==0, "+",""))
-               paste('(', format(x[,1]), ',', format(x[,2]), temp,
-                     ']', sep='')
+               paste0('(', format(x[,1]), ',', format(x[,2]), temp,
+                     ']')
            },
            "left" ={
                temp <- x[,2]
-               temp <- ifelse(is.na(temp), "?", ifelse(temp==0, "<"," "))
-               paste(temp, format(x[,1]), sep='')
+               temp <- ifelse(is.na(temp), "?", ifelse(temp==0, "-",""))
+               paste0(format(x[,1]), temp)
            },
            "interval"= {
                stat <- x[,3]
@@ -211,21 +211,23 @@ as.character.Surv <- function(x, ...) {
                temp2 <- ifelse(stat==3,
 			 paste("[", format(x[,1]), ", ",format(x[,2]), sep=''),
 			 format(x[,1]))
-               ifelse(is.na(stat), "NA", paste(temp2, temp, sep=''))
+               ifelse(is.na(stat), "NA", paste0(temp2, temp))
            },
            "mright" = {  #multi-state
                temp <- x[,2]
                end <- c("+", paste(":", attr(x, "states"), sep='')) #endpoint
                temp <- ifelse(is.na(temp), "?", end[temp+1])
-               paste(format(x[,1]), temp, sep='')
+               paste0(format(x[,1]), temp)
            },
            "mcounting"= {
                temp <- x[,3]
                end <- c("+", paste(":", attr(x, "states"), sep='')) #endpoint
                temp <- ifelse(is.na(temp), "?", end[temp+1])
-               paste('(', format(x[,1]), ',', format(x[,2]), temp,
-                     ']', sep='')
+               paste0('(', format(x[,1]), ',', format(x[,2]), temp,
+                     ']')
            })
+    names(new) <- rownames(x)
+    new
 }
 
 
@@ -272,8 +274,17 @@ Summary.Surv<-function(...) stop("Invalid operation on a survival time")
 #  ending time.  Start time is included as a last index, but it is not
 #  clear that we need to do so.
 xtfrm.Surv <- function(x) {
-    if (ncol(x)==2) order(x[,1], x[,2])  # events after censor
-    else order(x[,2], x[,3], x[,1])      # order by ending time
+    if (attr(x, 'type') == "interval") {
+        temp <- ifelse(x[,3]==3, (x[,1] + x[,2])/2, x[,1])
+        index <- order(temp, match(x[,3], c(2,1,3,0)))
+        }
+    else if (attr(x, 'type')== "left") index <- order(x[,1], x[,2])
+    else if (ncol(x)==2) index <- order(x[,1], x[,2]==0, x[,2]) # censor last
+    else index <- order(x[,2], x[,3]==0, x[,3], x[,1]) # ending time, stat, start
+    temp <- integer(nrow(x))
+    temp[index] <- seq.int(nrow(x))
+    temp[is.na(x)] <- NA
+    temp
 }
 
 is.Surv <- function(x) inherits(x, 'Surv')
@@ -283,26 +294,150 @@ as.matrix.Surv <- function(x, ...) {
     attr(y, "states") <- NULL
     attr(y, "inputAttributes") <- NULL
     y
-    }
-length.Surv <- function(x) nrow(x)
-format.Surv <- function(x, ...) format(as.character.Surv(x), ...)
-as.data.frame.Surv <- as.data.frame.model.matrix
-
-# tail.default gets confused by length(x) for a Surv object.  We need to
-#  use nrow as "n", but non-matrix subscript at the end to preserve it as a
-#  Surv object.  Thus this is a mix of tail.default and tail.matrix
-tail.Surv <- function(x, n=6L, ...) {
-    stopifnot(length(n) == 1L)
-    nrx <- nrow(x)
-    n <- if (n < 0L) 
-        max(nrx + n, 0L)
-    else min(n, nrx)
-    sel <- as.integer(seq.int(to = nrx, length.out = n))
-    x[sel]
 }
 
-# The above led to a search for other matrix-like methods
+# You can't do length without names
+# and names doesn't pay attention to my definition of length:
+# we need to map to rownames instead
+
+length.Surv <- function(x) nrow(x)
+"names<-.Surv" <- function(x, value) {
+    rownames(x) <- value
+    x
+}
+names.Surv <- function(x) rownames(x)
+
+format.Surv <- function(x, ...) format(as.character.Surv(x), ...)
+as.data.frame.Surv <- function(x, ...) as.data.frame.model.matrix(x, ...)
+
+# all sorts of methods for Surv, caused by searching for every case of
+#  UseMethod in the standard libraries
+
+# package:utils methods
+tail.Surv <- function(x, ...) 
+    x[tail(1:nrow(x), ...)]     
+
+head.Surv <- function(x, ...)
+    x[head(1:nrow(x), ...)]
+
+# packge:graphics.  All try to give a nicer failure message
+plot.Surv <- function(x, ...)
+    plot(survfit(x ~1), ...)
+
+barplot.Surv <- function(height, ...)
+    stop("not defined for a Surv object")
+density.Surv <- function(x, ...)
+    stop("method not defined for a Surv object")
+hist.Surv <- function(x, ...)
+    stop("method not defined for a Surv object")
+identify.Surv <- function(x, ...)
+    stop("method not defined for a Surv object")
+image.Surv <- function(x, ...)
+    stop("method not defined for a Surv object")
+lines.Surv <- function(x, ...)
+    stop("method not defined for a Surv object")
+points.Surv <- function(x, ...)
+    stop("method not defined for a Surv object")
+pairs.Surv <- function(x, ...)
+    stop("method not defined for a Surv object")
+text.Surv <- function(x, ...)
+    stop("method not defined for a Surv object")
+
+# package:base methods
 anyDuplicated.Surv <- function(x, ...) anyDuplicated(as.matrix(x), ...)
 duplicated.Surv    <- function(x, ...) duplicated(as.matrix(x), ...)
+rev.Surv <- function(x) x[rev(1:nrow(x))]
 unique.Surv  <- function(x, ...)
     x[!duplicated(as.matrix(x), ...)]
+
+c.Surv <- function(...) {
+    slist <- list(...)
+    if (!all(sapply(slist, function(x) inherits(x, "Surv")))) 
+        stop("all elements must be of class Surv")
+    types <- sapply(slist, function(x) attr(x, "type"))
+    if (!all(types == types[1]))
+        stop("all elements must be of the same Surv type")
+
+    if (types[[1]] %in% c("mright", "mcounting")) {
+        states <- lapply(slist, function(x) attr(x, 'states'))
+        if (any(diff(sapply(states, length))!=0))
+            stop("all elements must have the same list of states")
+        if (!all(sapply(states, function(x) all.equal(x, states[[1]]))))
+            stop("all elements must have the same list of states")
+        }
+    new <- do.call("rbind", lapply(slist, as.matrix))
+    att1 <- attributes(slist[[1]])
+    att1 <- att1[is.na(match(names(att1), c("dim","dimnames")))]
+    attributes(new) <- c(attributes(new)[c('dim', 'dimnames')], att1)
+    new
+    }
+
+
+# The cbind/rbind methods cause more trouble than they solve
+# The problem is when one is called with mixed arguments, e.g.
+#      cbind(Surv(1:4), data.frame(x=6:9, z=c('a', 'b', 'a', 'a'))
+# In the above cbind.Surv is never called, but the \emph{presence}
+#    of a cbind.Surv method messes up the default behavior, see the
+#    'Dispatch' section of help('cbind').  The result becomes a matrix of
+#    lists rather than a dataframe.
+#
+#rbind.Surv <- function(...) {
+#    dotlist <- list(...)
+#    if (all(sapply(dotlist, is.Surv))) do.call("c.Surv", dotlist)
+#    else do.call("rbind", lapply(dotlist, function(x)
+#        if (is.Surv(x)) as.matrix(x) else x))
+#    }
+#
+#cbind.Surv <- function(...) 
+#    do.call("cbind", lapply(list(...), 
+#                        function(x) if (is.Surv(x)) as.matrix(x) else x))
+#}
+
+rep.Surv <- function(x, ...) {
+    index <- rep(1:nrow(x), ...)
+    x[index]
+    }
+rep.int.Surv <- function(x, ...) {
+    index <- rep.int(1:nrow(x), ...)
+    x[index]
+    }
+rep_len.Surv <- function(x, ...) {
+    index <- rep_len(1:nrow(x), ...)
+    x[index]
+    }
+t.Surv <- function(x) t(as.matrix(x))
+
+as.logical.Surv <- function(x, ...)
+    stop("invalid operation on a survival time")
+as.integer.Surv <- function(x, ...) {
+    nc <- ncol(x)
+    x[,-nc] <- as.integer(x[,-nc])
+    if (nc==3 && any(x[,1] >= x[,2]))
+        stop("invalid survival time created")
+    x
+}
+as.numeric.Surv <- function(x, ...) {
+    nc <- ncol(x)
+    x[,-nc] <- as.numeric(x[, -nc])
+    x
+}
+
+mean.Surv <-function(x, ...)
+    stop("a mean method has not been defined for Surv objects")
+
+median.Surv <- function(x, ...)
+    quantile(x, probs=0.5, ...)
+
+quantile.Surv <- function(x, probs, na.rm=FALSE, ...) {
+    if (!na.rm && any(is.na(x)))
+        stop("missing values and NaN's not allowed if 'na.rm' is FALSE")
+    if (attr(x, "type") %in% c("mright", "mcounting"))
+        stop("quantile method not defined for multiple-endpoint Surv objects")
+    fit <- survfit(x~1)
+    quantile.survfit(fit, probs, ...)
+}   
+
+# these make sense but aren't S3 methods
+# sd, IQR, mad, cov, cor
+
+levels.Surv <- function(x) attr(x, "states")

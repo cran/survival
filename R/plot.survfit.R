@@ -126,7 +126,7 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
 
     if (!missing(fun)) {
         if (is.character(fun)) {
-            tfun <- switch(fun,
+            tfun <- switch(tolower(fun),
                            'log' = function(x) x,
                            'event'=function(x) 1-x,
                            'cumhaz'=function(x) -log(x),
@@ -134,6 +134,9 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
                            'pct' = function(x) x*100,
                            'logpct'= function(x) 100*x,  #special case further below
                        'identity'= function(x) x,
+                       'f' = function(x) 1-x,
+                       's' = function(x) x,
+                       'surv' = function(x) x,
                            stop("Unrecognized function argument")
                            )
         }
@@ -474,7 +477,7 @@ lines.survfit <- function(x, type='s',
 
     if (!missing(fun)) {
         if (is.character(fun)) {
-            tfun <- switch(fun,
+            tfun <- switch(tolower(fun),
                            'log' = function(x) x,
                            'event'=function(x) 1-x,
                            'cumhaz'=function(x) -log(x),
@@ -482,6 +485,9 @@ lines.survfit <- function(x, type='s',
                            'pct' = function(x) x*100,
                            'logpct'= function(x) 100*x,  #special case further below
                        'identity'= function(x) x,
+                       'f' = function(x) 1-x,
+                       's' = function(x) x,
+                       'surv' = function(x) x,
                            stop("Unrecognized function argument")
                            )
         }
@@ -768,7 +774,7 @@ points.survfit <- function(x, xscale, xmax, fun, censor=FALSE,
 
     if (!missing(fun)) {
         if (is.character(fun)) {
-            tfun <- switch(fun,
+            tfun <- switch(tolower(fun),
                            'log' = function(x) x,
                            'event'=function(x) 1-x,
                            'cumhaz'=function(x) -log(x),
@@ -776,6 +782,9 @@ points.survfit <- function(x, xscale, xmax, fun, censor=FALSE,
                            'pct' = function(x) x*100,
                            'logpct'= function(x) 100*x,  #special case further below
                        'identity'= function(x) x,
+                       'f' = function(x) 1-x,
+                       's' = function(x) x,
+                       'surv' = function(x) x,
                            stop("Unrecognized function argument")
                            )
         }

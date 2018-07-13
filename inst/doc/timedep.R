@@ -316,7 +316,7 @@ c(tdata=nrow(tdata), tdata2=nrow(tdata2))
 
 
 ###################################################
-### code chunk number 28: timedep.Rnw:1179-1186
+### code chunk number 28: timedep.Rnw:1175-1182
 ###################################################
 function(x, t, riskset, weights){ 
     obrien <- function(x) {
@@ -328,7 +328,7 @@ function(x, t, riskset, weights){
 
 
 ###################################################
-### code chunk number 29: timedep.Rnw:1196-1198
+### code chunk number 29: timedep.Rnw:1192-1194
 ###################################################
 function(x, t, riskset, weights) 
     unlist(tapply(x, riskset, rank))

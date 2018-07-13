@@ -1,13 +1,63 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 2.42-6}{
+  \itemize{
+    \item Remove the cbind.Surv and rbind.Surv methods. 
+    The problem is when one is called with mixed arguments, e.g.
+    cbind(Surv(1:4), data.frame(x=6:9, z=c('a', 'b', 'a', 'a'))
+    In the above cbind.Surv is never called, but the \emph{presence}
+    of a cbind.Surv method messes up the default behavior, see the
+    Dispatch section of help('cbind').
+}}
+
+\section{Changes in version 2.42-5}{
+  \itemize{
+    \item Add a plot.Surv method per the suggestion of Goran Brostram.
+    Improve the cbind.Surv and rbind.Surv methods to handle mixed
+    argument lists (when there are some Surv arguments and some not). 
+
+    \item Add a Survmethods.Rd page documenting the added methods.
+
+    \item Add "F" and "S" to the list of fun= arguments to plot.survfit,
+    they are aliases for "event" and "identity", respectively.
+}}
+\section{Changes in version 2.42-4}{
+  \itemize{
+    \item Undo a bug that was introduced in tmerge in 2.42-3; an essential
+    line got commented out with the result that if sequential tmerge calls
+    modify the same variable only the final change was retained.  Add a
+    check to the test suite to prevent this in the future.
+
+    \item Improve multi-state survfit when the input data has extra
+    censored rows, e.g., a subject with transitions to state 1 at time 2
+    and state 2 at time 8 but data of (0,2,1), (2,5,0), (5,8,2); the
+    survSplit routine often generates such rows.
+    Formerly the transitions table in the output would be incorrect for
+    this case, and the life table would get an extra "censoring" line at
+    time 5.  The estimated P(state) and its se was correct.
+
+    \item Fix an edge case in tmerge, when using cumevent and the input
+    data has a 'censored' row.  Add a test for this, and for another edge
+    case of repeated updates at the same time point.
+
+    \item repair xtfrm.Surv: it had returned a partial ordering for
+    survival objects (like order()), it instead needs to be the analog
+    of order(order(x)), a vector of integers with the same sort order as
+    x.  Add test cases and a manual page.
+    
+    \item Add more Surv methods: head, tail, rep, rbind, c, rev, t,
+    mean, median, plot, points, lines, levels. 
+  }}
+
 \section{Changes in version 2.42-3}{
   \itemize{
     \item Remove the coxph warning "X matrix deemed to be singular".
     The coefficients are NA, just as before, we simply say less.
 
     \item Fix minor bug in coxph: a covariate that was a constant would
-    have its coefficent reported as 0 rather than NA, iff it was the
-    only variable in the model, e.g., coxph(Surv(1:10) ~ rep(4,10)).
+    have its coefficent reported as 0 rather than NA, if (and only if)
+    it was the only variable in the model, e.g.,
+    coxph(Surv(1:10) ~ rep(4,10)).
 }}
 
 \section{Changes in version 2.42-1}{
