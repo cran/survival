@@ -27,19 +27,6 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
     weights <- object$weights
     if (is.null(weights)) weighted <- FALSE
 
-    if (is.character(object$dist)) 
-                dd <- survreg.distributions[[object$dist]]
-    else dd <- object$dist
-    if (is.null(dd$itrans)) {
-            itrans <- dtrans <-function(x)x
-            }
-    else {
-            itrans <- dd$itrans
-            dtrans <- dd$dtrans
-            }
-    if (!is.null(dd$dist))  dd <- survreg.distributions[[dd$dist]]
-    deviance <- dd$deviance
-    dens <- dd$density
     if (is.null(object$naive.var)) vv <- object$var
     else                           vv <- object$naive.var
 
@@ -47,28 +34,8 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
     if (is.null(object$y) || !is.null(strata) || (need.x & is.null(object[['x']])))
         mf <- stats::model.frame(object)
 
-    y <- object$y
-    if (is.null(y)) {
-        y <- model.extract(mf, 'response')
-        if (!is.null(dd$trans)) {
-            tranfun <- dd$trans
-            exactsurv <- y[,ncol(y)] ==1
-            if (any(exactsurv)) logcorrect <-sum(log(dd$dtrans(y[exactsurv,1])))
-
-            if (type=='interval') {
-                if (any(y[,3]==3))
-                        y <- cbind(tranfun(y[,1:2]), y[,3])
-                else y <- cbind(tranfun(y[,1]), y[,3])
-                }
-            else if (type=='left')
-                 y <- cbind(tranfun(y[,1]), 2-y[,2])
-            else     y <- cbind(tranfun(y[,1]), y[,2])
-            }
-        else {
-            if (type=='left') y[,2] <- 2- y[,2]
-            else if (type=='interval' && all(y[,3]<3)) y <- y[,c(1,3)]
-            }
-        }
+    if (is.null(object$y)) y <- model.response(mf)
+    else  y <- object$y
 
     if (!is.null(strata)) {
         temp <- untangle.specials(Terms, 'strata', 1)
@@ -90,6 +57,34 @@ residuals.survreg <- function(object, type=c('response', 'deviance',
        if (is.null(x)) 
             x <- model.matrix(Terms2, mf, contrasts.arg=object$contrasts)
         }
+    if (is.character(object$dist)) 
+                dd <- survreg.distributions[[object$dist]]
+    else dd <- object$dist
+    if (is.null(dd$itrans)) {
+        itrans <- dtrans <-function(x)x
+    }
+    else {
+        itrans <- dd$itrans
+        dtrans <- dd$dtrans
+        
+        # reprise the work done in survreg to create a transformed y
+        tranfun <- dd$trans
+        exactsurv <- y[,ncol(y)] ==1
+        if (any(exactsurv)) logcorrect <-sum(log(dd$dtrans(y[exactsurv,1])))
+
+        if (type=='interval') {
+            if (any(y[,3]==3))
+                y <- cbind(tranfun(y[,1:2]), y[,3])
+            else y <- cbind(tranfun(y[,1]), y[,3])
+        }
+        else if (type=='left')
+            y <- cbind(tranfun(y[,1]), 2-y[,2])
+        else     y <- cbind(tranfun(y[,1]), y[,2])
+    }
+
+    if (!is.null(dd$dist))  dd <- survreg.distributions[[dd$dist]]
+    deviance <- dd$deviance
+    dens <- dd$density
     if (type=='response') {
         yhat0 <- deviance(y, sigma, object$parms)
         rr <-  itrans(yhat0$center) - itrans(object$linear.predictor)

@@ -1,0 +1,60 @@
+ Changes in version 3, initial thoughts.
+
+1. Several routines will use the infinitesimal jackknife.  Add an option to all the routines to allow a grouped jackknife.
+   
+  * survfit: this options is essential, since the leverage matrix is #subjects * #curves * # time points, and tends to overrun memory.
+  * concordance: already present   
+  * If there is an id variable present, like cluster(id) in a coxph model, then it is the default choice for grouping. 
+ Changes * Use 'igroup' as a common name in the routines?
+  * Phase out the use of cluster(id)?  I'll have to leave it in the code forever, 
+but remove it from all the documentation.
+  * Add id= as an argument.  It is needed when a given person makes multiple
+transitions, but I don't want to confuse it with igroup.
+
+2. Survfit.  Add the original time 0 to the x,y data.  
+   The start.time option is still relevant, for a delayed start to the calculations
+
+3. Coxph and multiple states.
+
+   coxph(Surv(time1, time2, endpoint) ~ x1 + x2, data= mydata,
+          id =, sdata= states, state= zz, covariates=list(...)
+
+  * The right hand side of the formula is the default.  If none of the arguments
+in the second line are present then
+     a.  Each transition has all these covariates, with its own coefficient
+     b.  Separate intercept too (baseline hazard)
+     c.  Each subject is assumed to start in the unnamed state "".
+     d.  This will be the usual form for competing risks. 
+  * If there is no id=, then each row is a separate subject.
+  * If there is no state=, then each subject starts in the unnamed state "" and
+progresses from there. No gaps in follow-up time are allowed in this case .
+  * If state is present, it must be a factor with the same levels as the endpoint
+or a superset (initial states might never be an endpoint).  It is the state
+at the start of the interval.   
+
+Covariates is a list of formulas that look like
+    starting state(s)/ ending state(s) ~ covariates / options  
+
+  * For example:  var1 (a,b,c)/var2 (d,e) as the starting/ending state pair, where
+var1 and var2 are from the sdata data set.  This example marks 6 transitions.
+  * Options are init=, common, and fixed.  'Common' means that all these transition pairs share the same coefficient.   'Fixed' means that there is no iteration.
+  * sdata, if present, is a dataframe which must have at least one variable named
+"state", same levels as the state variable in the data set.  Other variables
+will usually be groupings of the states.  It is used by the covariates
+statement.
+  * intercepts in the formula obey 'common' too, thats how you get the same baseline hazard for
+two transitions.
+  *? if a pair of transtions is mentioned, then the default formula does not apply to that 
+transition, at all.  So say I want the age slope to be the same for all death transitions, but
+sex is also a variable, then the covariates list has to have
+    list( state('nondeath') /endpoint("death") ~ age / common,
+          state('nondeath') /endpoint("death") ~ 1+ sex)
+I don't get to inherit the "1+sex" part of an overall formula.   Good plan?
+
+  * If there is no sdata, allow the state and endpoint variables to appear as var1/var2 instead?
+
+4. Data set.  Always, always obeys the rule that a subject cannot be two places at once.  Not a stacked data set.  Create a checking routine?   Or make it a hidden routine that is called by everything else as a first step?  If status is not a factor then current rules apply, so people can stack data their own data sets if they want to.  
+
+ 5. survfit(cox model) will give Aalen-Johansen estimates.  
+
+

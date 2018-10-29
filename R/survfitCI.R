@@ -1,6 +1,6 @@
 # Automatically generated from the noweb directory
 docurve2 <- function(entry, etime, status, istate, wt, states, id, 
-                     se.fit, influence=FALSE) {
+                     se.fit, influence=FALSE, p0) {
     timeset <- sort(unique(etime))
     nstate <- length(states)
     uid <- sort(unique(id))
@@ -15,15 +15,17 @@ docurve2 <- function(entry, etime, status, istate, wt, states, id,
             stop("length of the influence matrix is > the maximum integer")
     }
     storage.mode(wt) <- "double" # just in case someone had integer weights
-    # Compute p0
-    if (all(status==0))  t0 <- max(etime)  #failsafe
-    else t0 <- min(etime[status!=0])  # first transition event
-    at.zero <- (entry < t0 & etime >= t0) 
-    wtsum <- sum(wt[at.zero])  # weights for a subject may change
-    p0 <- tapply(wt[at.zero], factor(istate[at.zero], levels=states), sum) /
-          wtsum
-    p0 <- ifelse(is.na(p0), 0, p0)  #for a state not in at.zero, tapply gives NA
 
+    # Compute p0 (unless given by the user)
+    if (is.null(p0)) {
+        if (all(status==0))  t0 <- max(etime)  #failsafe
+        else t0 <- min(etime[status!=0])  # first transition event
+        at.zero <- (entry < t0 & etime >= t0) 
+        wtsum <- sum(wt[at.zero])  # weights for a subject may change
+        p0 <- tapply(wt[at.zero], factor(istate[at.zero], levels=states), sum) /
+            wtsum
+        p0 <- ifelse(is.na(p0), 0, p0)  #for a state not in at.zero, tapply =NA
+    }
     # initial leverage matrix
     nid <- length(uid)
     i0  <- matrix(0., nid, nstate)
@@ -76,7 +78,7 @@ survfitCI <- function(X, Y, weights, id, istate,
                       conf.type=c('log',  'log-log',  'plain', 'none', 
                                   'logit', "arcsin"),
                       conf.lower=c('usual', 'peto', 'modified'),
-                      influence = FALSE, start.time){
+                      influence = FALSE, start.time, p0){
 
     method <- match.arg(type)
 #    error <- match.arg(error)
@@ -97,7 +99,7 @@ survfitCI <- function(X, Y, weights, id, istate,
          stop(paste("multi-state computation doesn't support \"", type,
                           "\" survival data", sep=''))
     
-    # If there is a start.time directive, start by removing those observations
+    # If there is a start.time directive, start by removing any prior events
     if (!missing(start.time)) {
         if (!is.numeric(start.time) || length(start.time) !=1
             || !is.finite(start.time))
@@ -119,12 +121,10 @@ survfitCI <- function(X, Y, weights, id, istate,
     
     state.names <- attr(Y, "states")
     nstate <- length(state.names) 
-    has.istate <- !missing(istate)
     if (missing(istate) || is.null(istate)) {
         istate <- rep(nstate+ 1L, n)
         state.names <- c(state.names, "")
-        }
-    else {
+    } else {
         if (is.factor(istate) || is.character(istate)) {
             # Match levels with the survival variable
             temp <- as.factor(istate)
@@ -149,8 +149,15 @@ survfitCI <- function(X, Y, weights, id, istate,
     if (length(istate) !=n) stop ("wrong length for istate")
 
     # The states of the status variable are the first columns in the output
-    #  any extra initial states are later in the list
-    states <- unique(c(1:nstate, istate))
+    #  any extra initial states are later in the list.  I use numeric
+    #  internally but the output uses the names.
+    # Now that we know the names, verify that p0 is correct (if present)
+    states <- 1:length(state.names)
+    if (!missing(p0)) {
+        if (length(p0) != length(state.names)) stop("wrong length for p0")
+        if (!is.numeric(p0) || abs(1-sum(p0)) > sqrt(.Machine$double.eps))
+            stop("p0 must be a numeric vector that adds to 1")
+    } else p0 <- NULL
     curves <- vector("list", ncurve)
     names(curves) <- levels(X)
                             
@@ -176,7 +183,7 @@ survfitCI <- function(X, Y, weights, id, istate,
             indx <- which(X==i)
             curves[[i]] <- docurve2(entry[indx], Y[indx,1], status[indx], 
                                     istate[indx], weights[indx], states, 
-                                    id[indx], se.fit, influence)
+                                    id[indx], se.fit, influence, p0)
          }
     }
     else {
@@ -236,7 +243,8 @@ survfitCI <- function(X, Y, weights, id, istate,
         #    temp <- docurve1(Y[indx,1], Y[indx,2], status[indx], 
         #                          istate[indx], weights[indx], states, id[indx])
             curves[[i]] <- docurve2(Y[indx,1], Y[indx,2], status[indx], istate[indx],
-                                  weights[indx], states, id[indx], se.fit, influence)
+                                  weights[indx], states, id[indx], se.fit, 
+                                  influence, p0)
         }
     }
 

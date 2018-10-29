@@ -1,7 +1,8 @@
 # Create the Aalen-Johansen estimate by joining a set of 
 #  survival curves.  Actually the cumulative hazard estimates are used.
 #
-survfit.matrix <- function(formula, p0, method=c("discrete", "matexp"), ...) {
+survfit.matrix <- function(formula, p0, method=c("discrete", "matexp"), 
+                           start.time, ...) {
     Call <- match.call()
     curves <- formula
     if (!is.matrix(curves)) 
@@ -43,16 +44,24 @@ survfit.matrix <- function(formula, p0, method=c("discrete", "matexp"), ...) {
     if (any(sapply(curves, function(x) inherits(x, "survfitms"))))
         stop("multi-state curves are not a valid input")
     type <- classes[[1]][1]  # 'survfit' or 'survfit.cox'
+
+    # the user can set start.time in the supplied curves, or with
+    #  a parameter.  The max of all these is the min possible start time.
+    if (missing(start.time)) start.time <- NULL
+    else if (!is.numeric(start.time) || length(start.time) > 1)
+        stop("start.time must be a single numeric value")
+
     temp <- sapply(curves, function(x) x$start.time)
     tlen <- sapply(temp, length)
     if (any(tlen >0)) {  # at least one curve with start.time
         if (any(tlen != 1) ||
             any(temp != temp[1]))
             stop("all curves must have a consistent start.time value")
-        start.time <- temp[1]
-    } else start.time <- NULL
+        if (is.null(start.time)) start.time <- temp[1]
+        else if (temp[1] > start.time) 
+            warning("curves have a larger start.time than the parameter, start.time parameter value was ignored")
+    } 
         
-
     if (missing(method)) {
         if (type=='survfit.cox') method <- "matexp"
         else method <- "discrete"
@@ -75,19 +84,34 @@ survfit.matrix <- function(formula, p0, method=c("discrete", "matexp"), ...) {
         jumps <- matrix(unlist(lapply(cumhaz, function(x) diff(c(0, x)))),
                         ncol= sum(nonzero))
         Tmat <- diag(nstate)
-        pstate  <- matrix(0., nrow= 1+length(utime), ncol=nstate)
-        pstate[1,] <- p0
-        for (i in 1:length(utime)) {
+        
+        # deal with the start time argument
+        if (is.null(start.time)) stime <- min(c(0, utime))
+        else stime <- start.time
+        toss <- (utime < stime) 
+        if (any(toss)) {
+            utime <- utime[!toss]
+            jumps <- jumps[!toss,]
+            } 
+
+        # A design decision long ago was to NOT include time 0 in the
+        #  returned survival curve.  A bad choice in retrospect.
+        # In the code below pstate[1,] will be less than p0, even
+        #  if utime[1]==stime.  The curve has an immediate drop.
+        pstate  <- matrix(0., nrow= length(utime), ncol=nstate)
+        ptemp <- p0
+        for (i in 1:nrow(jumps)) {
             Tmat[nonzero] <- jumps[i,]
             if (method == "matrix") {
                 temp <- pmin(1, rowSums(Tmat) - diag(Tmat)) # failsafe
                 diag(Tmat) <- 1 - temp  #rows sum to 1
-                pstate[i+1,] <- pstate[i,] %*% Tmat
+                ptemp <- ptemp %*% Tmat
             }
             else {
                 diag(Tmat) <- diag(Tmat) - rowSums(Tmat) #rows sum to 0
-                pstate[i+1,] <- as.vector(pstate[i,] %*% expm(Tmat))
+                ptemp <- as.vector(ptemp %*% expm(Tmat))
             }
+            pstate[i,] <- ptemp
         }
 
         # Fill in the n.risk and n.event matrices
@@ -105,7 +129,7 @@ survfit.matrix <- function(formula, p0, method=c("discrete", "matexp"), ...) {
             n.event[, to[i]] <- n.event[,to[i]] + c(0, z[[i]]$n.event)[index+1]
         }
         # All the curves should have the same n
-        list(n = z[[1]]$n, time = utime, pstate= pstate[-1,], 
+        list(n = z[[1]]$n, time = utime, pstate= pstate, 
              n.risk= n.risk, n.event=n.event)
     }
         

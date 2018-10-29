@@ -16,14 +16,24 @@ mydata <- tmerge(mydata, tests, id=idd, ondrug=tdc(date, onoff))
 all.equal(mydata$ondrug, c(NA, NA,1, 1,0,1, NA, 1,0, NA, 1))
 
 
-# Check out addition of a factor
+# Check out addition of a factor, character, and logical
 tests$ff <- factor(tests$onoff, 0:1, letters[4:5])
-mydata <- tmerge(mydata, tests, id=idd, fgrp= tdc(date, ff),
-                 options=list(tdcstart="new"))
+tests$fchar <- as.character(tests$ff)
+tests$logic <- as.logical(tests$onoff)
 
+mydata <- tmerge(mydata, tests, id=idd, fgrp= tdc(date, ff),
+                 chgrp = tdc(date, fchar), 
+                 options=list(tdcstart="new"))
 all.equal(mydata$fgrp, 
           factor(c(3,3,2,2,1,2,3,2,1,3,2), labels=c("d", "e", "new")))
+all.equal(mydata$chgrp, 
+          c("d", "e", "new")[c(3,3,2,2,1,2,3,2,1,3,2)])
 
+mydat2  <-  tmerge(mydata, tests, id=idd, 
+                 logic1 = tdc(date, logic), logic2= event(date, logic))
+all.equal(mydat2$logic1, c(FALSE, TRUE, NA)[as.numeric(mydat2$fgrp)])
+all.equal(mydat2$logic2, c(FALSE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE,
+                           FALSE, FALSE, TRUE, FALSE))
 
 # Multiple chained calls.  
 newcgd <- tmerge(data1=cgd0[, 1:13], data2=cgd0, id=id, tstop=futime)
@@ -49,3 +59,21 @@ counts <- sapply(temp, function(x)
     as.vector(table(factor(x>= cgd0$futime, c(FALSE, TRUE)))))
 
 all(tcount[1:7, c("within", "trailing")] == t(counts))
+
+
+#
+# Merging with a date as the time variable.  In this case tstart/tstop are required
+#  A default start of 0 has no meaning
+#
+base2 <- baseline
+base2$date1 <- as.Date("1953-03-10")   # everyone enrolled that day
+base2$date2 <- as.Date("1953-03-10") + base2$futime
+base2$futime <- NULL
+test2 <- tests
+test2$date <- as.Date("1953-03-10") + test2$date
+
+mydata2 <- tmerge(base2, base2, id=idd, death=event(date2, status), 
+                 tstart = date1, tstop= date2,
+                 options=list(tstartname="date1", tstopname="date2"))
+mydata2 <- tmerge(mydata2, test2, id=idd, ondrug=tdc(date, onoff))
+all.equal(mydata$ondrug, c(NA, NA,1, 1,0,1, NA, 1,0, NA, 1))

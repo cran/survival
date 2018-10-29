@@ -1,7 +1,6 @@
-
 agexact.fit <- function(x, y, strata, offset, init, control,
 			  weights, method, rownames,
-                         resid=TRUE, concordance=FALSE)
+                         resid=TRUE)
     {
     if (!is.matrix(x)) stop("Invalid formula for cox fitting function")
     if (!is.null(weights) && any(weights!=1))
@@ -121,11 +120,5 @@ agexact.fit <- function(x, y, strata, offset, init, control,
                      means = agfit$means,
                      method= 'coxph')
     }       
-
-    if (concordance) {
-        rval$concordance <-survConcordance.fit(Surv(start, stopp, event),
-                                             lp[sorted], strata, weights)
-    }
-    
     rval
 }

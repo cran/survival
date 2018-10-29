@@ -1,6 +1,6 @@
 # Automatically generated from the noweb directory
 agreg.fit <- function(x, y, strata, offset, init, control,
-                        weights, method, rownames, resid=TRUE, concordance=TRUE)
+                        weights, method, rownames, resid=TRUE)
     {
     n <- nrow(y)
     nvar <- ncol(x)
@@ -136,10 +136,6 @@ agreg.fit <- function(x, y, strata, offset, init, control,
                          method = method,
                          class = "coxph")
         }
-           
-        if (concordance) {
-            rval$concordance <- survConcordance.fit(y, lp, strata, weights)
-         } 
         rval
     }
     rval        

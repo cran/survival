@@ -29,7 +29,7 @@ coxpenal.fit(x, y, strata, offset, init, control, weights, method,
     rownames, pcols, pattr, assign)
 coxph.wtest(var, b, toler.chol = 1e-09)
 agexact.fit(x, y, strata, offset, init, control, weights, method,
-    rownames, resid=TRUE, concordance=FALSE) 
+    rownames, resid=TRUE) 
 survfitCI(X, Y, weights,  id, istate,
                        type=c('kaplan-meier', 'fleming-harrington', 'fh2'),
                        se.fit=TRUE,
@@ -37,7 +37,7 @@ survfitCI(X, Y, weights,  id, istate,
                        conf.type=c('log',  'log-log',  'plain', 'none',
                                    'logit', 'arcsin'),
                        conf.lower=c('usual', 'peto', 'modified'),
-                       influence=FALSE, start.time)
+                       influence=FALSE, start.time, p0)
 survfitKM(x, y, casewt=rep(1,length(x)),
                        type=c('kaplan-meier', 'fleming-harrington', 'fh2'),
                        error=c('greenwood', "tsiatis"), se.fit=TRUE,

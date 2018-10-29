@@ -1,5 +1,49 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 2.43-1}{
+  \itemize{
+    \item Minor change to the concordance method to better accomodate
+    another package; add one more test case as well.
+    \item Change coxph to use concordance() rather than survConcordance.  
+    Be aware that thhis changes the default variance estimate (to a
+    better estimator however).
+    \item Add a test to verify that tmerge works with Date objects as
+    the time scale
+    \item Add timefix=TRUE option to survdiff
+    \item Add code for an edge case to coxph: a data set with no events.
+}}
+
+\section{Changes in version 2.43.0}{
+  \itemize{
+    \item Finish test suite and vignette for concordance.
+    \item Run the tests for all packages that depend on survival.
+    Submit to CRAN
+}}
+
+\section{Changes in version 2.42-7}{
+  \itemize{
+    \item Add arguments to survfit: survfit.matrix did not have
+    start.time, and survfitCI did not have p0.  Now both of them have
+    both.
+
+    \item Fix two small errors triggered by the new checks for the use
+    of && or || with arguments whose length is >1.  Pointed out by
+    Martin Maechler.
+
+    \item Add the concordance function, an upgrade of the older
+    survConcordance function.  The latter will be depricated.  (The draft
+    vignette still needs some polish.)
+
+    \item Change survreg so that a returned "y" in the object is the
+    original response, not the transformed y used for computation. This
+    was prompted by the concordance.survreg method, but is also more
+    consistent. It forced a change in residuals.survreg and uncovered
+    a long standing bug for any fit that had specified y=FALSE. 
+
+    \item Fix bug pointed out by C McCort: tmerge with "tdc(time, x)"
+    would fail if x is of mode character.  Add this case to the test suite.
+}}
+
 \section{Changes in version 2.42-6}{
   \itemize{
     \item Remove the cbind.Surv and rbind.Surv methods. 

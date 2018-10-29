@@ -26,7 +26,6 @@ model.matrix.coxph <- function(object, data=NULL,
     
     attr(Terms, "intercept") <- 1
     adrop <- 0  #levels of "assign" to be dropped; 0= intercept
-    dropterms <- NULL
     stemp <- untangle.specials(Terms, 'strata', 1)
     if (length(stemp$vars) > 0) {  #if there is a strata statement
         hasinteractions <- FALSE
@@ -37,7 +36,7 @@ model.matrix.coxph <- function(object, data=NULL,
             if (any(attr(Terms, 'order')[attr(Terms, "factors")[i,] >0] >1))
                 hasinteractions <- TRUE  
             }
-        if (!hasinteractions) dropterms <- stemp$terms 
+        if (!hasinteractions) dropterms <- c(dropterms, stemp$terms) 
         else adrop <- c(0, match(stemp$var, colnames(attr(Terms, 'factors'))))
     }
 
