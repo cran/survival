@@ -1,11 +1,35 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 2.43-2}{
+  \itemize{
+    \item In concordance, allow y to be an orderable factor (either
+    is.ordered=TRUE or it has only 2 levels), instead of giving an error
+    message.  Repair some missing references in the vignette.
+
+    \item Fix an error check in survSplit, when the response has missing
+    values.  The routine would fail with an error message when there was
+    no error. (Pointed out by  Daniel Wollschläger.)
+
+    \item Fix serious error in the finegray function when called with
+    (start, stop) data, e.g., with time-dependent covariates: the
+    censoring distribution G was incorrect which leads to incorrect weights,
+    including NA.  Pointed out by Deqiang Zheng along with an example.
+    (The use of time-dependent covariates in a FG model has serious -- I
+    think fatal -- statistical issues, however.  The FG approach adds
+    extra 'imputed' follow-up to each subject; but what is the future
+    value of a time-dependent covariate over this new interval?)
+
+    \item Update the finegray function to allow case weights.  If the
+    original data has sampling weights, for instance, this propogates
+    them properly to the created fgwt variable. 
+}}
+
 \section{Changes in version 2.43-1}{
   \itemize{
     \item Minor change to the concordance method to better accomodate
     another package; add one more test case as well.
     \item Change coxph to use concordance() rather than survConcordance.  
-    Be aware that thhis changes the default variance estimate (to a
+    Be aware that this changes the default variance estimate (to a
     better estimator however).
     \item Add a test to verify that tmerge works with Date objects as
     the time scale

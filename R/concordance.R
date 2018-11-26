@@ -29,8 +29,11 @@ concordance.formula <- function(object, data,
     if (inherits(Y, "Surv")) {
         if (timefix) Y <- aeqSurv(Y)
     } else {
-        if (is.numeric(Y) && is.vector(Y))  Y <- Surv(Y)
-        else stop("left hand side of the formula  must be a numeric vector or a survival object")
+        if (is.factor(Y) && (is.ordered(Y) || length(levels(Y))==2))
+            Y <- Surv(as.numeric(Y))
+        else if (is.numeric(Y) && is.vector(Y))  Y <- Surv(Y)
+        else stop("left hand side of the formula must be a numeric vector,
+ survival object, or an orderable factor")
         if (timefix) Y <- aeqSurv(Y)
     }
     n <- nrow(Y)
@@ -107,13 +110,22 @@ print.concordance <- function(x, digits= max(1L, getOption("digits") - 3L),
 
 concordance.fit <- function(y, x, strata, weights, ymin=NULL, ymax=NULL, 
                             timewt=c("n", "S", "S/G", "n/G", "n/G2", "I"),
-                            cluster, influence=0, ranks=FALSE, reverse=FALSE) {
+                            cluster, influence=0, ranks=FALSE, reverse=FALSE,
+                            timefix=TRUE) {
     # The coxph program may occassionally fail, and this will kill the C
-    #  routine below.  So check for it.
+    #  routine further below.  So check for it.
     if (any(is.na(x)) || any(is.na(y))) return(NULL)
     timewt <- match.arg(timewt)
 
-    # these should only occur if something outside survival calls this routine
+    # these should only occur if something other package calls this routine
+    if (!is.Surv(y)) {
+        if (is.factor(Y) && (is.ordered(Y) || length(levels(Y))==2))
+            Y <- Surv(as.numeric(Y))
+        else if (is.numeric(Y) && is.vector(Y))  Y <- Surv(Y)
+        else stop("left hand side of the formula must be a numeric vector,
+ survival object, or an orderable factor")
+        if (timefix) Y <- aeqSurv(Y)
+    }
     n <- length(y)
     if (length(x) != n) stop("x and y are not the same length")
     if (missing(strata) || length(strata)==0) strata <- rep(1L, n)

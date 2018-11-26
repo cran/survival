@@ -180,10 +180,9 @@ coxph <- function(formula, data, weights, subset, na.action,
     
     contrast.arg <- NULL  #due to shared code with model.matrix.coxph
     attr(Terms, "intercept") <- 1
-    adrop <- 0  #levels of "assign" to be dropped; 0= intercept
     stemp <- untangle.specials(Terms, 'strata', 1)
+    hasinteractions <- FALSE
     if (length(stemp$vars) > 0) {  #if there is a strata statement
-        hasinteractions <- FALSE
         for (i in stemp$vars) {  #multiple strata terms are allowed
             # The factors attr has one row for each variable in the frame, one
             #   col for each term in the model.  Pick rows for each strata
@@ -192,22 +191,17 @@ coxph <- function(formula, data, weights, subset, na.action,
                 hasinteractions <- TRUE  
             }
         if (!hasinteractions) dropterms <- c(dropterms, stemp$terms) 
-        else adrop <- c(0, match(stemp$var, colnames(attr(Terms, 'factors'))))
     }
 
     if (length(dropterms)) {
-        temppred <- attr(terms, "predvars")
         Terms2 <- Terms[ -dropterms]
-        if (!is.null(temppred)) {
-            # subscripting a Terms object currently drops predvars, in error
-            attr(Terms2, "predvars") <- temppred[-(1+dropterms)] # "Call" object
-        }
         X <- model.matrix(Terms2, mf, constrasts=contrast.arg)
         # we want to number the terms wrt the original model matrix
-        # Do not forget the intercept, which will be a zero
-        renumber <- match(colnames(attr(Terms2, "factors")), 
-                          colnames(attr(Terms,  "factors")))
-        attr(X, "assign") <- c(0, renumber)[1+attr(X, "assign")]
+        temp <- attr(X, "assign")
+        shift <- sort(dropterms)
+        temp <- temp + 1*(shift[1] <= temp)
+        if (length(shift)==2) temp + 1*(shift[2] <= temp)
+        attr(X, "assign") <- temp 
     }
     else X <- model.matrix(Terms, mf, contrasts=contrast.arg)
 
@@ -217,11 +211,11 @@ coxph <- function(formula, data, weights, subset, na.action,
 
     # drop the intercept after the fact, and also drop strata if necessary
     Xatt <- attributes(X) 
+    if (hasinteractions) adrop <- c(0, untangle.specials(Terms, "strata")$terms)
+    else adrop <- 0
     xdrop <- Xatt$assign %in% adrop  #columns to drop (always the intercept)
     X <- X[, !xdrop, drop=FALSE]
     attr(X, "assign") <- Xatt$assign[!xdrop]
-    #if (any(adrop>0)) attr(X, "contrasts") <- Xatt$contrasts[-adrop]
-    #else attr(X, "contrasts") <- Xatt$contrasts
     attr(X, "contrasts") <- Xatt$contrasts
     offset <- model.offset(mf)
     if (is.null(offset) | all(offset==0)) offset <- rep(0., nrow(mf))

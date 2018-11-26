@@ -104,12 +104,13 @@ finegray <- function(formula, data, subset, na.action= na.pass,
         else zero <- 2*temp -1  # a value less than any observed y
         Y <- cbind(zero, Y)  # add a start column
     }
+
     utime <- sort(unique(c(Y[,1:2])))  # all the unique times
     newtime <- matrix(findInterval(Y[,1:2], utime), ncol=2) 
     status <- Y[,3]
 
     newtime[status !=0, 2] <- newtime[status !=0,2] - .2
-    Gsurv <- survfit(Surv(newtime[,1], newtime[,2], status==0) ~ istrat, 
+    Gsurv <- survfit(Surv(newtime[,1], newtime[,2], last & status==0) ~ istrat, 
                      se.fit=FALSE)
     if (delay) 
         Hsurv <- survfit(Surv(-newtime[,2], -newtime[,1], first) ~ istrat, 

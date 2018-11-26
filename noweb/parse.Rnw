@@ -1,0 +1,354 @@
+\subsection{Parsing the covariates list}
+For a multi-state Cox model we allow a list of formulas to be given by
+the covariates option.
+These formulas are not really formulas, instead we abuse the R formula
+notation to get what we want.
+
+The input list needs to be taken apart into its component pieces first,
+before model.frame is called, in order to have a full list of variable
+names that need to be in the model frame.
+After the model frame is constructed we have the necessary data to
+check that state names given in the formulas actually exist in the 
+data and that initial value strings are the right length.
+We can then construct the \code{cmap} matrix.
+After this first step the left hand side ends up as a complicated
+structure:
+\begin{itemize}
+  \item a list with one element per formula in the covariates list
+  \item each element is a list, with one element per term: multiple
+    a:b terms are allowed separated by + signs
+  \item each of these level 3 elements is a list with two elements
+    ``left'' and ``right'', for the two sides of the : operator
+  \item left and right will be one or two element lists containing the
+    stateid and/or the values.  Any word that doesn't match one of the
+    column names of statedata ends up as a set of values.
+\end{itemize}
+
+<<parsecovar>>=
+parsecovar1 <- function(flist, statedatanames) {
+    if (any(sapply(flist, function(x) !inherits(x, "formula"))))
+        stop("flist must be a list of formulas")
+    if (any(sapply(flist, length) != 3))
+        stop("all formulas must have a left and right side")
+    
+    # split the formulas into a right hand and left hand side
+    lhs <- lapply(flist, function(x) x[-3])
+    rhs <- lapply(flist, function(x) x[-2])
+    
+    <<parse-rightside>>
+    <<parse-leftside>>
+    list(rhs = rh2, lhs= lterm)
+}
+@ 
+
+First look at the right hand side of each formula.  There are 4
+possble options of common, fixed, clear, and init.  
+The first 3 appear just as words, the last should have a set of
+values attached which become the \code{ival} vector.
+The end result is a list for each formula containing the actual right
+hand side formula along with the options.
+
+<<parse-rightside>>=
+# take apart the right hand side of each formula
+# the function below is applied to each formula in turn.
+rh2 <- lapply(rhs, function(form) {
+    parts <- strsplit(deparse(form, width.cutoff=300, control=NULL), 
+                      '/', fixed=TRUE)[[1]]
+    if (length(parts) ==1)  { # nothing after a /
+        ival <- NULL; common <- FALSE; fixed <- FALSE; clear <- FALSE;
+    }
+    else{
+        # treat the right hand side as though it were a formula
+        optterms <- terms(formula(paste("~", parts[2])))
+        ff <- rownames(attr(optterms, "factors"))
+        index <- match(ff, c("common", "fixed", "init", "clear"))
+        if (any(is.na(index)))
+            stop("option not recognized in a covariates formula: ",
+                 paste(ff[is.na(indx)], collapse=", "))
+        common <- any(index==1)
+        fixed  <- any(index==2)
+        clear  <- any(index==3)
+        if (any(index==3)) {
+            optatt <- attributes(optterms)
+            j <- optatt$variables[1 + which(index==3)]
+            j[[1]] <- as.name("list")
+            ival <- unlist(eval(j, parent.frame()))
+        } else ival <- NULL
+    }
+
+    # and now the terms before the slash, which is the actual formula
+    #  a formula of -1 +1 is recorded as intercept=TRUE, pasting a -1 on
+    #  allows us to tell if a 1 was included.
+    form <- formula(paste("~ -1 +", parts[1]))
+    list(common=common, fixed=fixed, clear=clear, ival=ival, 
+       formula = form) 
+})
+@ 
+ 
+The left hand side of each formula specifies the set of transitions to which
+the covariates apply, and is more complex.
+Say instance that we had 7 states and the following statedata
+data set.
+\begin{center}
+  \begin{tabular}{cccc}
+    state & A&  N& death \hline \\
+    A-N- &  0&  0 & 0\\
+    A+N- &  1&  0 & 0\\
+    A-N1 &  0&  1 & 0\\
+    A+N1 &  1&  1 & 0\\
+    A-N2 &  0&  2 & 0\\
+    A+N2 &  1&  2 & 0\\
+    Death&  NA & NA& 1 
+\end{tabular}
+\end{center}
+
+  Here are some valid transitions
+\begin{enumerate}
+   \item 1:state('A+N+'),   any transition to the A+N+ state
+   \item state('A-N-'):death(0), a transition from A-N-, but not to death
+   \item A(0):A(1), any of the 4 changes that start with A=0 and end with A=1
+   \item N(0):N(1,2) + N(1):N(2), an upward change of N
+   \item 'A-N-':c('A-N+','A+N-'); if there is no variable then the 
+     overall state is assumed
+\end{enumerate}
+
+<<parse-leftside>>=
+# deal with the left hand side of the formula
+# the next routine cuts at '+' signs
+pcut <- function(form) {
+    if (length(form)==3) {
+        if (form[[1]] == '+') 
+            c(pcut(form[[2]]), pcut(form[[3]]))
+        else if (form[[1]] == '~') pcut(form[[2]])
+        else list(form)
+    }
+    else list(form)
+}
+lcut <- lapply(lhs, function(x) pcut(x[[2]]))
+@ 
+We now have one list per formula, each list is either a single term
+or a list of terms (case 4 above).
+To make evaluation easier, create functions that append their
+name to a list of values.
+I have not yet found a way to do this without eval(parse()), which
+always seems clumsy.
+A use for the labels without an argument will arise later, hence the
+double environments.
+
+Repeating the list above, this is what we want to end with
+\begin{itemize}
+  \item a list with one element per formula in the covariates list
+  \item each element is a list, with one element per term: multiple
+    a:b terms are allowed separated by + signs
+  \item each of these level 3 elements is a list with two elements
+    ``left'' and ``right'', for the two sides of the : operator
+  \item left and right will be one of 3 forms: a simple vector,
+    a one element list containing the stateid, or a two element list
+    containing the stateid and the values.  
+    Any word that doesn't match one of the
+    column names of statedata ends up as a vector.
+\end{itemize}
+
+<<parse-leftside>>=
+env1 <- new.env(parent= parent.frame(2))
+env2 <- new.env(parent= env1)
+if (missing(statedatanames)) {
+    assign("state", function(...) list(stateid= "state", 
+                                       values=c(...)), env1)
+    assign("state", list(stateid="state"))
+}
+else {
+    for (i in statedatanames) {
+        assign(i, eval(list(stateid=i)), env2)
+        tfun <- eval(parse(text=paste0("function(...) list(stateid='"
+                                       , i, "', values=c(...)")))
+        assign(i, tfun, env1)
+    }
+}
+lterm <- lapply(lcut, function(x) {
+    lapply(x, function(z) {
+        if (length(z)==1) {
+            temp <- eval(z, envir= env2)
+            if (is.list(temp) && names(temp)[[1]] =="stateid") temp
+            else temp
+        }
+        else if (length(z) ==3 && z[[1]]==':')
+            list(left=eval(z[[2]], envir=env2), right=eval(z[[3]], envir=env2))
+        else stop("invalid term: ", deparse(z))
+    })
+})
+@ 
+
+
+The second call, which builds tmap, the terms map.
+Arguments are the results from the first pass, the statedata data frame,
+the default formula, the terms structure from the full formula,
+and the transitions count.
+
+<<parsecovar>>=
+parsecovar2 <- function(covar1, statedata, dformula, Terms, transitions,states) {
+    if (is.null(statedata))
+        statedata <- data.frame(state = states)
+    else {
+        if (is.null(statedata$state)) 
+            stop("the statedata data set must contain a variable 'state'")
+        indx1 <- match(states, statedata$state, nomatch=0)
+        if (any(indx1==0))
+            stop("statedata does not contain all the possible states: ", 
+                 states[indx1==0])
+        statedata <- statedata[indx1,]   # put it in order
+    }
+    
+    # Statedata might have rows for states that are not in the data set,
+    #  for instance if the coxph call had used a subset argument.  Any of
+    #  those were eliminated above.
+    # Likewise, the covariates list might have rules for transitions that are
+    #  not present.  Don't worry about it at this stage.
+    allterm <- attr(Terms, 'term.labels')
+    nterm <- length(allterm)
+
+    <<parse-tmap-setup>>
+    
+    # if there is no covariates statement, the middle part of the work is skipped
+    if (!is.null(covar1)) {
+        <<parse-tmap>>
+    }
+    <<parse-finish>>
+}
+@ 
+
+Create a map for every transition, even the ones that are not used;
+this simply makes the indexing easier.  At the end we will dispose of
+unneeded ones.
+The very first term is the intercept or strata.
+<<parse-tmap-setup>>=
+# create the map and fill it in with the default formula
+nstate <- length(states)
+tmap <- array(0L, dim=c(nterm+1, nstate, nstate))
+dterms <- match(attr(terms.formula(dformula), "term.labels"), allterm)
+dterms <- c(1L, 1L + dterms)  # add the intercept
+k <- seq(along=dterms)
+for (i in 1:nstate) {
+    for (j in 1:nstate) {
+        tmap[dterms,i,j] <- k
+        k <- k + length(k)
+    }
+}
+ncoef <- max(tmap)  # number of coefs used so far
+inits <- NULL
+@ 
+
+Now go through the formulas one by one.  The left hand side tells us which
+state:state transitions to fill in,  the right hand side tells the variables.
+The code block below goes through lhs element(s) for a single formula.
+That element is itself a list which has an entry for each term, and that
+entry can have left and right portions.
+<<parse-lmatch>>=
+state1 <- state2 <- NULL
+for (x in lhs) {
+    # x is one term
+    if (is.null(x$left)) stop("term found without a :", x)
+    
+    # left of the colon
+    if (!is.list(x$left) && length(x$left) ==1 & x$left==1) 
+        temp1 <- 1:nrow(statedata)
+    else if (is.list(x$left) && names(x$left)[1] == "stateid"){
+        if (is.null(x$left$value)) 
+            stop("state variable with no list of values: ",x$left$stateid)
+        else temp1 <- which(statedata[[x$left$stateid]] %in% x$left$value)
+    }
+    else temp1 <- which(statedata$state %in% x$left)
+    
+    # right of colon
+    if (!is.list(x$right) && length(x$right) ==1 && x$right ==1) 
+        temp2 <- 1:nrow(statedata)
+    else if (is.list(x$right) && names(x$right)[1] == "stateid") {
+        if (is.null(x$right$value))
+            stop("state variable with no list of values: ",x$right$stateid)
+        else temp2 <- which(statedata[[x$right$stateid]] %in% x$right$value)
+    }
+    else temp2 <- which(statedata$state %in% x$right)
+
+    state1 <- c(state1, rep(temp1, length(temp2)))
+    state2 <- c(state2, rep(temp2, each=length(temp1)))
+}           
+@ 
+
+The inits need to wait a little longer, until the X matrix is in hand.
+<<parse-tmap>>=
+for (i in 1:length(covar1$rhs)) {  
+    rhs <- covar1$rhs[[i]]
+    lhs <- covar1$lhs[[i]]  # the two are the same length
+    rterm <- terms.formula(rhs$formula)
+    rindex <- 1L + match(attr(rterm, "term.labels"), allterm, nomatch=0)
+    if (any(rindex== 1L)) stop("dterm mismatch bug 2")
+    if (attr(rterm, "intercept")==1) rindex <- c(1L, rindex)
+    
+    <<parse-lmatch>>
+    if (rhs$clear) tmap[-1, state1, state2] <- 0
+    if (length(rhs$ival)) 
+        inits <- c(inits, list(term=rindex, state1=state1, 
+                               state2= state2, init= rhs$ival))
+    if (rhs$common) j <- ncoef + seq_len(length(rindex))
+    else j <- ncoef + seq_len(length(rindex)*length(state1))
+
+    tmap[rindex, state1, state2] <- j
+    ncoef <- max(j)
+}    
+@ 
+
+
+Fold the 3-dimensional tmap into a matrix with terms as rows
+and one column for each transition that actually occured.
+ 
+<<parse-finish>>=
+t2 <- transitions[,-1, drop=FALSE]   # transitions to 'censor' don't count
+indx1 <- match(rownames(t2), states)
+indx2 <- match(colnames(t2), states)
+tmap2 <- matrix(0L, nrow= 1+nterm, ncol= sum(t2>0))
+
+trow <- row(t2)[t2>0]
+tcol <- col(t2)[t2>0]
+for (i in 1:length(trow)) tmap2[,i] <- tmap[,indx1[trow[i]], indx2[tcol[i]]]
+
+dimnames(tmap2) <- list(c("Intercept", allterm),
+                            paste(indx1[trow], indx2[tcol], sep=':')) 
+list(tmap = tmap2, inits=inits, mapid= cbind(indx1[trow], indx2[tcol]))
+@
+
+
+Last is a helper routine that converts tmap, which has one row per term,
+into cmap, which has one row per coefficient.  Both have one column per 
+transition.
+It uses the assign attribute of the X matrix along with the column names.
+Be careful to make 0 stay as a 0.
+
+<<parsecovar>>=
+parsecovar3 <- function(tmap, Xcol, Xassign) {
+    # sometime X will have an intercept, sometimes not, tmap and cmap
+    #  always do
+    hasintercept <- (Xassign[1] ==0)
+
+    cmap <- matrix(0L, length(Xcol) + !hasintercept, ncol(tmap))
+    cmap[1,] <- match(tmap[1,], sort(c(0, unique(tmap[1,])))) -1L
+
+    xcount <- table(factor(Xassign, levels=1:max(Xassign)))
+    mult <- 1+ max(xcount)  #used to keep the coefs in the same oder
+
+    j <- 1
+    for (i in 2:nrow(tmap)) {
+        k <- seq_len(xcount[i-1])
+        cmap[j+k,] <- ifelse(tmap[i,]==0, 0, tmap[i,]*mult + rep(k, ncol(tmap)))
+        j <- j + max(k)
+    }
+
+    # renumber coefs as 1, 2, 3, ...
+    cmap[-1,] <- match(cmap[-1,], sort(unique(c(0L, cmap[-1,])))) -1L
+    
+    colnames(cmap) <- colnames(tmap)
+    if (hasintercept) rownames(cmap) <- Xcol
+    else rownames(cmap) <- c("(Intercept)", Xcol)
+
+    cmap
+}
+@ 
