@@ -351,9 +351,10 @@ survfit.coxph <-
             }
         result <- lapply(result, kfun, keep)
         }
+    result$logse = TRUE   # this will migrate further in
 
     if (se.fit && conf.type != "none") {
-        ci <- survfit_confint(result$surv, result$std.err, logse=TRUE,
+        ci <- survfit_confint(result$surv, result$std.err, logse=result$logse,
                               conf.type, conf.int)
         result <- c(result, list(lower=ci$lower, upper=ci$upper, 
                                  conf.type=conf.type, conf.int=conf.int))

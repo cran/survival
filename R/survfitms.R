@@ -18,6 +18,7 @@ summary.survfit <- function(object, times, censored=FALSE,
     fit <- object  #make a local copy
     if (!inherits(fit, 'survfit'))
             stop("summary.survfit can only be used for survfit objects")
+    if (is.null(fit$logse)) fit$logse <- TRUE   #older style
 
     # The print.rmean option is depreciated, it is still listened
     #   to in print.survfit, but ignored here
@@ -61,7 +62,7 @@ summary.survfit <- function(object, times, censored=FALSE,
         if (!censored) {
             index <- (rowSums(as.matrix(fit$n.event)) >0)
             for (i in c("time","n.risk", "n.event", "surv", "pstate", "std.err", 
-                                "upper", "lower", "cumhaz")) {
+                                "upper", "lower", "cumhaz", "std.chaz")) {
                 if (!is.null(fit[[i]])) {  # not all components in all objects
                     temp <- fit[[i]]
                     if (!is.array(temp)) temp <- temp[index]  #simple vector
@@ -100,13 +101,6 @@ summary.survfit <- function(object, times, censored=FALSE,
             }
             else NULL
         }
-
-        # The left.open argument was added to findInterval in R 3.3, but
-        #  our local servers are version 3.2.x.  Work around it.
-        find2 <- function(x, vec, left.open=FALSE, ...) {
-            if (!left.open) findInterval(x, vec, ...)
-            else length(vec) - findInterval(-x, rev(-vec), ...)
-        }
         findrow <- function(fit, times, extend, init=1) {
             # First, toss any printing times that are outside our range
             if (is.null(fit$start.time)) mintime <- min(fit$time, 0)
@@ -119,8 +113,8 @@ summary.survfit <- function(object, times, censored=FALSE,
             }
             ntime <- length(fit$time)
             
-            index1 <- find2(ptimes, fit$time) 
-            index2 <- 1 + find2(ptimes, fit$time, left.open=TRUE)
+            index1 <- findInterval(ptimes, fit$time) 
+            index2 <- 1 + findInterval(ptimes, fit$time, left.open=TRUE)
             # The pmax() above encodes the assumption that n.risk for any
             #  times before the first observation = n.risk at the first obs
             fit$time <- ptimes
@@ -164,7 +158,8 @@ summary.survfit <- function(object, times, censored=FALSE,
         #  and remake the strata
         unpacksurv <- function(fit, ltemp) {
             keep <- c("time", "surv", "pstate", "upper", "lower", "std.err",
-                      "cumhaz", "n.risk", "n.event", "n.censor", "n.enter")
+                      "cumhaz", "n.risk", "n.event", "n.censor", "n.enter",
+                      "std.chaz")
             for (i in keep) 
                 if (!is.null(fit[[i]])) fit[[i]] <- unlistsurv(ltemp, i)
             fit$strata[] <- sapply(ltemp, function(x) length(x$time))
@@ -185,8 +180,8 @@ summary.survfit <- function(object, times, censored=FALSE,
     if (length(rmean.endtime)>0  && !any(is.na(rmean.endtime[1]))) 
             fit$rmean.endtime <- rmean.endtime
 
-    # An ordinary survfit object contains std(cum hazard), change scales
-    if (!is.null(fit$std.err)) fit$std.err <- fit$std.err * fit$surv 
+    # A survfit object may contain std(log S) or std(S), summary always std(S)
+    if (!is.null(fit$std.err) && fit$logse) fit$std.err <- fit$std.err * fit$surv 
  
     # Expand the strata
     if (!is.null(fit$strata)) 
@@ -202,6 +197,7 @@ summary.survfitms <- function(object, times, censored=FALSE,
     fit <- object
     if (!inherits(fit, 'survfitms'))
             stop("summary.survfitms can only be used for survfitms objects")
+    if (is.null(fit$logse)) fit$logse <- FALSE  # older style
 
     # The print.rmean option is depreciated, it is still listened
     #   to in print.survfit, but ignored here
@@ -249,7 +245,7 @@ summary.survfitms <- function(object, times, censored=FALSE,
         if (!censored) {
             index <- (rowSums(as.matrix(fit$n.event)) >0)
             for (i in c("time","n.risk", "n.event", "surv", "pstate", "std.err", 
-                                "upper", "lower", "cumhaz")) {
+                                "upper", "lower", "cumhaz", "std.chaz")) {
                 if (!is.null(fit[[i]])) {  # not all components in all objects
                     temp <- fit[[i]]
                     if (!is.array(temp)) temp <- temp[index]  #simple vector
@@ -288,13 +284,6 @@ summary.survfitms <- function(object, times, censored=FALSE,
             }
             else NULL
         }
-
-        # The left.open argument was added to findInterval in R 3.3, but
-        #  our local servers are version 3.2.x.  Work around it.
-        find2 <- function(x, vec, left.open=FALSE, ...) {
-            if (!left.open) findInterval(x, vec, ...)
-            else length(vec) - findInterval(-x, rev(-vec), ...)
-        }
         findrow <- function(fit, times, extend, init=1) {
             # First, toss any printing times that are outside our range
             if (is.null(fit$start.time)) mintime <- min(fit$time, 0)
@@ -307,8 +296,8 @@ summary.survfitms <- function(object, times, censored=FALSE,
             }
             ntime <- length(fit$time)
             
-            index1 <- find2(ptimes, fit$time) 
-            index2 <- 1 + find2(ptimes, fit$time, left.open=TRUE)
+            index1 <- findInterval(ptimes, fit$time) 
+            index2 <- 1 + findInterval(ptimes, fit$time, left.open=TRUE)
             # The pmax() above encodes the assumption that n.risk for any
             #  times before the first observation = n.risk at the first obs
             fit$time <- ptimes
@@ -352,7 +341,8 @@ summary.survfitms <- function(object, times, censored=FALSE,
         #  and remake the strata
         unpacksurv <- function(fit, ltemp) {
             keep <- c("time", "surv", "pstate", "upper", "lower", "std.err",
-                      "cumhaz", "n.risk", "n.event", "n.censor", "n.enter")
+                      "cumhaz", "n.risk", "n.event", "n.censor", "n.enter",
+                      "std.chaz")
             for (i in keep) 
                 if (!is.null(fit[[i]])) fit[[i]] <- unlistsurv(ltemp, i)
             fit$strata[] <- sapply(ltemp, function(x) length(x$time))
@@ -373,8 +363,12 @@ summary.survfitms <- function(object, times, censored=FALSE,
     if (length(rmean.endtime)>0  && !any(is.na(rmean.endtime))) 
             fit$rmean.endtime <- rmean.endtime
 
-     if (!is.null(fit$strata)) 
+    if (!is.null(fit$strata)) 
         fit$strata <- factor(rep(names(fit$strata), fit$strata))
+
+    # A survfit object may contain std(log S) or std(S), summary always std(S)
+    if (!is.null(fit$std.err) && fit$logse) fit$std.err <- fit$std.err * fit$surv 
+
     class(fit) <- "summary.survfitms"
     fit
 }
@@ -560,8 +554,8 @@ survmean2 <- function(x, scale, rmean) {
  
     # all the elements that can have "nstate" elements or columns
     #  The n.event variable can have fewer
-    temp <- c("n.risk", "n.event", "n.censor", "pstate", 
-              "cumhaz", "std.err", "lower", "upper")
+    temp <- c("n.risk", "n.event", "n.censor", "pstate",
+              "cumhaz", "std.err", "lower", "upper", "std.chaz")
     sfun <- function(z) {
         if (is.null(j)) {
             if (is.array(z)) {
@@ -585,10 +579,19 @@ survmean2 <- function(x, scale, rmean) {
     x$transitions <- NULL  # this is incorrect after subscripting
 
     if (is.matrix(x$p0)) {
-        if (is.null(j)) x$p0<- x$p0[i,]
-        else x$p0 <- x$p0[i,j]  
+        if (is.null(j)) {
+            x$p0<- x$p0[i,]
+            if (!is.null(x$sp0)) x$sp0 <- x$sp0[i,]
+        }
+        else {
+            x$p0 <- x$p0[i,j]  
+            if (!is.null(x$sp0)) x$sp0 <- x$sp0[i,j]
+        }
+   }
+    else if (!is.null(j)) {
+        x$p0 <- x$p0[j]
+        if (!is.null(x$sp0)) x$sp0 <- x$sp0[j]
     }
-    else if (!is.null(j)) x$p0 <- x$p0[j]
     if (!is.null(x$influence)) {
         if (length(i) >1) x$influence <- x$influence[i]
         else if (is.list(x$influence)) x$influence <- x$influence[[i]]

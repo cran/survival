@@ -219,7 +219,8 @@ coxph <- function(formula, data, weights, subset, na.action,
     attr(X, "contrasts") <- Xatt$contrasts
     offset <- model.offset(mf)
     if (is.null(offset) | all(offset==0)) offset <- rep(0., nrow(mf))
-    else if (any(!is.finite(offset))) stop("offsets must be finite")
+    else if (any(!is.finite(offset) | !is.finite(exp(offset)))) 
+        stop("offsets must lead to a finite risk score")
         
     weights <- model.weights(mf)
     if (!is.null(weights) && any(!is.finite(weights)))
@@ -230,8 +231,10 @@ coxph <- function(formula, data, weights, subset, na.action,
     if (missing(init)) init <- NULL
     else {
         if (length(init) != ncol(X)) stop("wrong length for init argument")
-        temp <- X %*% init - sum(colMeans(X) * init)
-        if (any(temp < .Machine$double.min.exp | temp > .Machine$double.max.exp))
+        temp <- X %*% init - sum(colMeans(X) * init) + offset
+        # it's okay to have a few underflows, but if all of them are too
+        #   small we get all zeros
+        if (any(exp(temp) > .Machine$double.xmax) || all(exp(temp)==0))
             stop("initial values lead to overflow or underflow of the exp function")
     }
     if (sum(Y[, ncol(Y)]) == 0) {
@@ -240,7 +243,7 @@ coxph <- function(formula, data, weights, subset, na.action,
         ctemp <- rep (NA, ncoef)
         names(ctemp) <- colnames(X)
         concordance= c(concordant=0, discordant=0, tied.x=0, tied.y=0, tied.xy=0,
-                       concordance=NA, std=NA)
+                       concordance=NA, std=NA, timefix=FALSE)
         rval <- list(coefficients= ctemp,
                      var = matrix(0.0, ncoef, ncoef),
                      loglik=c(0,0),
@@ -347,10 +350,11 @@ coxph <- function(formula, data, weights, subset, na.action,
         # The returned value is a subset of the full result, partly because it
         #  is all we need, but more for backward compatability with survConcordance.fit
         if (length(cluster))
-            temp <- concordance.fit(Y, fit$linear.predictors, strats, weights,
-                                              cluster=cluster, reverse=TRUE)
-        else temp <- concordance.fit(Y, fit$linear.predictors, strats, weights,
-                                      reverse=TRUE)
+            temp <- concordancefit(Y, fit$linear.predictors, strats, weights,
+                                              cluster=cluster, reverse=TRUE,
+                                    timefix= FALSE)
+        else temp <- concordancefit(Y, fit$linear.predictors, strats, weights,
+                                      reverse=TRUE, timefix= FALSE)
         if (is.matrix(temp$count))
              fit$concordance <- c(colSums(temp$count), concordance=temp$concordance,
                                   std=sqrt(temp$var))

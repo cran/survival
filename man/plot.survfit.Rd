@@ -6,8 +6,8 @@
 \usage{
 \method{plot}{survfit}(x, conf.int=, mark.time=FALSE, 
  pch=3, col=1, lty=1, lwd=1, cex=1, log=FALSE, xscale=1, yscale=1,  
- firstx=0, firsty=1, xmax, ymin=0, fun, 
- xlab="", ylab="", xaxs="S",  conf.times, conf.cap=.005,
+ xmax, ymin=0, fun, 
+ xlab="", ylab="", xaxs="r",  conf.times, conf.cap=.005,
  conf.offset=.012, mark, \dots)
 }
 \arguments{
@@ -66,15 +66,6 @@
     a numeric value used like \code{yscale} for labels on the x axis.  
     A value of 365.25 will give labels in years instead of the original days.  
   }
-  \item{firstx, firsty}{
-    the starting point for the survival curves.  If either of these is set to 
-    \code{NA} the plot will start at the first time point of the curve. 
-    By default, the plot program obeys tradition by having the plot start at
-    (0,0).
-
-    If \code{start.time} argument is used in \code{survfit}, \code{firstx}
-    is set to that value.
-  }
   \item{xmax}{
     the maximum horizontal plot coordinate.  This can be used to shrink
     the range of a plot.  It shortens the curve before plotting it, so
@@ -111,11 +102,13 @@
   }
   \item{xaxs}{
     either \code{"S"} for a survival curve or a standard x axis style as
-    listed in \code{par}.
-    Survival curves are usually displayed with the curve touching the y-axis,
-    but not touching the bounding box of the plot on the other 3 sides.
+    listed in \code{par}; "r" (regular) is the R default.
+    Survival curves have historically been displayed with the curve
+    touching the y-axis,
+    but not touching the bounding box of the plot on the other 3 sides,
     Type \code{"S"} accomplishes this by manipulating the plot range and
     then using the \code{"i"} style internally.
+    The "S" style is becoming increasingly less common, however.
   }
   \item{conf.times}{optional vector of times at which to place a
     confidence bar on the curve(s).  If present, these will be used

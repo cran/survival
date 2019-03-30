@@ -1,15 +1,17 @@
 \name{transplant}
 \alias{transplant}
+\alias{transplant2}
 \docType{data}
 \title{Liver transplant waiting list}
 \description{
   Subjects on a liver transplant waiting list from 1990-1999, and their
   disposition: received a transplant, died while waiting, withdrew from
-  the list, or censored. 
+  the list, or censored.
 }
 \usage{data("transplant")}
 \format{
-  A data frame with 815 observations on the following 6 variables.
+  A data frame with 815 (transplant) or 861 (transplant2) observations
+  on the following 6 variables.
   \describe{
     \item{\code{age}}{age at addition to the waiting list}
     \item{\code{sex}}{\code{m} or \code{f}}
@@ -19,6 +21,13 @@
     \item{\code{event}}{final disposition: \code{censored},
       \code{death},
       \code{ltx} or \code{withdraw}}
+    \item{\code{creat}}{serum creatinine}
+    \item{\code{bili}}{serum bilirubin}
+    \item{\code{inr}}{International Normalized Ratio, a measure of the
+      blood's clotting ability}
+    \item{\code{meld}}{calculated MELD score}
+    \item{diag}{primary diagnosis: alcoholic liver disease,
+      cholestatic liver disease, hepatitis B, hepatitis C, or other}
   }
 }
 \details{
@@ -33,7 +42,7 @@ while on the list.
 
 Blood type is an important consideration.  Donor livers from subjects
 with blood type O can be used by patients with A, B, AB or 0 blood
-types, whereas an Ab liver can only be used by an AB recipient.
+types, whereas an AB liver can only be used by an AB recipient.
 Thus type O subjects on the waiting list are at a disadvantage, since
 the pool of competitors is larger for type O donor livers.
 
@@ -43,17 +52,21 @@ practice.  Liver allocation policies have evolved and now depend
 directly on each individual patient's risk and need, assessments of which are
 regularly updated while a patient is on the waiting list.
 The overall organ shortage remains acute, however.
+
+The \code{transplant} data set was a version used early in the analysis,
+\code{transplant2} has several additions and corrections, and
+was the final data set and matches the paper.
 }
 \examples{
 #since event is a factor, survfit creates competing risk curves
 pfit <- survfit(Surv(futime, event) ~ abo, transplant)
-pfit[,2]  #time to liver transplant, by period
+pfit[,2]  #time to liver transplant, by blood type
 plot(pfit[,2], mark.time=FALSE, col=1:4, lwd=2, xmax=735,
        xscale=30.5, xlab="Months", ylab="Fraction transplanted",
        xaxt = 'n')
 temp <- c(0, 6, 12, 18, 24)
-axis(1, temp, temp)
-legend(450, .35, levels(transplant$abo), lty=1, col=1:4, lwd=2, bty='n')
+axis(1, temp*30.5, temp)
+legend(450, .35, levels(transplant$abo), lty=1, col=1:4, lwd=2)
 
 # competing risks for type O
 plot(pfit[4,], xscale=30.5, xmax=735, col=1:3, lwd=2)

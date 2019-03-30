@@ -72,7 +72,7 @@ concordance.formula <- function(object, data,
     if (!is.logical(reverse)) 
         stop ("the reverse argument must be TRUE/FALSE")
  
-    fit <- concordance.fit(Y, x, strat, wt, ymin, ymax, timewt, cluster,
+    fit <- concordancefit(Y, x, strat, wt, ymin, ymax, timewt, cluster,
                            influence, ranks, reverse)
     na.action <- attr(mf, "na.action")
     if (length(na.action)) fit$na.action <- na.action
@@ -108,7 +108,7 @@ print.concordance <- function(x, digits= max(1L, getOption("digits") - 3L),
     invisible(x)
     }
 
-concordance.fit <- function(y, x, strata, weights, ymin=NULL, ymax=NULL, 
+concordancefit <- function(y, x, strata, weights, ymin=NULL, ymax=NULL, 
                             timewt=c("n", "S", "S/G", "n/G", "n/G2", "I"),
                             cluster, influence=0, ranks=FALSE, reverse=FALSE,
                             timefix=TRUE) {
@@ -399,7 +399,7 @@ concordance.lm <- function(object, ..., newdata, cluster, ymin, ymax,
 
 concordance.survreg <- function(object, ..., newdata, cluster, ymin, ymax,
                                 timewt=c("n", "S", "S/G", "n/G", "n/G2", "I"),
-                                influence=0, ranks=FALSE, timefix=TRUE) {
+                                influence=0, ranks=FALSE, timefix=FALSE) {
     Call <- match.call()
     fits <- list(object, ...)
     nfit <- length(fits)
@@ -435,7 +435,7 @@ concordance.survreg <- function(object, ..., newdata, cluster, ymin, ymax,
     
 concordance.coxph <- function(object, ..., newdata, cluster, ymin, ymax, 
                                timewt=c("n", "S", "S/G", "n/G", "n/G2", "I"),
-                               influence=0, ranks=FALSE, timefix=TRUE) {
+                               influence=0, ranks=FALSE, timefix=FALSE) {
     Call <- match.call()
     fits <- list(object, ...)
     nfit <- length(fits)
@@ -477,7 +477,7 @@ cord.work <- function(data, timewt, ymin, ymax, influence=0, ranks=FALSE,
     Call <- match.call()
     fargs <- c("timewt", "ymin", "ymax", "influence", "ranks", "reverse")
     fcall <- Call[c(1, match(fargs, names(Call), nomatch=0))]
-    fcall[[1L]] <- concordance.fit
+    fcall[[1L]] <- concordancefit
 
     nfit <- length(data)
     if (nfit==1) {

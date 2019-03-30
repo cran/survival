@@ -15,7 +15,7 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
     double *dptr;      /* reused in multiple contexts */
     double *p;         /* current prevalence vector */
     double **hmat;      /* hazard matrix at this time point */
-    double **umat;     /* per subject leverage at this time point */
+    double **umat=0;     /* per subject leverage at this time point */
     int *atrisk;       /* 1 if the subject is currently at risk */
     int   *ns;         /* number curently in each state */
     int   *nev;        /* number of events at this time, by state */
@@ -43,7 +43,7 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
     const char *rnames[]= {"nrisk","nevent","ncensor", "p", 
                            "cumhaz", "std", "influence", ""};
     SEXP setemp;
-    double **pmat, **vmat, *cumhaz, *usave;
+    double **pmat, **vmat, *cumhaz, *usave=0; /* =0 to silence -Wall warning */
     int  *ncensor, **nrisk, **nevent;
     ntime= asInteger(ntime2);
     nperson = LENGTH(cstate2); /* number of unique subjects */
@@ -83,7 +83,13 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
         vmat= dmatrix(REAL(setemp), ntime, nstate);
     }
     if (sefit >1) {
-        setemp = SET_VECTOR_ELT(rlist, 6, allocVector(REALSXP, n*nstate*(ntime+1)));
+        /* the max space is larger for a matrix than a vector 
+        **  This is pure sneakiness: if I allocate a vector then n*nstate*(ntime+1)
+        **  may overflow, as it is an integer argument.  Using the rows and cols of
+        **  a matrix neither overflows.  But once allocated, I can treat setemp
+        **  like a vector since usave is a pointer to double, which is bigger than
+        **  integer and won't overflow. */
+        setemp = SET_VECTOR_ELT(rlist, 6, allocMatrix(REALSXP, n*nstate, ntime+1));
         usave = REAL(setemp);
     }
 

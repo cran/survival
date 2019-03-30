@@ -1,5 +1,5 @@
 PARTS = main.Rnw \
-	coxph2.Rnw \
+	coxph.Rnw \
 	exact.nw \
 	agreg.Rnw \
 	coxsurv.Rnw \
@@ -7,19 +7,20 @@ PARTS = main.Rnw \
 	finegray.Rnw \
 	predict.coxph.Rnw \
 	concordance.Rnw \
-        survconcordance.Rnw \
 	survexp.Rnw \
 	parse.Rnw \
 	pyears.Rnw pyears2.Rnw \
 	residuals.survreg.Rnw \
 	survfit.Rnw \
 	survfitCI.Rnw \
+	survfitKM.Rnw \
 	msurv.nw \
 	survfitms.Rnw \
 	plot.Rnw \
 	statefig.Rnw\
 	tmerge.Rnw\
 	yates.Rnw  yates2.Rnw\
+        survConcordance.Rnw \
 	tail
 #	coxdetail.nw
 
@@ -41,17 +42,21 @@ SFUN =  agreg.fit.R \
 	survexp.R \
 	survfit.R \
 	survfitCI.R \
+	survfitKM.R \
 	survfit.coxph.R \
 	survfitcoxph.fit.R \
 	survfitms.R\
 	tmerge.R \
+	survConcordance.R \
+	survConcordance.fit.R \
 	yates.R
 
 CFUN =  agfit4.c \
         agsurv4.c agsurv5.c \
         concordance1.c concordance3.c coxcount1.c \
         coxexact.c \
-	survfitci.c 
+	survfitci.c \
+	survfitkm.c \
 #	coxdetail2.c
 
 RDIR = ../R

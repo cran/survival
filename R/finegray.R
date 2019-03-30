@@ -1,8 +1,8 @@
 # Automatically generated from the noweb directory
-finegray <- function(formula, data, subset, na.action= na.pass,
+finegray <- function(formula, data, weights, subset, na.action= na.pass,
                      etype, prefix="fg", count="", id, timefix=TRUE) {
     Call <- match.call()
-    indx <- match(c("formula", "data", "subset", "id"),
+    indx <- match(c("formula", "data", "weights", "subset", "id"),
               names(Call), nomatch=0) 
     if (indx[1] ==0) stop("A formula argument is required")
     temp <- Call[c(1,indx)]  # only keep the arguments we wanted
@@ -38,18 +38,16 @@ finegray <- function(formula, data, subset, na.action= na.pass,
     
     id <- model.extract(mf, "id")
     if (!is.null(id)) mf["(id)"] <- NULL  # don't leave it in result
+    user.weights <- model.weights(mf)
+    if (is.null(user.weights)) user.weights <- rep(1.0, nrow(mf))
 
     cluster<- attr(Terms, "specials")$cluster
     if (length(cluster)) {
-        if (!is.null(id)) stop("an id argument and a cluster() term are redundant")
-        tempc <- untangle.specials(Terms, 'cluster', 1)
-        id <- strata(mf[,tempc$vars], shortlabel=TRUE)  #allow multiples
-        mf[tempc$vars] <- NULL
+        stop("a cluster() term is not valid")
     }
     
-    # If there is start-stop data, then there needs to be a cluster()
-    #  argument or an id argument, and we check that this is indeed
-    #  a competing risks form of data.
+    # If there is start-stop data, then there needs to be an id
+    #  also check that this is indeed a competing risks form of data.
     # Mark the first and last obs of each subject, as we need it later.
     #  Observations may not be in time order within a subject
     delay <- FALSE  # is there delayed entry?
@@ -180,7 +178,7 @@ finegray <- function(formula, data, subset, na.action= na.pass,
         tdata[[oname[1]]] <- split$start
         tdata[[oname[2]]] <- split$end
         tdata[[oname[3]]] <- tstat
-        tdata[[oname[4]]] <- split$wt
+        tdata[[oname[4]]] <- split$wt * user.weights[split$row]
         if (!is.null(count)) tdata[[count]] <- split$add
         tdata
     }

@@ -10,9 +10,9 @@ docurve2 <- function(entry, etime, status, istate, wt, states, id,
 
     # The influence matrix can be huge, make sure we have enough memory
     if (influence) {
-        needed <- nstate * (1.0 + length(timeset)) * length(first)
+        needed <- max(nstate * length(first), 1 + length(timeset))
         if (needed > .Machine$integer.max)
-            stop("length of the influence matrix is > the maximum integer")
+            stop("number of rows for the influence matrix is > the maximum integer")
     }
     storage.mode(wt) <- "double" # just in case someone had integer weights
 
@@ -71,26 +71,80 @@ docurve2 <- function(entry, etime, status, istate, wt, states, id,
     }
     out
 }
-survfitCI <- function(X, Y, weights, id, istate, 
-                      type=c('kaplan-meier', 'fleming-harrington', 'fh2'),
+survfitCI <- function(X, Y, weights, id, istate, cluster, 
+                      stype=1, ctype=1,
                       se.fit=TRUE,
                       conf.int= .95,
                       conf.type=c('log',  'log-log',  'plain', 'none', 
                                   'logit', "arcsin"),
                       conf.lower=c('usual', 'peto', 'modified'),
-                      influence = FALSE, start.time, p0){
+                      influence = FALSE, start.time, p0, type){
 
-    method <- match.arg(type)
-#    error <- match.arg(error)
-#    if (error != "inf")
-#        warning("Only the infinetesimal jackknife error is supported for CI curves")
+    if (!missing(type)) {
+        if (!is.character(type)) stop("type argument must be character")
+        # older style argument is allowed
+        temp <- charmatch(type, c("kaplan-meier", "fleming-harrington", "fh2"))
+        if (is.na(temp)) stop("invalid value for 'type'")
+        type <- c(1,3,4)[temp]
+    }
+    else {
+        if (!(ctype %in% 1:2)) stop("ctype must be 1 or 2")
+        if (!(stype %in% 1:2)) stop("stype must be 1 or 2")
+        type <- as.integer(2*stype + ctype  -2)
+    }
+
     conf.type <- match.arg(conf.type)
     conf.lower<- match.arg(conf.lower)
+    if (conf.lower != "usual") 
+        warning("conf.lower is ignored for multi-state data")
     if (is.logical(conf.int)) {
         # A common error is for users to use "conf.int = FALSE"
         #  it's illegal per documentation, but be kind
         if (!conf.int) conf.type <- "none"
         conf.int <- .95
+    }
+
+    # The user can call with cluster, id, both, or neither
+    # If only id, treat it as the cluster too
+    has.cluster <-  !(missing(cluster) || length(cluster)==0) 
+    has.id <-       !(missing(id) || length(id)==0)
+    if (has.id) id <- as.factor(id)
+    if (has.cluster) {
+        if (is.factor(cluster)) {
+            clname <- levels(cluster)
+            cluster <- as.integer(cluster)
+        } else {
+            clname  <- sort(unique(cluster))
+            cluster <- match(cluster, clname)
+        }
+        ncluster <- length(clname)
+    } else {
+        if (has.id) {
+            # treat the id as both identifier and clustering
+            clname <- levels(id)
+            cluster <- as.integer(id)
+            ncluster <- length(clname)
+        }
+        else {
+            ncluster <- 0  # has neither
+            clname <- NULL
+        }
+    }
+ 
+    if (is.logical(influence)) {
+        # TRUE/FALSE is treated as all or nothing
+        if (!influence) influence <- 0L
+        else influence <- 3L
+    }
+    else if (!is.numeric(influence))
+        stop("influence argument must be numeric or logical")
+    if (!(influence %in% 0:3)) stop("influence argument must be 0, 1, 2, or 3")
+    else influence <- as.integer(influence)
+ 
+    if (!se.fit) {
+        # if the user asked for no standard error, skip any robust computation
+        ncluster <- 0L
+        influence <- 0L
     }
 
     type <- attr(Y, "type")
@@ -266,6 +320,7 @@ survfitCI <- function(X, Y, weights, id, istate,
         if (se.fit) keep <- c(keep, "std.err", "sp0")
         kfit <- (curves[[1]])[match(keep, names(curves[[1]]), nomatch=0)]
         names(kfit$p0) <- state.names
+        if (se.fit) kfit$logse <- FALSE
     }
     else {    
         kfit <- list(n =      as.vector(table(X)),  #give it labels
@@ -283,6 +338,7 @@ survfitCI <- function(X, Y, weights, id, istate,
             kfit$std.err <- grabit(curves, "std.err")
             kfit$sp0<- matrix(grabit(curves, "sp0"),
                               ncol=nst, byrow=TRUE)
+            kfit$logse <- FALSE
         }
         kfit$cumhaz <- array(unlist(lapply(curves, function(x) x$cumhaz)),
                                dim=c(nst, nst, length(kfit$time)))
@@ -293,12 +349,15 @@ survfitCI <- function(X, Y, weights, id, istate,
     #       
     # Last bit: add in the confidence bands:
     #  
-    if (se.fit && conf.type != "none") {
-        ci <- survfit_confint(kfit$pstate, kfit$std.err, logse=FALSE, 
-                              conf.type, conf.int)
-        kfit <- c(kfit, ci, conf.type=conf.type, conf.int=conf.int)
+    if (se.fit) {
+        kfit$conf.int <- conf.int
+        kfit$conf.type <- conf.type
+        if (conf.type != "none") {
+            ci <- survfit_confint(kfit$pstate, kfit$std.err, logse=FALSE, 
+                                  conf.type, conf.int)
+            kfit <- c(kfit, ci, conf.type=conf.type, conf.int=conf.int)
+        }
     }
-
     kfit$states <- state.names
     kfit$type   <- attr(Y, "type")
     kfit

@@ -38,6 +38,7 @@ dim.survfit <- function(x) {
             if (!is.null(x$upper)) x$upper <- x$upper[,j,drop=drop]
             if (!is.null(x$lower)) x$lower <- x$lower[,j,drop=drop]
             if (!is.null(x$cumhaz)) x$cumhaz <- x$cumhaz[,j,drop=drop]
+            if (!is.null(x$std.chaz)) x$std.chaz <- x$std.chaz[,j,drop=drop]
         }
         else if (j>1) stop("subscript out of bounds") # x[1] is always legal
     }
@@ -76,6 +77,7 @@ dim.survfit <- function(x) {
                 if (!is.null(x$upper)) x$upper <-x$upper[keep,,drop=drop]
                 if (!is.null(x$lower)) x$lower <-x$lower[keep,,drop=drop]
                 if (!is.null(x$cumhaz)) x$cumhaz <-x$cumhaz[keep,,drop=drop]
+                if (!is.null(x$std.chaz)) x$std.chaz <-x$std.chaz[keep,,drop=drop]
             }
             else {
                 x$surv <- x$surv[keep,j, drop=drop]
@@ -84,6 +86,7 @@ dim.survfit <- function(x) {
                 if (!is.null(x$upper)) x$upper <- x$upper[keep,j, drop=drop]
                 if (!is.null(x$lower)) x$lower <- x$lower[keep,j, drop=drop]
                 if (!is.null(x$cumhaz)) x$cumhaz <- x$cumhaz[keep,j, drop=drop]
+                if (!is.null(x$std.chaz)) x$std.chaz <- x$std.chaz[keep,j, drop=drop]
                 }
         }
         else {
@@ -92,59 +95,68 @@ dim.survfit <- function(x) {
             if (!is.null(x$upper)) x$upper <- x$upper[keep]
             if (!is.null(x$lower)) x$lower <- x$lower[keep]
             if (!is.null(x$cumhaz)) x$cumhaz <- x$cumhaz[keep]
+            if (!is.null(x$std.chaz)) x$std.chaz <- x$std.chaz[keep]
         }
     }
     x
 }
 survfit.formula <- function(formula, data, weights, subset, 
-                            na.action, etype, id, istate, 
-                            timefix=TRUE, ...) {
+                            na.action, stype=1, ctype=1, 
+                            id, cluster, istate, 
+                            timefix=TRUE, etype, error,...) {
 
     Call <- match.call()
     Call[[1]] <- as.name('survfit')  #make nicer printout for the user
     # create a copy of the call that has only the arguments we want,
     #  and use it to call model.frame()
     indx <- match(c('formula', 'data', 'weights', 'subset','na.action',
-                    'istate', 'id', "etype"), names(Call), nomatch=0)
+                    'istate', 'id', 'cluster', "etype"), names(Call), nomatch=0)
     #It's very hard to get the next error message other than malice
     #  eg survfit(wt=Surv(time, status) ~1) 
     if (indx[1]==0) stop("a formula argument is required")
     temp <- Call[c(1, indx)]
     temp[[1L]] <- quote(stats::model.frame)
-    m <- eval.parent(temp)
+    mf <- eval.parent(temp)
     
     Terms <- terms(formula, c("strata", "cluster"))
     ord <- attr(Terms, 'order')
     if (length(ord) & any(ord !=1))
             stop("Interaction terms are not valid for this function")
 
-    n <- nrow(m)
-    Y <- model.extract(m, 'response')
+    n <- nrow(mf)
+    Y <- model.extract(mf, 'response')
     if (!is.Surv(Y)) stop("Response must be a survival object")
 
-    casewt <- model.extract(m, "weights")
-    if (is.null(casewt)) casewt <- rep(1,n)
+    casewt <- model.extract(mf, "weights")
+    if (is.null(casewt)) casewt <- rep(1.0, n)
+    else {
+        if (!is.numeric(casewt)) stop("weights must be numeric")
+        if (any(!is.finite(casewt))) stop("weights must be finite") 
+        if (any(casewt <0)) stop("weights must be non-negative")
+        casewt <- as.numeric(casewt)  # transform integer to numeric
+    }
 
     if (!is.null(attr(Terms, 'offset'))) warning("Offset term ignored")
 
-    id    <- model.extract(m, 'id')
-    istate <- model.extract(m,"istate")
+    id    <- model.extract(mf, 'id')
+    istate <- model.extract(mf,"istate")
+    cluster <- model.extract(mf, "cluster")
     temp <- untangle.specials(Terms, "cluster")
     if (length(temp$vars)>0) {
+        if (length(cluster) >0) stop("cluster appears as both an argument and a model term")
         if (length(temp$vars) > 1) stop("can not have two cluster terms")
-        if (!is.null(id)) stop("can not have both a cluster term and an id variable")       
-        id <- m[[temp$vars]]
+        cluster <- mf[[temp$vars]]
         Terms <- Terms[-temp$terms]
     }
 
     ll <- attr(Terms, 'term.labels')
     if (length(ll) == 0) X <- factor(rep(1,n))  # ~1 on the right
-    else X <- strata(m[ll])
+    else X <- strata(mf[ll])
     
     if (!is.Surv(Y)) stop("y must be a Surv object")
     
     # Backwards support for the now-depreciated etype argument
-    etype <- model.extract(m, "etype")
+    etype <- model.extract(mf, "etype")
     if (!is.null(etype)) {
         if (attr(Y, "type") == "mcounting" ||
             attr(Y, "type") == "mright")
@@ -179,9 +191,12 @@ survfit.formula <- function(formula, data, weights, subset,
     if (attr(Y, 'type') == 'left' || attr(Y, 'type') == 'interval')
         temp <-  survfitTurnbull(X, newY, casewt, ...)
     else if (attr(Y, 'type') == "right" || attr(Y, 'type')== "counting")
-        temp <- survfitKM(X, newY, casewt, ...)
+        temp <- survfitKM(X, newY, casewt, stype=stype, ctype=ctype, id=id, 
+                          cluster=cluster, ...)
     else if (attr(Y, 'type') == "mright" || attr(Y, "type")== "mcounting")
-        temp <- survfitCI(X, newY, weights=casewt, id=id,  istate=istate, ...)
+        temp <- survfitCI(X, newY, weights=casewt, stype=stype, ctype=ctype, 
+                          id=id, 
+                          cluster=cluster,  istate=istate, ...)
     else {
         # This should never happen
         stop("unrecognized survival type")
@@ -190,8 +205,8 @@ survfit.formula <- function(formula, data, weights, subset,
     if (is.null(temp$states)) class(temp) <- 'survfit'
     else class(temp) <- c("survfitms", "survfit")
 
-    if (!is.null(attr(m, 'na.action')))
-            temp$na.action <- attr(m, 'na.action')
+    if (!is.null(attr(mf, 'na.action')))
+            temp$na.action <- attr(mf, 'na.action')
 
     temp$call <- Call
     temp
@@ -199,15 +214,16 @@ survfit.formula <- function(formula, data, weights, subset,
 survfit.Surv <- function(formula, ...)
     stop("the survfit function requires a formula as its first argument")
 survfit_confint <- function(p, se, logse=TRUE, conf.type, conf.int,
-                            selow) {
+                            selow, ulimit=TRUE) {
     zval <- qnorm(1- (1-conf.int)/2, 0,1)
     if (missing(selow)) scale <- 1.0
     else scale <- ifelse(selow==0, 1.0, selow/se)  # avoid 0/0 at the origin
-    if (!logse) se <- se/p   # se of log(survival) = log(p)
+    if (!logse) se <- ifelse(se==0, 0, se/p)   # se of log(survival) = log(p)
 
     if (conf.type=='plain') {
         se2 <- se* p * zval  # matches equation 4.3.1 in Klein & Moeschberger
-        list(lower= pmax(p -se2*scale, 0), upper = pmin(p + se2, 1))
+        if (ulimit) list(lower= pmax(p -se2*scale, 0), upper = pmin(p + se2, 1))
+        else  list(lower= pmax(p -se2*scale, 0), upper = p + se2)
     }
     else if (conf.type=='log') {
         #avoid some "log(0)" messages
@@ -215,7 +231,8 @@ survfit_confint <- function(p, se, logse=TRUE, conf.type, conf.int,
         se2 <- zval* se 
         temp1 <- exp(log(xx) - se2*scale)
         temp2 <- exp(log(xx) + se2)
-        list(lower= temp1, upper= pmin(temp2, 1))
+        if (ulimit) list(lower= temp1, upper= pmin(temp2, 1))
+        else  list(lower= temp1, upper= temp2)
     }
     else if (conf.type=='log-log') {
         xx <- ifelse(p==0 | p==1, NA, p)

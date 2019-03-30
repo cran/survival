@@ -72,14 +72,13 @@ agreg.fit <- function(x, y, strata, offset, init, control,
                  "This should never happen.  Please contact the author.")   
         if (agfit$iter > maxiter)
             warning("Ran out of iterations and did not converge")
-        else {
-            infs <- ((infs > control$eps) & 
-                     infs > control$toler.inf*abs(coef))
-            if (any(infs))
-                warning(paste("Loglik converged before variable ",
-                              paste((1:nvar)[infs],collapse=","),
-                                          "; beta may be infinite. "))
-        }
+
+        infs <- (!is.finite(agfit$u) |
+                 infs > control$toler.inf*(1+ abs(coef)))
+        if (any(infs))
+            warning(paste("Loglik converged before variable ",
+                          paste((1:nvar)[infs],collapse=","),
+                          "; beta may be infinite. "))
     }
     lp  <- as.vector(x %*% coef + offset - sum(coef * colMeans(x)))
 

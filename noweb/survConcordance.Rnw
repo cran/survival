@@ -1,4 +1,7 @@
 \subsection{Concordance}
+This is the code for the deprecated function survConcordance.  It will be removed
+in due course.
+
  The concordance statistic is gaining popularity as a measure of goodness-of-fit
 in survival models.  Consider all pairs of subjects with
 $(r_i, r_j)$ as the two risk scores for each pair and $(s_i, s_j)$ the
@@ -543,7 +546,7 @@ Here is the main routine.
 survConcordance <- function(formula, data,
                             weights, subset, na.action) {
     Call <- match.call()  # save a copy of of the call, as documentation
-
+    .Deprecated("concordance")
     m <- match.call(expand.dots=FALSE)
     m[[1L]] <-  quote(stats::model.frame)
     m$formula <- if(missing(data)) terms(formula, "strata")
@@ -625,6 +628,7 @@ tiny number due to round off error.  Since this can cause a warning message
 from the sqrt function we check and correct this.
 <<survConcordance.fit>>=
 survConcordance.fit <- function(y, x, strata, weight) { 
+    #    .Deprecated("concordancefit")
     # The coxph program may occassionally fail, and this will kill the C
     #  routine below
     if (any(is.na(x)) || any(is.na(y))) return(NULL)   
