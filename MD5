@@ -1,4 +1,4 @@
-b846d74dc2491b2c1cb81e2aadde604e *DESCRIPTION
+38dc5a7ede06f55a4dca046281c60e34 *DESCRIPTION
 dbf97aac7fcea812f8dcecbcb67f0e92 *NAMESPACE
 8832a09384db2ba7d905016e7b1e89ca *R/Surv.R
 84c37b7a3585495019237e2acc46d4a9 *R/aareg.S
@@ -406,7 +406,7 @@ fc0ac8ab4beb30ed546189f2702de17d *src/survS.h
 3feb3dcdeecc7d4f1760c0692a0f83f8 *src/survdiff2.c
 633dbba8ebdce80d38aeb015e1a60433 *src/survfit4.c
 684294b879d6a7c86e6f70cdccacf1bc *src/survfitci.c
-cd9df469dc9951e8a0ad50c1a7d36ba3 *src/survfitkm.c
+969e105ac7a09c9ba47d696aca49efeb *src/survfitkm.c
 20e4b99ef6b980c657d0f34be576cbad *src/survpenal.c
 9a4ed0f22410c067f4b0c2e414128d42 *src/survproto.h
 2f1657fe25d2d8d6c1ecd3ae64b8a658 *src/survreg6.c
