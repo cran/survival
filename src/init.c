@@ -18,8 +18,6 @@ static const R_CMethodDef Centries[] = {
     {"Cagsurv5",    (DL_FUNC) &agsurv5,   10},
     {"Cagexact",    (DL_FUNC) &agexact,   20},
     {"Cagmart",     (DL_FUNC) &agmart,     9},
-    {"Cagmart2",    (DL_FUNC) &agmart2,   13},
-    {"Cagscore",    (DL_FUNC) &agscore,   10},
     {"Ccoxdetail",  (DL_FUNC) &coxdetail, 14},
     {"Ccoxfit5a",   (DL_FUNC) &coxfit5_a, 20},
     {"Ccoxfit5b",   (DL_FUNC) &coxfit5_b, 19},
@@ -28,7 +26,6 @@ static const R_CMethodDef Centries[] = {
     {"Ccoxmart2",   (DL_FUNC) &coxmart2,   7},
     {"Ccoxph_wtest",(DL_FUNC) &coxph_wtest,6},
     {"Ccoxscho",    (DL_FUNC) &coxscho,    8},
-    {"Ccoxscore",   (DL_FUNC) &coxscore,  10},
     {"Cpyears1",    (DL_FUNC) &pyears1,   22},
     {"Cpyears2",    (DL_FUNC) &pyears2,   14},
     {"Csurvdiff2",  (DL_FUNC) &survdiff2, 13},
@@ -37,8 +34,9 @@ static const R_CMethodDef Centries[] = {
 };
 
 static const R_CallMethodDef Callentries[] = {
-    {"Cagfit4",       (DL_FUNC) &agfit4,      13},
-    {"Cagmart3",      (DL_FUNC) &agmart3,      6},
+    {"Cagfit4",       (DL_FUNC) &agfit4,      14},
+    {"Cagmart3",      (DL_FUNC) &agmart3,      8},
+    {"Cagscore2",     (DL_FUNC) &agscore2,     6},
     {"Cconcordance1", (DL_FUNC) &concordance1, 4}, 
     {"Cconcordance2", (DL_FUNC) &concordance2, 6}, 
     {"Cconcordance3", (DL_FUNC) &concordance3, 6},
@@ -47,10 +45,14 @@ static const R_CallMethodDef Callentries[] = {
     {"Ccoxcount2",    (DL_FUNC) &coxcount2,    4},
     {"Ccoxexact",     (DL_FUNC) &coxexact,     8},
     {"Ccoxfit6",      (DL_FUNC) &coxfit6,     12},
+    {"Ccoxscore2",    (DL_FUNC) &coxscore2,    6},
+    {"Ccoxsurv1",     (DL_FUNC) &coxsurv1,    11},
+    {"Ccoxsurv2",     (DL_FUNC) &coxsurv2,     9},
     {"Cfinegray",     (DL_FUNC) &finegray,     6},
     {"Cgchol",        (DL_FUNC) &gchol,        2},
     {"Cgchol_solve",  (DL_FUNC) &gchol_solve,  3},
     {"Cgchol_inv",    (DL_FUNC) &gchol_inv,    2},
+    {"Cmulticheck",   (DL_FUNC) &multicheck,   5},
     {"Cpyears3b",     (DL_FUNC) &pyears3b,    10},
     {"Csurvfitci",    (DL_FUNC) &survfitci,   11},
     {"Csurvfitkm",    (DL_FUNC) &survfitkm,    9},
@@ -58,6 +60,9 @@ static const R_CallMethodDef Callentries[] = {
     {"Csurvreg7",     (DL_FUNC) &survreg7,    21},
     {"Csurvsplit",    (DL_FUNC) &survsplit,    3},
     {"Ctmerge",       (DL_FUNC) &tmerge,       7},
+    {"Ctmerge2",      (DL_FUNC) &tmerge2,      4},
+    {"Czph1",         (DL_FUNC) &zph1,         8},
+    {"Czph2",         (DL_FUNC) &zph2,         9},
     {NULL, NULL, 0}
 };
 

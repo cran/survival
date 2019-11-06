@@ -1,8 +1,10 @@
 # Automatically generated from the noweb directory
+# Replaced by concordance.R; this code now frozen and will eventually be
+#  deprecated
 survConcordance <- function(formula, data,
                             weights, subset, na.action) {
     Call <- match.call()  # save a copy of of the call, as documentation
-    .Deprecated("concordance")
+#.Deprecated("concordance")
     m <- match.call(expand.dots=FALSE)
     m[[1L]] <-  quote(stats::model.frame)
     m$formula <- if(missing(data)) terms(formula, "strata")

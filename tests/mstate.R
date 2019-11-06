@@ -9,6 +9,16 @@ mtest <- data.frame(id= c(1, 1, 1,  2,  3,  4, 4, 4,  5, 5),
                     st= c(1, 2,  1, 2,  3,  1, 3, 0,  2,  0))
 
 mtest$state <- factor(mtest$st, 0:3, c("censor", "a", "b", "c"))
+
+if (FALSE) {
+    # this graph is very useful when debugging
+    temp <- survcheck(Surv(t1, t2, state) ~1, mtest, id=id)
+    plot(c(0,11), c(1,5.1), type='n', xlab="Time", ylab= "Subject")
+    with(mtest, segments(t1+.1, id, t2, id, col=as.numeric(temp$istate)))
+    event <- subset(mtest, state!='censor')
+    text(event$t2, event$id+.2, as.character(event$state))
+}
+
 mtest <- mtest[c(1,3,2,4,5,7,6,10, 9, 8),]  #not in time order
 
 mfit <- survfit(Surv(t1, t2, state) ~ 1, mtest, id=id)
@@ -28,41 +38,44 @@ mfit <- survfit(Surv(t1, t2, state) ~ 1, mtest, id=id)
 #9+                  15            0     0  19/32 13/32  1->b, 3->c & exit
 # 10+            1   5                19/64 19/64 13/32  1->a
 
-# In mfit, the "entry" state is last in the matrices
+# In mfit, the "entry" state is first in the matrices, when this function was
+#  first created it was the last.
+swap <- c(4,1,2,3)  # at one time it was last
 all.equal(mfit$n.risk, matrix(c(0,1,1,2,2,1,0,0,
                                 0,0,1,1,1,1,2,1,
                                 0,0,0,0,0,1,0,0,
-                                4,4,3,2,1,1,0,0), ncol=4))
+                                4,4,3,2,1,1,0,0), ncol=4)[,swap])
 all.equal(mfit$pstate,  matrix(c(8,  8, 14, 14, 7, 0,  9.5, 9.5, 
                                 0,  6,  6, 12, 12,19,9.5, 9.5, 
                                 0,  0,  0,  0, 7, 13, 13, 13,
-                               24, 18, 12,  6, 6, 0, 0,  0)/32, ncol=4))
+                               24, 18, 12,  6, 6, 0, 0,  0)/32, ncol=4)[,swap])
 all.equal(mfit$n.event, matrix(c(1,0,1,0,0,0,1,0,
                                  0,1,0,1,0,1,0,0,
                                  0,0,0,0,1,1,0,0,
-                                 0,0,0,0,0,0,0,0), ncol=4))
+                                 0,0,0,0,0,0,0,0), ncol=4)[,swap])
 all.equal(mfit$time, c(2, 3, 4, 5, 8, 9, 10, 11))
 
 
 # Somewhat more complex.
 #  Scramble the input data
 #  Not everyone starts at the same time or in the same state
-#  Two "istates" that vary, only the first should be noticed.
 #  Case weights
 #
 tdata <- data.frame(id= c(1, 1, 1,  2,  3,  4, 4, 4,  5,  5),
                     t1= c(0, 4, 9,  1,  2,  0, 2, 8,  1,  3),
                     t2= c(4, 9, 10, 5,  9,  2, 8, 9,  3, 11),
                     st= c(1, 2,  1, 2,  3,  1, 3, 0,  3,  0),
-                    i0= c(4, 4,  4, 1,  4,  4, 4, 1,  2,  2))
+                    i0= c(4, 1,  2, 1,  4,  4, 1, 3,  2,  3),
+                    wt= 1:10)
 
-tdata$st <- factor(tdata$st, c(0:4),
-                    labels=c("censor", "1", "2", "3", "entry"))
+tdata$st <- factor(tdata$st, c(0:3),
+                    labels=c("censor", "1", "2", "3"))
+tdata$i0 <- factor(tdata$i0, 1:4,
+                    labels=c("1", "2", "3", "entry"))
 
-tfun <- function(wt, data=tdata) {
+tfun <- function(data=tdata) {
     reorder <- c(10, 9, 1, 2, 5, 4, 3, 7, 8, 6)
     new <- data[reorder,]
-    new$wt <- rep(wt,length=10)[reorder]
     new
 }
 
@@ -128,40 +141,46 @@ dopstate <- function(w) {
 }
 
 # Check the pstate estimate
-w1 <- rep(1, 10)
-mtest2 <- tfun(w1)
+w1 <- rep(1,10)
+mtest2 <- tfun(tdata)  # scrambled order
 mfit2 <- survfit(Surv(t1, t2, st) ~ 1, tdata, id=id, istate=i0) # ordered
-aeq(mfit2$pstate, dopstate(w1))
-aeq(mfit2$p0, p0(w1))
+aeq(mfit2$pstate, dopstate(w1)[,swap])
+aeq(mfit2$p0, p0(w1)[swap])
 
 mfit2b <- survfit(Surv(t1, t2, st) ~ 1, mtest2, id=id, istate=i0)#scrambled
-aeq(mfit2b$pstate, dopstate(w1))
-aeq(mfit2b$p0, p0(w1))
+aeq(mfit2b$pstate, dopstate(w1)[,swap])
+aeq(mfit2b$p0, p0(w1)[swap])
 
 mfit2b$call <- mfit2$call <- NULL
 all.equal(mfit2b, mfit2) 
-aeq(mfit2$transitions, c(0,1,0,2,2,0,0,0, 1,1,0,1, 0,0,0,0))
+aeq(mfit2$transitions, c(2,0,1,0, 0,2,0,0, 1,1,1,0, 0,0,0,2))
 
 # Now the harder one, where subjects change weights
-mtest3 <- tfun(1:10)  
-mfit3  <- survfit(Surv(t1, t2, st) ~ 1, mtest3, id=id, istate=i0,
+mfit3  <- survfit(Surv(t1, t2, st) ~ 1, tdata, id=id, istate=i0,
                   weights=wt, influence=TRUE)
-aeq(mfit3$p0, p0(1:10))
-aeq(mfit3$pstate, dopstate(1:10))
+aeq(mfit3$p0, p0(1:10)[swap])
+aeq(mfit3$pstate, dopstate(1:10)[,swap])
     
 
 # The derivative of a matrix product AB is (dA)B + A(dB) where dA is the
 #  elementwise derivative of A and etc for B.
 # dp0 creates the derivatives of p0 with respect to each subject, a 5 by 4
 #  matrix
+# All the functions below are hand coded for a weight vector that is in
+#  exactly the same order as the rows of mtest.
+# Since p0 = (w[4], w[9], 0, w[1]+ w[6])/ (w[1]+ w[4] + w[6] + w[9])
+#      and subject id is 1,1,1, 2, 3, 4,4,4, 5,5
+#   we get the derivative below
+# 
 dp0 <- function(w) {
   p <- p0(w)
   w0 <- w[c(1,4,6,9)]  # the 4 obs at the start, subjects 1, 2, 4, 5
   rbind(c(0, 0, 0, 1) - p,   # subject 1 affects p[4]
-        c(1, 0, 0, 0) - p,   # subject 2 affects p0[1]
+        c(1, 0, 0, 0) - p,   # subject 2 affects p[1]
         0,                   # subject 3 affects none
         c(0, 0, 0, 1) - p,   # subject 4 affect p[4]
-        c(0, 1, 0, 0) - p) / sum(w0)
+        c(0, 1, 0, 0) - p)/   # subject 5 affects p[2]
+      sum(w0)
 }
   
 
@@ -226,19 +245,45 @@ dp9 <- function(w) dp8(w) %*% aj9(w)
 dp10<- function(w) dp9(w) %*% aj10(w)
 
 w1 <- 1:10
-aeq(mfit3$influence[,1,], dp0(w1))
-aeq(mfit3$influence[,2,], dp2(w1))
-aeq(mfit3$influence[,3,], dp3(w1))
-aeq(mfit3$influence[,4,], dp4(w1))
-aeq(mfit3$influence[,5,], dp5(w1))
-aeq(mfit3$influence[,6,], dp8(w1))
-aeq(mfit3$influence[,7,], dp9(w1))
-aeq(mfit3$influence[,8,], dp10(w1))
-aeq(mfit3$influence[,9,], dp10(w1)) # no changes at time 11
+aeq(mfit3$influence[,1,], dp0(w1)[,swap])
+aeq(mfit3$influence[,2,], dp2(w1)[,swap])
+aeq(mfit3$influence[,3,], dp3(w1)[,swap])
+aeq(mfit3$influence[,4,], dp4(w1)[,swap])
+aeq(mfit3$influence[,5,], dp5(w1)[,swap])
+aeq(mfit3$influence[,6,], dp8(w1)[,swap])
+aeq(mfit3$influence[,7,], dp9(w1)[,swap])
+aeq(mfit3$influence[,8,], dp10(w1)[,swap])
+aeq(mfit3$influence[,9,], dp10(w1)[,swap]) # no changes at time 11
 
-aeq(mfit3$cumhaz[,,1], aj2(w1)- diag(4))
-aeq(mfit3$cumhaz[,,2] - mfit3$cumhaz[,,1], aj3(w1)- diag(4))
-aeq(mfit3$cumhaz[,,3] - mfit3$cumhaz[,,2], aj4(w1)- diag(4))
-aeq(mfit3$cumhaz[,,4] - mfit3$cumhaz[,,3], aj5(w1)- diag(4))
-aeq(mfit3$cumhaz[,,5] - mfit3$cumhaz[,,4], aj8(w1)- diag(4))
-aeq(mfit3$cumhaz[,,6] - mfit3$cumhaz[,,5], aj9(w1)- diag(4))
+
+# The cumulative hazard at each time point is remapped from a matrix
+#  into a vector (in survfit)
+# First check out the names
+nstate <- length(mfit3$states)
+temp <- matrix(0, nstate, nstate)
+indx1 <- match(rownames(mfit3$transitions), mfit3$states)
+indx2 <- match(colnames(mfit3$transitions), mfit3$states, nomatch=0)
+temp[indx1, indx2] <- mfit3$transitions[, indx2>0]
+# temp is an nstate by nstate version of the transitions matrix
+from <- row(temp)[temp>0]
+to   <- col(temp)[temp>0]
+ 
+all.equal(colnames(mfit3$cumhaz), paste(from, to, sep='.'))
+
+
+hazard <- function(fit, i, indx=which(temp>0)) {
+    nstate <- length(fit$states)
+    cmat <- matrix(0, nstate, nstate)
+    if (i==1) cmat[indx] <- fit$cumhaz[i,]
+    else cmat[indx] <- fit$cumhaz[i,] - fit$cumhaz[i-1,]
+
+    diag(cmat) <- 1- rowSums(cmat)
+    cmat
+}
+
+aeq(hazard(mfit3, 1), aj2(w1)[swap, swap])
+aeq(hazard(mfit3, 2), aj3(w1)[swap, swap])
+aeq(hazard(mfit3, 3), aj4(w1)[swap, swap])
+aeq(hazard(mfit3, 4), aj5(w1)[swap, swap])
+aeq(hazard(mfit3, 5), aj8(w1)[swap, swap])
+aeq(hazard(mfit3, 6), aj9(w1)[swap, swap])

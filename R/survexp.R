@@ -7,12 +7,13 @@ survexp <- function(formula, data,
         ratetable=survival::survexp.us, scale=1, se.fit,
         model=FALSE, x=FALSE, y=FALSE) {
     Call <- match.call()
-    m <- match.call(expand.dots=FALSE)
         
     # keep the first element (the call), and the following selected arguments
-    m <- m[c(1, match(c('formula', 'data', 'weights', 'subset', 'na.action'),
-                      names(m), nomatch=0))]
-    m[[1L]] <- quote(stats::model.frame)
+    indx <- match(c('formula', 'data', 'weights', 'subset', 'na.action'),
+                      names(Call), nomatch=0)
+    if (indx[1] ==0) stop("A formula argument is required")
+    tform <- Call[c(1,indx)]  # only keep the arguments we wanted
+    tform[[1L]] <- quote(stats::model.frame)  # change the function called
         
     Terms <- if(missing(data)) terms(formula, 'ratetable')
              else              terms(formula, 'ratetable',data=data)
@@ -41,7 +42,7 @@ survexp <- function(formula, data,
         varlist <- names(dimnames(ratetable))
         if (is.null(varlist)) varlist <- attr(ratetable, "dimid") # older style
     }
-    else if(inherits(ratetable, "coxph")) {
+    else if(inherits(ratetable, "coxph") && !inherits(ratetable, "coxphms")) {
         ## Remove "log" and such things, to get just the list of
         #   variable names
         varlist <- all.vars(delete.response(ratetable$terms))
@@ -64,18 +65,18 @@ survexp <- function(formula, data,
     # Create a temporary formula, used only in the call to model.frame
     newvar <- all.vars(rcall)
     if (length(newvar) > 0) {
-        tform <- paste(paste(deparse(Terms), collapse=""),  
+        temp <- paste(paste(deparse(Terms), collapse=""),  
                        paste(newvar, collapse='+'), sep='+')
-        m$formula <- as.formula(tform, environment(Terms))
+        tform$formula <- as.formula(temp, environment(Terms))
         }
 
-    m <- eval(m, parent.frame())
-    n <- nrow(m)
+    mf <- eval(tform, parent.frame())
+    n <- nrow(mf)
     if (n==0) stop("Data set has 0 rows")
     if (!missing(se.fit) && se.fit)
         warning("se.fit value ignored")
 
-    weights <- model.extract(m, 'weights')
+    weights <- model.extract(mf, 'weights')
     if (length(weights) ==0) weights <- rep(1.0, n)
     if (class(ratetable)=='ratetable' && any(weights !=1))
         warning("weights ignored")
@@ -87,7 +88,7 @@ survexp <- function(formula, data,
         if (length(times) >1 )
             if (any(diff(times)<0)) stop("Times must be in increasing order")
         }
-    Y <- model.extract(m, 'response')
+    Y <- model.extract(mf, 'response')
     no.Y <- is.null(Y)
     if (no.Y) {
         if (missing(times)) {
@@ -123,7 +124,7 @@ survexp <- function(formula, data,
         stop("a response is required in the formula unless method='ederer'")
     ovars <- attr(Terms, 'term.labels')
     # rdata contains the variables matching the ratetable
-    rdata <- data.frame(eval(rcall, m), stringsAsFactors=TRUE)  
+    rdata <- data.frame(eval(rcall, mf), stringsAsFactors=TRUE)  
     if (is.ratetable(ratetable)) {
         israte <- TRUE
         if (no.Y) {
@@ -141,7 +142,7 @@ survexp <- function(formula, data,
     #    if (length(strats))
     #        stop("survexp cannot handle stratified Cox models")
     #
-        if (any(names(m[,rate]) !=  attr(ratetable$terms, 'term.labels')))
+        if (any(names(mf[,rate]) !=  attr(ratetable$terms, 'term.labels')))
              stop("Unable to match new data to old formula")
         }
     else stop("Invalid ratetable")
@@ -156,8 +157,8 @@ survexp <- function(formula, data,
         }
         if (method == "individual.s") xx <- temp$surv
         else xx <- -log(temp$surv)
-        names(xx) <- row.names(m)
-        na.action <- attr(m, "na.action")
+        names(xx) <- row.names(mf)
+        na.action <- attr(mf, "na.action")
         if (length(na.action)) return(naresid(na.action, xx))
         else return(xx)
         }
@@ -165,12 +166,12 @@ survexp <- function(formula, data,
     else {
         odim <- length(ovars)
         for (i in 1:odim) {
-            temp <- m[[ovars[i]]]
+            temp <- mf[[ovars[i]]]
             ctemp <- class(temp)
             if (!is.null(ctemp) && ctemp=='tcut')
                 stop("Can't use tcut variables in expected survival")
             }
-        X <- strata(m[ovars])
+        X <- strata(mf[ovars])
         }
 
     #do the work
@@ -218,7 +219,7 @@ survexp <- function(formula, data,
          out <- list(call=Call, surv=c(surv), n.risk=c(n.risk),
                        time=newtime)
          }
-    if (model) out$model <- m
+    if (model) out$model <- mf
     else {
         if (x) out$x <- X
         if (y) out$y <- Y

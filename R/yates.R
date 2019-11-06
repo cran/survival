@@ -109,11 +109,11 @@ cmatrix <- function(fit, term,
             } else dimnames(levels)[[2]] <- parts
             if (any(duplicated(levels)))
                 stop("levels matrix has duplicated rows")
-            levels <- data.frame(levels)
+            levels <- data.frame(levels, stringsAsFactors=FALSE)
          }
         else if (length(parts) > 1)
             stop("levels should be a data frame or matrix")
-        else levels <- data.frame(x=unique(levels))
+        else levels <- data.frame(x=unique(levels), stringsAsFactors=FALSE)
         names(levels) <- user.name
     }
 
@@ -273,7 +273,7 @@ yates <- function(fit, term, population=c("data", "factorial", "sas"),
     }
     if (is.null(mfun)) predict <- "linear"
 
-   # we will need the original model frame ans X matrix
+   # we will need the original model frame and X matrix
     mframe <- fit$model
     if (is.null(mframe)) mframe <- model.frame(fit)
     Xold <- model.matrix(fit)
@@ -483,7 +483,7 @@ yates <- function(fit, term, population=c("data", "factorial", "sas"),
             predfun <- mfun$predict
             sumfun  <- mfun$summary
         }
-        pmm <- predfun(eta)
+        pmm <- predfun(eta, xall)
         n2 <- length(eta)
         if (!(is.numeric(pmm)) || !(length(pmm)==n2 || nrow(pmm)==n2))
             stop("prediction function should return a vector or matrix")
@@ -598,7 +598,7 @@ yates_xmat <- function(Terms, Tatt, contr, population, mframe, fit,
     if (is.null(attr(pdata, "terms"))) {
         np <- nrow(pdata)
         k <- match(x1name, names(pdata), nomatch=0)
-        if (any(k>0)) pdata <- pdata[which(k <=0)]
+        if (any(k>0)) pdata <- pdata[, -k, drop=FALSE]  # toss out yates var
         for (i in 1:nrow(x1data)) {
             j <- rep(i, np)
             tdata <- cbind(pdata, x1data[j,,drop=FALSE]) # new data set
@@ -717,20 +717,21 @@ yates_setup.glm <- function(fit, predict = c("link", "response", "terms",
     if (type == "link" || type== "linear") NULL # same as linear
     else if (type == "response") {
         finv <- family(fit)$linkinv
-        function(x) finv(x)
+        function(eta, X) finv(eta)
     }
     else if (type == "terms")
         stop("type terms not yet supported")
 }
-
 yates_setup.coxph <- function(fit, predict = c("lp", "risk", "expected",
                                      "terms", "survival", "linear"), 
                               options, ...) {
     type <- match.arg(predict)
     if (type=="lp" || type == "linear") NULL  
-    else if (type=="risk") function(x) exp(x)
+    else if (type=="risk") function(eta, X) exp(eta)
     else if (type == "survival") {
-        baseline <- survfit(fit, censor=FALSE)
+        # If there are strata we need to do extra work
+        # if there is an interaction we want to suppress a spurious warning
+        suppressWarnings(baseline <- survfit(fit, censor=FALSE))
         if (missing(options) || is.null(options$rmean)) 
             rmean <- max(baseline$time)  # max death time
         else rmean <- options$rmean
@@ -740,8 +741,8 @@ yates_setup.coxph <- function(fit, predict = c("lp", "risk", "expected",
         cumhaz <- c(0, baseline$cumhaz)
         tt <- c(diff(c(0, pmin(rmean, baseline$time))), 0)
          
-        predict <- function(x) {
-            c2 <- outer(exp(drop(x)), cumhaz)  # matrix of values
+        predict <- function(eta, ...) {
+            c2 <- outer(exp(drop(eta)), cumhaz)  # matrix of values
             surv <- exp(-c2)
             meansurv <- apply(rep(tt, each=nrow(c2)) * surv, 1, sum)
             cbind(meansurv, surv)

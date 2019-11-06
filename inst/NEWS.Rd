@@ -1,8 +1,105 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.1-6}{
+  \itemize{
+    \item Repair issues in coxph.getdata and lines.survfit that were
+    found with reverse dependency checks
+    \item Submit to CRAN
+}}
+
+\section{Changes in version 3.1-5}{
+  \itemize{
+    \item Update coxph.getdata and coxph.detail to work with coxphms
+    objects.  A deficiency in the first affected cox.zph results for
+    multi-state coxph fits.
+    \item Add a formal test suite for the cox.zph routine.
+}}
+
+\section{Changes in version 3.1-4}{
+  \itemize{
+    \item Move some vignettes to the vignette2 directory, found on the
+    github website.  Add an index to those files.
+    \item Add the timefix option to coxph results, and ensure that
+    downstream survfit calls correctly retain it.
+    \item Expand the main survival vignette.
+}}
+
+\section{Changes in version 3.1-3}{
+  \itemize{
+    \item The results of anova.coxph were incorrect for the case of a
+    single model with ties="breslow" and tied event times: the breslow
+    option was not being passed forward to the secondary fits.
+    \item Add more sanity checks to anova.coxph, e.g., all models must
+    have used the same ties option.
+    \item Update tmerge to allow more variable types as the argument to
+    tdc.  A user pointed out that Dates were not preserved; now fixed.
+}}
+
+\section{Changes in version 3.1-2}{
+  \itemize{
+    \item The cox.zph command now refuses models with tt() terms, before
+    it had an incorrect computation.
+    \item Fix 2 errors in plot, for survfit of a coxph model. (I had not
+    scanned the pdf pages from the vignettes, which is the only way to
+    verify plots.)
+    \item Fix labeling error for combination of pyears, tcut variable,
+    data.frame option.  (The numerical values were correct).
+}}
+
+\section{Changes in version 3.1-1}{
+  \itemize{
+    \item Fix error in [.cox.zph, when applied to a stratified model
+}}
+
+\section{Changes in version 3.1-0}{
+  \itemize{
+    \item Respond to some CRAN queries and resubmit.
+    \item Better documentation of the survfit0 routine
+    \item Add the sas.Rnw vignette to inst/doc: it takes too long to
+    run for inclusion in the vignettes directory
+    \item Fix two edge case errors pointed out on github: coxph on a
+    data set with 0 events, and models with only a frailty term
+    \item Update residuals.coxph to deal with larger matrices, i.e.,
+    change two .C calls to .Call
+}}
+
+\section{Changes in version 3.0-11}{
+  \itemize{
+    \item Multiple small updates, after running tests for all
+    reverse dependencies
+    \item Send to CRAN
+}}
+  
+\section{Changes in version 3.0-10}{
+  \itemize{
+    \item Make sure all calls to data.frame explicitly select a value
+    for the stringsAsFactors option.
+    \item Updates to cox.zph for the singledf option
+    \item Add formal test of the cox.zph statistics
+    \item Add the sas vignette to the vignettes2 directory (it takes too
+    long to run).
+}}
+\section{Changes in version 3.0}{
+  \itemize{
+    \item Major revision of the survfit routines, see the survival vignette.
+    \item Allow multi-state coxph models.
+    \item Rename remaining .S files as .R
+    \item vcov of a survreg object now contains dimnames (important for the
+    stats::confint function)
+    \item Subscripting survfit object removes the na.action.  This is a
+    loss in the sense that the printout no longer tells us that
+    observations were removed, but the information about which and how
+    many rows were removed was incorrect after the selection.
+    \item The survexp function, applied to a coxph model with strata,
+    would sometimes produce extraneous y=0 values at the start of a
+    curve.
+    \item Multiple small bug fixes.
+}}
 \section{Changes in version 2.44-1}{
   \itemize{
     \item Fix error in survreg when the init argument was used.
+    \item B. Ripley found/fixed an incorrect size in survfitkm.c, that
+    could lead to memory overwrite and a hard crash. 
 }}
 
 \section{Changes in version 2.44-0}{

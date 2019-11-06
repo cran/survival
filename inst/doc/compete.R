@@ -8,7 +8,7 @@ options(SweaveHooks=list(fig=function() par(mar=c(4.1, 4.1, .3, 1.1))))
 pdf.options(pointsize=10) #text in graph about the same as regular text
 options(contrasts=c("contr.treatment", "contr.poly")) #ensure default
 
-require("survival")
+library("survival")
 
 
 ###################################################
@@ -19,6 +19,11 @@ oldpar <- par(mar=c(.1, .1, .1, .1), mfrow=c(2,2))
 cmat1 <- matrix(c(0,0,1,0), nrow=2, 
                 dimnames=list(c("Alive", "Dead"), c("Alive", "Dead")))
 statefig(c(1,1), cmat1, cex=1.5)
+
+state4 <- c("0", "1", "2", "...")
+cmat4 <- matrix(0, 4,4, dimnames= list(state4, state4))
+cmat4[1,2] <- cmat4[2,3] <- cmat4[3,4] <- 1
+statefig(c(1,1,1,1), cmat4, bcol=c(1,1,1,0), cex=c(1.5, 1.5, 1.5, 3))
 
 states <- c("A", "D1", "D2", "D3")
 cmat2 <- matrix(0, 4,4, dimnames=list(states, states))
@@ -121,9 +126,9 @@ legend(240, .6, c("death:female", "death:male", "pcm:female", "pcm:male"),
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 pcmbad <- survfit(Surv(etime, pstat) ~ sex, data=mgus2)
-plot(pcmbad[2], mark.time=FALSE, lwd=2, fun="event", conf.int=FALSE, xscale=12,
+plot(pcmbad[2], lwd=2, fun="event", conf.int=FALSE, xscale=12,
      xlab="Years post diagnosis", ylab="Fraction with PCM")
-lines(mfit2[2,1], lty=2, lwd=2, mark.time=FALSE, conf.int=FALSE)
+lines(mfit2[2,"pcm"], lty=2, lwd=2, mark.time=FALSE, conf.int=FALSE)
 legend(0, .25, c("Males, PCM, incorrect curve", "Males, PCM, competing risk"),
        col=1, lwd=2, lty=c(1,2), bty='n')
 
@@ -132,25 +137,25 @@ legend(0, .25, c("Males, PCM, incorrect curve", "Males, PCM, competing risk"),
 ### code chunk number 7: mgus4
 ###################################################
 ptemp <- with(mgus2, ifelse(ptime==futime & pstat==1, ptime-.1, ptime))
-newdata <- tmerge(mgus2, mgus2,  id=id, death=event(futime, death),
+data3 <- tmerge(mgus2, mgus2,  id=id, death=event(futime, death),
                   pcm = event(ptemp, pstat))
-newdata <- tmerge(newdata, newdata, id, enum=cumtdc(tstart))
-with(newdata, table(death, pcm))
+data3 <- tmerge(data3, data3, id, enum=cumtdc(tstart))
+with(data3, table(death, pcm))
 
 
 ###################################################
 ### code chunk number 8: mgus4g
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
-temp <- with(newdata, ifelse(death==1, 2, pcm))
-newdata$event <- factor(temp, 0:2, labels=c("censor", "pcm", "death"))  
-mfit3 <- survfit(Surv(tstart, tstop, event) ~ sex, data=newdata, id=id)
+temp <- with(data3, ifelse(death==1, 2, pcm))
+data3$event <- factor(temp, 0:2, labels=c("censor", "pcm", "death"))  
+mfit3 <- survfit(Surv(tstart, tstop, event) ~ sex, data=data3, id=id)
 print(mfit3, rmean=240, digits=2)
 mfit3$transitions
-plot(mfit3[,1], mark.time=FALSE, col=1:2, lty=1:2, lwd=2,
+plot(mfit3[,"pcm"], mark.time=FALSE, col=1:2, lty=1:2, lwd=2,
      xscale=12,
      xlab="Years post MGUS diagnosis", ylab="Fraction in the PCM state")
-legend(48, .04, c("female", "male"), lty=1:2, col=1:2, lwd=2, bty='n') 
+legend(40, .4, c("female", "male"), lty=1:2, col=1:2, lwd=2, bty='n') 
 
 
 ###################################################
@@ -159,14 +164,14 @@ legend(48, .04, c("female", "male"), lty=1:2, col=1:2, lwd=2, bty='n')
 getOption("SweaveHooks")[["fig"]]()
 # Death after PCM will correspond to data rows with
 #  enum = 2 and event = death 
-d2 <- with(newdata, ifelse(enum==2 & event=='death', 4, as.numeric(event)))
+d2 <- with(data3, ifelse(enum==2 & event=='death', 4, as.numeric(event)))
 e2 <- factor(d2, labels=c("censor", "pcm", "death w/o pcm", 
                           "death after pcm"))
-mfit4 <- survfit(Surv(tstart, tstop, e2) ~ sex, data=newdata, id=id)
+mfit4 <- survfit(Surv(tstart, tstop, e2) ~ sex, data=data3, id=id)
 plot(mfit2[2,], lty=c(1,2),
      xscale=12, mark.time=FALSE, lwd=2, 
      xlab="Years post diagnosis", ylab="Probability in State")
-lines(mfit4[2,3], mark.time=FALSE, col=2, lty=1, lwd=2,
+lines(mfit4[2,4], mark.time=FALSE, col=2, lty=1, lwd=2,
       conf.int=FALSE)
 
 legend(200, .5, c("Death w/o PCM", "ever PCM", 
@@ -178,20 +183,13 @@ legend(200, .5, c("Death w/o PCM", "ever PCM",
 ### code chunk number 10: cfit1
 ###################################################
 options(show.signif.stars = FALSE)  # display intelligence
-cfit2 <- coxph(Surv(etime, event=="death") ~ age + sex + mspike, mgus2)
-summary(cfit2, scale=c(10, 1, 1))   # scale age in decades 
+cfit1 <- coxph(Surv(etime, event) ~ age + sex + mspike, mgus2, id=id)
+cfit1$cmap
+print(cfit1, digits=2)  
 
 
 ###################################################
-### code chunk number 11: cfit2
-###################################################
-cfit1 <- coxph(Surv(etime, event=="pcm") ~ age + sex + mspike, mgus2)
-cfit1
-quantile(mgus2$mspike, na.rm=TRUE)
-
-
-###################################################
-### code chunk number 12: mpyears
+### code chunk number 11: mpyears
 ###################################################
 pfit1 <- pyears(Surv(ptime, pstat) ~ sex, mgus2, scale=12)
 round(100* pfit1$event/pfit1$pyears, 1)  # PCM rate per year
@@ -201,19 +199,19 @@ round(temp$table[,1:6], 1)
 
 
 ###################################################
-### code chunk number 13: PCMcurve
+### code chunk number 12: PCMcurve
+###################################################
+dummy <- expand.grid(sex=c("F", "M"), age=c(60, 80), mspike=1.2)
+dummy
+csurv  <- survfit(cfit1, newdata=dummy)
+dim(csurv)
+
+
+###################################################
+### code chunk number 13: PCMcurve2
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
-newdata <- expand.grid(sex=c("F", "M"), age=c(60, 80), mspike=1.2)
-newdata
-
-temp <- matrix(list(), 3,3)
-dimnames(temp) <- list(from=c("Entry", "PCM", "Death"),
-                       to  =c("Entry", "PCM", "Death"))
-temp[1,2] <- list(survfit(cfit1, newdata, std.err=FALSE))
-temp[1,3] <- list(survfit(cfit2, newdata, std.err=FALSE))
-csurv  <- survfit(temp, p0 =c(1,0,0))
-plot(csurv[,2], xmax=25*12, xscale=12, 
+plot(csurv[,,'pcm'], xmax=25*12, xscale=12, 
      xlab="Years after MGUS diagnosis", ylab="PCM",
      col=1:2, lty=c(1,1,2,2), lwd=2)
 legend(10, .14, outer(c("female", "male   "), 
@@ -227,7 +225,7 @@ legend(10, .14, outer(c("female", "male   "),
 ###################################################
 # Print out a M/F results at 20 years
 temp <- summary(csurv, time=20*12)$pstate
-cbind(newdata, PCM= round(100*temp[,2], 1))
+cbind(dummy, PCM= round(100*temp[,,2], 1))
 
 
 ###################################################
@@ -272,7 +270,7 @@ fgfit2 <- coxph(Surv(fgstart, fgstop, fgstatus) ~ sex, data=deathdat,
 fgfit2
 
 mfit2 <- survfit(Surv(etime, event) ~ sex, data=mgus2) #reprise the AJ
-plot(mfit2[,1], col=1:2,
+plot(mfit2[,'pcm'], col=1:2,
      lwd=2,  xscale=12,
      conf.times=c(5, 15, 25)*12,
      xlab="Years post diagnosis", ylab="Fraction with PCM")
@@ -284,12 +282,9 @@ legend("topleft", c("Female, Aalen-Johansen", "Male, Aalen-Johansen",
        col=1:2, lty=c(1,1,2,2), bty='n')
 
 # rate models with only sex
-pfitr <- coxph(Surv(etime, event=="pcm") ~ sex, mgus2)
-dfitr <- coxph(Surv(etime, event=="death") ~ sex, mgus2)
-temp <- matrix(list(), 3,3)
-temp[1,2] <- list(survfit(pfitr, ndata, std.err=FALSE))
-temp[1,3] <- list(survfit(dfitr, ndata, std.err=FALSE))
-rcurve <- survfit(temp, p0=c(entry=1, pcm=0, death=0))
+cfitr <- coxph(Surv(etime, event) ~ sex, mgus2, id=id)
+rcurve <- survfit(cfitr, newdata=ndata)
+#lines(rcurve[, 'pcm'], col=6:7)   # makes the plot too crowsded
 
 
 ###################################################
@@ -308,8 +303,8 @@ round(rbind(PCM= coef(fgfit2a), death=coef(fgfit2b)), 3)
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 oldpar <- par(mfrow=c(1,2))
-newdata <- expand.grid(sex= c("F", "M"), age=c(60, 80), mspike=1.2)
-fsurv1 <- survfit(fgfit2a, newdata)  # time to progression curves
+dummy <- expand.grid(sex= c("F", "M"), age=c(60, 80), mspike=1.2)
+fsurv1 <- survfit(fgfit2a, dummy)  # time to progression curves
 plot(fsurv1, xscale=12, col=1:2, lty=c(1,1,2,2), lwd=2, fun='event',
      xlab="Years", ylab="Fine-Gray predicted", 
      xmax=12*25, ylim=c(0, .15))
@@ -338,7 +333,7 @@ abline(h=coef(fgfit2a)[1], lty=2, col=2)
 ### code chunk number 21: finegray3
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
-fsurv2 <- survfit(fgfit2b, newdata)  # time to progression curves
+fsurv2 <- survfit(fgfit2b, dummy)  # time to progression curves
 xtime <- 0:(30*12)  #30 years
 y1a <- 1 - summary(fsurv1, times=xtime)$surv  #predicted pcm
 y1b <- 1 - summary(fsurv2, times=xtime)$surv #predicted deaths before pcm
@@ -352,12 +347,48 @@ legend("bottomright", c("Female, 60", "Male, 60","Female: 80", "Male, 80"),
 
 
 ###################################################
-### code chunk number 22: pcmstack
+### code chunk number 22: hgfit
+###################################################
+hgfit <- coxph(list(Surv(etime, event) ~ age + sex + mspike,
+                    1:2 + 1:3 ~ hgb / common),
+               data = mgus2, id = id)
+hgfit
+
+
+###################################################
+### code chunk number 23: hgfit2
+###################################################
+hgfit$coef
+
+hgfit$cmap
+
+
+###################################################
+### code chunk number 24: compete.Rnw:1026-1029 (eval = FALSE)
+###################################################
+## list(1: c("pcm", "death") ~ hgb / common,
+##      1:0  ~ hgb / common,
+##      state("(s0)"): (2:3) ~ hgb / common)
+
+
+###################################################
+### code chunk number 25: c3
+###################################################
+cox3a <- coxph(Surv(tstart, tstop, event) ~ age + sex, data3, id=id)
+cox3b <- coxph(list(Surv(tstart, tstop, event) ~ age + sex,
+                    1:3 + 2:3 ~ 1/ common),
+               data= data3, id= id)
+cox3b$cmap
+
+
+###################################################
+### code chunk number 26: pcmstack
 ###################################################
 temp1 <- data.frame(mgus2, time=etime, status=(event=="pcm"), group='pcm')
 temp2 <- data.frame(mgus2, time=etime, status=(event=="death"), group="death")
 stacked <- rbind(temp1, temp2)
-allfit <- coxph(Surv(time, status) ~ hgb + (age + sex)*strata(group),
+allfit <- coxph(Surv(time, status) ~ hgb + (age + sex+ mspike)*strata(group),
                  data=stacked)
+all.equal(allfit$loglik, hgfit$loglik)
 
 

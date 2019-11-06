@@ -77,9 +77,9 @@ int sefit;
 /* returned objects */
 SEXP rlist;         /* the returned list and variable names of same */  
 const char *rnames[]= {"nrisk","nevent","ncensor", "p", 
-		       "cumhaz", "std", "influence", ""};
+		       "cumhaz", "std", "influence.pstate", ""};
 SEXP setemp;
-double **pmat, **vmat, *cumhaz, *usave=0; /* =0 to silence -Wall warning */
+double **pmat, **vmat=0, *cumhaz, *usave=0; /* =0 to silence -Wall warning */
 int  *ncensor, **nrisk, **nevent;
 @ 
 
@@ -116,7 +116,7 @@ setemp = SET_VECTOR_ELT(rlist, 2, allocVector(INTSXP, ntime));
 ncensor = INTEGER(setemp);  /* total at each time */
 setemp  = SET_VECTOR_ELT(rlist, 3, allocMatrix(REALSXP, ntime, nstate));
 pmat =   dmatrix(REAL(setemp), ntime, nstate);
-setemp = SET_VECTOR_ELT(rlist, 4, allocVector(REALSXP, nstate*nstate*ntime));
+setemp = SET_VECTOR_ELT(rlist, 4, allocMatrix(REALSXP, nstate*nstate, ntime));
 cumhaz = REAL(setemp);
 
 if (sefit >0) {
@@ -187,26 +187,26 @@ if (sefit ==1) {
 } 
 @ 
 
-The primary loop of the program walks along the [[sort2]]
+The primary loop of the program walks along the \code{sort2}
 vector, with one pass through the interior of the for loop for each unique
 event time.  
 Observations are at risk in the interval (entry, event]: note
-the round and square brackets, so a row must satisfy [[entry < ctime <= event]]
-to be at risk, 
-where [[ctime]] is the unique event time of current interest.
+the round and square brackets, so a row must satisfy 
+\code{entry < ctime <= event} to be at risk, 
+where \code{ctime} is the unique event time of current interest.
 The basic loop is to add new subjects to the risk set, compute,
 save results, then remove expired ones from the risk set.
-The [[ns]] and [[ws]] vectors keep track of the number of subjects
+The \code{ns} and \code{ws} vectors keep track of the number of subjects
 currently in each state and the weighted number currently in each
 state.  
 There are four indexing patterns in play which may be confusing.
 \begin{itemize}
-  \item The output matrices, which index by unique event time [[itime]]
+  \item The output matrices, indexed by unique event time \code{itime}
     and state.
-  \item The [[n]] observations (variables entry, event, sort1, sort2, status,
+  \item The \code{n} observations (variables entry, event, sort1, sort2, status,
     wt, id)
-  \item The [[nperson]] individual subjects (variables cstate, atrisk)
-  \item The [[nstate]] states (variables hmat, p)
+  \item The \code{nperson} individual subjects (variables cstate, atrisk)
+  \item The \code{[nstate} states (variables hmat, p)
 \end{itemize}
 
 <<survfitci-compute>>=
@@ -257,8 +257,8 @@ So the $jk$ element is the (weighted) fraction who change from state $j$
 to state $k$, and the $jj$ element the fraction who stay put.
 Each row of $H$ by definition sums to 1.  
 If no one is in the state then the $jj$ element is set to 1.
-A second version which we call H2 has 1 subtracted from each diagonal and so
-that the row sums are 0, we go back and
+A second version which we call H2 has 1 subtracted from each diagonal giving
+row sums are 0, we go back and
 forth depending on which is needed at the moment.
 If there are no events at this time point $P$ and $U$ do not update.
 <<survfitci-compute-matrices>>=

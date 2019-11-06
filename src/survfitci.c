@@ -41,9 +41,9 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
     /* returned objects */
     SEXP rlist;         /* the returned list and variable names of same */  
     const char *rnames[]= {"nrisk","nevent","ncensor", "p", 
-                           "cumhaz", "std", "influence", ""};
+                           "cumhaz", "std", "influence.pstate", ""};
     SEXP setemp;
-    double **pmat, **vmat, *cumhaz, *usave=0; /* =0 to silence -Wall warning */
+    double **pmat, **vmat=0, *cumhaz, *usave=0; /* =0 to silence -Wall warning */
     int  *ncensor, **nrisk, **nevent;
     ntime= asInteger(ntime2);
     nperson = LENGTH(cstate2); /* number of unique subjects */
@@ -75,7 +75,7 @@ SEXP survfitci(SEXP ftime2,  SEXP sort12,  SEXP sort22, SEXP ntime2,
     ncensor = INTEGER(setemp);  /* total at each time */
     setemp  = SET_VECTOR_ELT(rlist, 3, allocMatrix(REALSXP, ntime, nstate));
     pmat =   dmatrix(REAL(setemp), ntime, nstate);
-    setemp = SET_VECTOR_ELT(rlist, 4, allocVector(REALSXP, nstate*nstate*ntime));
+    setemp = SET_VECTOR_ELT(rlist, 4, allocMatrix(REALSXP, nstate*nstate, ntime));
     cumhaz = REAL(setemp);
 
     if (sefit >0) {

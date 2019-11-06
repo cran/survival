@@ -4,6 +4,7 @@ PARTS = main.Rnw \
 	agreg.Rnw \
 	coxsurv.Rnw \
 	coxsurv2.Rnw \
+	coxsurv3.Rnw \
 	finegray.Rnw \
 	predict.coxph.Rnw \
 	concordance.Rnw \
@@ -12,15 +13,15 @@ PARTS = main.Rnw \
 	pyears.Rnw pyears2.Rnw \
 	residuals.survreg.Rnw \
 	survfit.Rnw \
-	survfitCI.Rnw \
 	survfitKM.Rnw \
+	survfitCI.Rnw \
 	msurv.nw \
 	survfitms.Rnw \
 	plot.Rnw \
 	statefig.Rnw\
 	tmerge.Rnw\
 	yates.Rnw  yates2.Rnw\
-        survConcordance.Rnw \
+	zph.Rnw \
 	tail
 #	coxdetail.nw
 
@@ -28,6 +29,7 @@ SFUN =  agreg.fit.R \
 	agsurv.R \
         concordance.R \
 	coxph.R \
+	coxsurvfit.R \
 	finegray.R \
 	model.matrix.coxph.R \
 	parsecovar.R \
@@ -37,23 +39,20 @@ SFUN =  agreg.fit.R \
 	print.pyears.R \
 	residuals.survreg.R\
 	statefig.R \
-	survConcordance.R \
-	survConcordance.fit.R \
 	survexp.R \
 	survfit.R \
 	survfitCI.R \
 	survfitKM.R \
 	survfit.coxph.R \
-	survfitcoxph.fit.R \
+	survfit.coxphms.R \
 	survfitms.R\
 	tmerge.R \
-	survConcordance.R \
-	survConcordance.fit.R \
-	yates.R
+	yates.R \
+	cox.zph.R
 
 CFUN =  agfit4.c \
         agsurv4.c agsurv5.c \
-        concordance1.c concordance3.c coxcount1.c \
+        concordance3.c coxcount1.c \
         coxexact.c \
 	survfitci.c \
 	survfitkm.c \
@@ -91,25 +90,27 @@ test: $(RFUN)
 
 %.R: 
 	echo "# Automatically generated from the noweb directory" > $@
-	echo "require(noweb); notangle('code.nw', target='$(*F)', out='zz')" | R  --slave
-	cat zz >> $@
-	rm zz
+	echo "require(noweb); notangle('code.nw', target='$(*F)', out='z$(@F)')" | R  --slave
+	cat z$(@F) >> $@
+	rm z$(@F)
 
 %.S: 
 	echo "# Automatically generated from the noweb directory" > $@
-	echo "require(noweb); notangle('code.nw', target='$(*F)', out='zz')" | R  --slave
-	cat zz >> $@
-	rm zz
+	echo "require(noweb); notangle('code.nw', target='$(*F)', out='z$(@F)')" | R  --slave
+	cat z$(@F) >> $@
+	rm z$(@F)
 
 %.c: 
 	echo "/* Automatically generated from the noweb directory */" > $@
-	echo "require(noweb); notangle('code.nw', target='$(*F)', out='zz')" | R  --slave
-	cat zz >> $@
-	rm zz
+	echo "require(noweb); notangle('code.nw', target='$(*F)', out='z$(@F)')" | R  --slave
+	cat z$(@F) >> $@
+	rm z$(@F)
 
 clean:
-	-rm code.nw code.log code.aux code.toc code.tex code.bbl code.blg code.out
-	-rm noweb.sty
+	-rm -f code.nw code.log code.aux code.toc code.tex code.bbl code.blg code.out
+	-rm -f noweb.sty
 
 noweb.sty:
 	echo 'library(noweb); data(noweb); cat(noweb.sty, sep="\n", file="noweb.sty")' |  R  --slave
+
+

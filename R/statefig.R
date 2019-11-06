@@ -114,10 +114,10 @@ statefig <- function(layout, connect, margin=.03, box=TRUE,
     for (j in 1:nstate) {
         for (i in 1:nstate) {
             if (i != j && connect[i,j] !=0) {
-                if (connect[i,j] == 2-connect[j,i] && offset>0) {
+                if (connect[i,j] == 2-connect[j,i] && offset!=0) {
                     #add an offset
                     toff <- c(cbox[j,2] - cbox[i,2], cbox[i,1] - cbox[j,1])
-                    toff <- offset *toff/sqrt(sum(toff^2))
+                    toff <- -offset *toff/sqrt(sum(toff^2))
                     doline(cbox[i,]+toff, cbox[j,]+toff, connect[i,j]-1,
                            delta1 = c(textwd[i]/2 + dx, textht[i]/2 + dy),
                            delta2 = c(textwd[j]/2 + dx, textht[j]/2 + dy),
@@ -131,12 +131,15 @@ statefig <- function(layout, connect, margin=.03, box=TRUE,
             }
         }
     }
+    
+    dimnames(cbox) <- list(statenames, c("x", "y"))
     invisible(cbox)
 }
 statefigx <- function(x, C, r, a1, a2) {
     temp <-(x - C[1])/r
     if (abs(temp) >1) return(NULL)  # no intersection of the arc and x
     phi <- acos(temp)  # this will be from 0 to pi
+    pi <- 3.1415926545898   # in case someone has a variable "pi" 
     if (x > C[1]) phi <-  c(phi, pi - phi)
     else          phi <- -c(phi, pi - phi)
     # Add reflection about the X axis, in both forms
@@ -146,6 +149,7 @@ statefigx <- function(x, C, r, a1, a2) {
     phi[phi<amax & phi > amin]
 }
 statefigy <-  function(y, C, r, a1, a2) {
+    pi <- 3.1415926545898   # in case someone has a variable named "pi" 
     amax <- max(a1, a2)
     amin <- min(a1, a2)
     temp <-(y - C[2])/r

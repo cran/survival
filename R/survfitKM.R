@@ -6,7 +6,7 @@ survfitKM <- function(x, y, weights=rep(1.0,length(x)),
                       conf.type=c('log',  'log-log',  'plain', 'none', 
                                   'logit', "arcsin"),
                       conf.lower=c('usual', 'peto', 'modified'),
-                      start.time, new.time, id, cluster, influence=FALSE,
+                      start.time, id, cluster, influence=FALSE,
                       type) {
     
     if (!missing(type)) {
@@ -33,9 +33,14 @@ survfitKM <- function(x, y, weights=rep(1.0,length(x)),
       
     # The user can call with cluster, id, both, or neither
     # If only id, treat it as the cluster too
+    # If influence is requested, this implies clustering
     has.cluster <-  !(missing(cluster) || length(cluster)==0) 
     has.id <-       !(missing(id) || length(id)==0)
     if (has.id) id <- as.factor(id)
+    if (influence && !(has.cluster || has.id)) {
+        cluster <- seq(along=x)
+        has.cluster <- TRUE
+    }
     if (has.cluster) {
         if (is.factor(cluster)) {
             clname <- levels(cluster)
@@ -84,26 +89,10 @@ survfitKM <- function(x, y, weights=rep(1.0,length(x)),
     xlev <- levels(x)   # Will supply names for the curves
     x <- as.integer(x)  # keep the integer index
 
-    #  Allow "new.time" as a synonym for start.time
-    #  This is an old argument that should be depricated
-    if (missing(start.time)) {
-        if (!missing(new.time)) start.time <- new.time
-        else start.time <- min(c(0, y[,ny-1]))
-        # the line above sets a plotting range, it doesn't exclued anyone
-    }
+    if (missing(start.time)) time0 <- min(0, y[,ny-1])
+    else time0 <- start.time
 
-    if (ny==3 & has.id) {
-        id <- as.integer(id)
-        index <- order(id, y[,2])
-        firstid <- !duplicated(id[index])
-        lastid  <- !duplicated(id[index], fromLast=TRUE)
-        position <- ifelse(firstid, 1L, 0L)+ ifelse(lastid, 2L, 0L)
-        # the next obs is the same id, but there is a time gap
-        gap <- (diff(id[index])==0 & y[index[-length(index)],2] != y[index[-1],1])
-        position[gap] <- position[gap] + 2L  
-        position[which(gap)+1L] <- position[which(gap) +1L] +1L
-        position[index] <- position   # return it to data order
-    } 
+    if (ny==3 & has.id) position <- survflag(y, id)
     else position <- integer(0)
 
     if (length(xlev) ==1) {# only one group
@@ -115,7 +104,7 @@ survfitKM <- function(x, y, weights=rep(1.0,length(x)),
             sort2 <- order(y[,2])
             sort1 <- order(y[,1])
         }
-        toss <- (y[sort2, ny-1] < start.time)
+        toss <- (y[sort2, ny-1] < time0)
         if (any(toss)) {
             # Some obs were removed by the start.time argument
             sort2 <- sort2[!toss]
@@ -137,7 +126,7 @@ survfitKM <- function(x, y, weights=rep(1.0,length(x)),
         n.used <- integer(ngroup)
         if (influence) clusterid <- cfit # empty list of group id values
         for (i in 1:ngroup) {
-            keep <- which(x==i & y[,ny-1] >= start.time)
+            keep <- which(x==i & y[,ny-1] >= time0)
             if (length(keep) ==0) next;  # rare case where all are < start.time
             ytemp <- y[keep,]
             n.used[i] <- nrow(ytemp)
@@ -182,8 +171,7 @@ survfitKM <- function(x, y, weights=rep(1.0,length(x)),
                      surv = cfit$estimate[,1],
                      std.err = cfit$std[,1],
                      cumhaz  = cfit$estimate[,2],
-                     std.chaz = cfit$std[,2],
-                     start.time = start.time)
+                     std.chaz = cfit$std[,2])
      } else {
          strata <- sapply(cfit, function(x) nrow(x$n))
          names(strata) <- xlev
@@ -197,9 +185,8 @@ survfitKM <- function(x, y, weights=rep(1.0,length(x)),
                       std.err =unlist(lapply(cfit, function(x) x$std[,1])),
                       cumhaz  =unlist(lapply(cfit, function(x) x$estimate[,2])),
                       std.chaz=unlist(lapply(cfit, function(x) x$std[,2])),
-                      start.time = start.time, 
-                      strata = strata)
-         if (ny==3) rval$n.enter <- unlist(lapply(cfit, function(x) x$n[,8]))
+                      strata=strata)
+          if (ny==3) rval$n.enter <- unlist(lapply(cfit, function(x) x$n[,8]))
     }
         
     if (ny ==3) {
@@ -304,6 +291,7 @@ survfitKM <- function(x, y, weights=rep(1.0,length(x)),
             }
         }
     }
-            
+
+    if (!missing(start.time)) rval$start.time <- start.time
     rval  
 }

@@ -1,0 +1,296 @@
+\subsubsection{Multi-state models}
+Survival curves after a multi-state Cox model are more challenging,
+particularly the variance.
+
+<<survfit.coxphms>>=
+survfit.coxphms <-
+function(formula, newdata, se.fit=TRUE, conf.int=.95, individual=FALSE,
+         stype=2, ctype, 
+         conf.type=c("log", "log-log", "plain", "none", "logit", "arcsin"),
+         censor=TRUE, start.time, id, influence=FALSE,
+         na.action=na.pass, type, ...) {
+
+    Call <- match.call()
+    Call[[1]] <- as.name("survfit")  #nicer output for the user
+    object <- formula     #'formula' because it has to match survfit
+    se.fit <- FALSE   #still to do
+
+    <<survfit.coxph-setup1>>
+    <<survfit.coxph-setup2>>
+    <<survfit.coxphms-setupa>>
+    <<survfit.coxph-setup2c>>
+    <<survfit.coxph-setup3>>
+    <<survfit.coxphms-setup3b>>
+    <<survfit.coxphms-result>>
+
+    cifit$call <- Call
+    class(cifit) <- c("survfitms", "survfit")
+    cifit
+}
+@ 
+The third line \code{as.name('survfit')} causes the printout to say
+`survfit' instead of `survfit.coxph'.                              %'
+
+Notice that setup is almost completely shared with survival for single state
+models.  The major change is that we use survfitCI (non-Cox) to do all the
+legwork wrt the tabulation values (number at risk, etc.),
+while for the computation proper it is easier to make use of the same
+expanded data set that coxph used for a multi-state fit.
+
+<<survfit.coxphms-setupa>>=
+# Rebuild istate using the mcheck routine
+istate <- model.extract(mf, "istate")
+mcheck <- survcheck2(Y, oldid, istate)
+transitions <- mcheck$transitions
+istate <- mcheck$istate
+if (!identical(object$states, mcheck$states))
+    stop("failed to rebuild the data set")
+
+# Let the survfitCI routine do the work of creating the
+#  overall counts (n.risk, etc).  The rest of this code then
+#  replaces the surv and hazard components.
+if (missing(start.time)) start.time <- min(Y[,2], 0)
+# If the data has absorbing states (ones with no transitions out), then
+#  remove those rows first since they won't be in the final output.
+t2 <- transitions[, is.na(match(colnames(transitions), "(censored)"))]
+absorb <- row.names(t2)[rowSums(t2)==0]
+if (length(absorb)) droprow <- istate %in% absorb  else droprow <- FALSE
+if (any(droprow)) {
+    j <- which(!droprow)
+    cifit <- survfitCI(as.factor(strata[j]), Y[j,], weights[j], oldid[j], 
+                       istate[j], stype=stype,
+                       ctype=ctype, se.fit=FALSE, start.time=start.time)
+    }
+else cifit <- survfitCI(as.factor(strata), Y, weights, oldid, istate, 
+                        stype=stype, ctype=ctype, se.fit=FALSE, 
+                        start.time=start.time)
+
+# For computing the  actual estimates it is easier to work with an
+#  expanded data set.
+# Replicate actions found in the coxph-multi-X chunk,
+cluster <- model.extract(mf, "cluster")
+xstack <- stacker(object$cmap, as.integer(istate), X, Y,
+                  as.integer(strata),
+                  states= object$states)
+if (length(position) >0)
+    position <- position[xstack$rindex]   # id was required by coxph
+X <- xstack$X
+Y <- xstack$Y
+strata <- strata[xstack$rindex]
+transition <- xstack$transition
+if (length(offset)) offset <- offset[xstack$rindex]
+if (length(weights)) weights <- weights[xstack$rindex]
+if (length(cluster)) cluster <- cluster[xstack$rindex]
+oldid <- oldid[xstack$rindex]
+if (robust & length(cluster)==0) cluster <- oldid
+@ 
+
+The survfit.coxph-setup3 chunk, shared with single state Cox models, has created
+an mf3 model frame and an x2 matrix. 
+Create a matrix of risk scores, number of subjects by number of transitions.
+The reason is that different transitions often have different coefficients.
+
+<<survfit.coxphms-setup3b>>=
+risk2 <- exp(x2 %*% coef(object, type="matrix") - xcenter)
+@ 
+
+The first step in the computation is to compute the hazard functions for
+each of the transtions.  Each of these hazards a completely independent
+computation: nothing is shared.  
+A subject sitting in some state A, at risk for transition to B and C, might
+have different covariates and/or coefficients, and thus different risk scores
+for the two transitions. 
+Because of this, there is no difference, for the first part of the code, between
+computing single endpoint or multiple endpoint curves, their variance, or their
+influence functions. 
+
+The second step of creating p(state) curves uses all of the state1:state2
+hazard functions at once, however.  For this reason we use a particular
+hazard routine, which returns those hazard functions at a common set of
+time points.
+ 
+<<survfit.coxphms-result>>=
+if (individual) {
+    stop("time dependent survival curves not yet supported for multistate")
+    result <- coxsurv.fit2(ctype, stype, se.fit, varmat, cluster, start.time,
+                           object$cmap, object$transitions, object$states,
+                           Y, X, weights, risk, position, strata, oldid,
+                           transition, y2, x2, risk2, strata2, id2)
+                          
+} else {
+    if (is.null(cifit$strata)) p0 <- cifit$pstate[1,, drop=FALSE]
+    else {
+        last <- cumsum(cifit$strata)  # last obs of each strata
+        first<- 1 + c(0, last[-length(last)])
+        p0 <- cifit$pstate[first,, drop=FALSE]
+    }
+    cifit <- coxsurv.fit2(ctype, stype, se.fit, varmat, cluster, start.time,
+                           object$cmap, object$transitions, object$states,
+                           Y, X, weights, risk, position, strata, oldid,
+                           transition, y2, x2, risk2, cifit=cifit)
+
+    cifit$newdata <- mf2
+}
+
+<<survfit.coxphms>>=
+coxsurv.fit2 <- function (ctype, stype, se.fit, varmat, cluster, 
+                          start.time, cmap, tmat, states,
+                          y, x, weights, risk, position, strata, id,
+                          transition, y2, x2, risk2, strata2, id2, cifit) {
+    # args are the options (ctype, stype, se.fit), args info from the prior fit
+    # (varmat, ..., tmat), original data (Y, ..., transition), and data for the
+    # new subjects
+
+    if (length(strata)==0) strata <- rep(0L, nrow(y))
+
+    if (is.factor(strata)) ustrata <- levels(strata)
+    else                   ustrata <- sort(unique(strata))
+    nstrata <- length(ustrata)
+
+    # make the expansion map.  
+    #  cmap[1,] will contain integers 1, 2,... which match the values in
+    # the transtion vector, which in turn is the set of hazard functions that
+    # come back from the .Call
+    #  The H matrices we will need are nstate by nstate, at each time, with
+    # elements that are non-zero only for observed transtions.  Some elements
+    # may be the same: cmat[1,] can have repeats.
+    nstate <- length(states)
+    tmat <- tmat[,is.na(match(colnames(tmat), "(censored)")), drop=FALSE]
+    from <- row(tmat)[tmat>0]  # tmat contains fit$transitions matrix
+    from <- match(rownames(tmat), states)[from]  # actual row of H
+    to   <- col(tmat)[tmat>0]
+    to   <- match(colnames(tmat), states)[to]    # actual col of H
+    hfill <- cbind(from, to)
+
+    if (nstrata==1) {
+        temp <- multihaz(y, x, position, weights, risk, transition,
+                                  ctype, stype, hfill, cmap[1,], 
+                                  x2, risk2, varmat, nstate, se.fit, 
+                                  cifit$pstate[1,], cifit$time)
+        cifit$pstate <- temp$pstate
+        cifit$cumhaz <- temp$cumhaz
+    } 
+    else {
+        itemp <- rep(1:nstrata, cifit$strata)
+        timelist <- split(cifit$time, itemp)
+        firstrow <- match(1:nstrata, itemp)
+        ustrata <- names(cifit$strata)
+        survlist <- vector("list", nstrata)
+        for (i in 1:nstrata) {
+            indx <- which(strata== ustrata[i])  # divides the data
+            survlist[[i]] <- multihaz(y[indx,,drop=F], x[indx,,drop=F],
+                                  position[indx], weights[indx], risk[indx],
+                                  transition[indx], ctype, stype, hfill,
+                                  cmap[1,], x2, risk2, varmat, nstate, se.fit, 
+                                  cifit$pstate[firstrow[i],], timelist[[i]])
+                                  
+            }
+        cifit$pstate <- do.call(rbind, lapply(survlist, function(x) x$pstate))
+        cifit$cumhaz <- do.call(rbind, lapply(survlist, function(x) x$cumhaz))
+    }
+    cifit
+}
+@ 
+
+This is the final target.
+Variables are
+\begin{itemize}
+  \item y survival time for each observaion
+  \item x covariates for each observatio
+  \item position: a flag for each obs. Is it the first of a connected string
+    such as (10, 12) (12,19) (19,21), the last of such a string, both, 
+    or neither.  1*first + 2* last
+  \item weight case weight
+  \item risk score
+  \item transtion: which stratum each observation belongs to.  At this point
+    that is a unique baseline hazard in the state space.
+  \item ctype, stype = type of hazard and survival
+  \item hfill: the starting and ending states for each transition, on row per
+    observed transtion type
+  \item cmap: a vector giving the stratum number for each transtion.
+  \item x2, risk2 = covariates and risk scores for the predicted values
+  \item vmat = variance matrix of the coxph model
+  \item se.fit: do or do not compute standard errors
+  \item p0 = starting values for the states
+  \item utime = the set of time points at which to give the results
+\end{itemize}
+
+<<survfit.coxphms>>=
+# Compute the hazard  and survival functions 
+multihaz <- function(y, x, position, weight, risk, transition, ctype, stype, 
+                     hfill, cmap, x2, risk2, vmat, nstate, se.fit, p0, utime) {
+    if (ncol(y) ==2) {
+       sort1 <- seq.int(0, nrow(y)-1L)   # sort order for a constant
+       y <- cbind(-1.0, y)               # add a start.time column, -1 in case
+                                         #  there is an event at time 0
+    }
+    else sort1 <- order(transition, y[,1]) -1L
+    sort2 <- order(transition, y[,2]) -1L
+    ntime <- length(utime)
+
+    # this returns all of the counts we might desire.
+    storage.mode(weight) <- "double"  #failsafe
+    # for Surv(time, status) data position is 2 (last) for all obs
+    if (length(position)==0) position <- rep(2L, nrow(y))
+
+    fit <- .Call(Ccoxsurv2, utime, y, weight, sort1, sort2, position, 
+                        transition, x, risk)
+    cn <- fit$count  # 1-3 = at risk, 4-6 = events, 7-8 = censored events
+                     # 9-10 = censored, 11-12 = Efron, 13-15 = entry
+    if (ctype ==1) {
+        denom1 <- ifelse(cn[,4]==0, 1, cn[,3])
+        denom2 <- ifelse(cn[,4]==0, 1, cn[,3]^2)
+    } else {
+        denom1 <- ifelse(cn[,4]==0, 1, cn[,11])
+        denom2 <- ifelse(cn[,4]==0, 1, cn[,12])
+    }
+
+    hazard <- matrix(cn[,5] / denom1, ncol = fit$ntrans)
+    varhaz <- matrix(cn[,5] / denom2, ncol = fit$ntrans)
+    if (any(cmap != seq(along=cmap))) {
+        hazard <- hazard[, cmap]
+        varhaz <- varhaz[, cmap]
+    }
+
+    # Expand the result, one "hazard set" for each row of x2
+    nx2 <- nrow(x2)
+    h2 <- array(0, dim=c(nrow(hazard), nx2, ncol(hazard)))
+    if (se.fit) v2 <- h2
+    S <- matrix(0, nrow(hazard), nstate)
+    S2 <- array(0, dim=c(nrow(hazard), nx2, nstate))
+ 
+    H <- matrix(0, nstate, nstate)
+    for (i in 1:nx2) {
+        h2[,i,] <- apply(hazard %*% diag(risk2[i,]), 2, cumsum)
+        if (se.fit) {
+            d1 <- fit$xbar - rep(x[i,], each=nrow(fit$xbar))
+            d2 <- apply(d1*hazard, 2, cumsum)
+            d3 <- rowSums((d2%*% vmat) * d2)
+#            v2[jj,] <- (apply(varhaz[jj,],2, cumsum) + d3) * (risk2[i])^2
+        }
+
+        S[1,] <- p0
+        for (j in 2:ntime) {
+            H[,] <- 0.0
+            H[hfill] <- hazard[j,] *risk2[i,]
+            if (stype==1) {
+                diag(H) <- pmin(0, 1 + diag(H)- rowSums(H))
+                S[j,] <- drop(S[j-1,] %*% H)  
+            }
+            else {
+                diag(H) <- diag(H) - rowSums(H)
+                S[j,] <- as.vector(S[j-1,] %*% expm(H))  # dgeMatrix issue
+            }
+        }
+
+        S2[,i,] <- S
+    }
+
+    rval <- list(time=utime, xgrp=rep(1:nx2, each=nrow(hazard)),
+                 pstate=S2, cumhaz=h2)
+    if (se.fit) rval$varhaz <- v2
+    rval
+}
+@
+
+

@@ -33,10 +33,8 @@ m2 <- model.frame(spfit3, data=lung[keep,])
 all.equal(m2, spfit3$model[keep,], check.attributes=FALSE)
 
 #
-# Test of residuals, in response to a reported bug.  The routines for
-#  m-resids of penalized models were separate from other m-resid calcs;
-#  refactored to change that.
-#  These are three progam paths that should all lead to the same C routine
+# Test of residuals, in response to a reported bug.  
+# These are three progam paths that should all lead to the same C routine
 fit <- coxph(Surv(tstart, tstop, status) ~ sex + treat + pspline(age), cgd)
 fit2 <- coxph(Surv(tstart, tstop, status) ~ fit$linear, cgd, iter=0, init=1)
 fit3 <- coxph(Surv(tstart, tstop, status) ~ offset(fit$linear), cgd)
@@ -49,7 +47,9 @@ all.equal(fit$resid, fit3$resid)
 fit4 <-  coxph(Surv(tstart, tstop, status) ~ sex + treat + pspline(age),
                cgd, ties='breslow')
 dt <- coxph.detail(fit4, riskmat=TRUE)
-rscore <- exp(fit4$linear)
+# the results of coxph.detail are in time order, censors before deaths
+timeord <- dt$sortorder
+rscore <- exp(fit4$linear)[timeord]
 exp4 <- (rscore *dt$riskmat) %*% dt$hazard
-r4 <- cgd$status - exp4
-aeq(r4, fit4$resid)
+r4 <- cgd$status[timeord] - exp4
+aeq(r4, fit4$resid[timeord])

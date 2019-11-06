@@ -40,7 +40,7 @@ agsurv <- function(y, x, wt, risk, survtype, vartype) {
              as.integer(ntime),
              as.double(nrisk),
              inc = double(ntime))
-        }
+    }
 
     if (survtype==3 || vartype==3) {  # Efron approx
         xsum2 <- rowsum((wrisk*death) *x, dtime)
@@ -56,7 +56,7 @@ agsurv <- function(y, x, wt, risk, survtype, vartype) {
                     sum1 = double(length(nevent)),
                     sum2 = double(length(nevent)),
                     xbar = matrix(0., length(nevent), nvar))
-        }
+    }
     haz <- switch(survtype,
                      nevent/nrisk,
                      nevent/nrisk,
@@ -77,4 +77,4 @@ agsurv <- function(y, x, wt, risk, survtype, vartype) {
                    xbar=apply(matrix(xbar, ncol=nvar),2, cumsum))
     if (survtype==1) result$surv <- km$inc
     result
-    }
+}

@@ -1,7 +1,7 @@
 # Automatically generated from the noweb directory
-parsecovar1 <- function(flist, statedatanames) {
+parsecovar1 <- function(flist, statedata) {
     if (any(sapply(flist, function(x) !inherits(x, "formula"))))
-        stop("flist must be a list of formulas")
+        stop("an element of the formula list is not a formula")
     if (any(sapply(flist, length) != 3))
         stop("all formulas must have a left and right side")
     
@@ -38,8 +38,8 @@ parsecovar1 <- function(flist, statedatanames) {
 
         # and now the terms before the slash, which is the actual formula
         #  a formula of -1 +1 is recorded as intercept=TRUE, pasting a -1 on
-        #  allows us to tell if a 1 was included.
-        form <- formula(paste("~ -1 +", parts[1]))
+        #  allows us to tell if a 1 was included.  (But don't add a second ~).
+        form <- formula(paste("~ -1 +", substring(parts[1], 2, nchar(parts[1]))))
         list(common=common, fixed=fixed, clear=clear, ival=ival, 
            formula = form) 
     })
@@ -57,16 +57,16 @@ parsecovar1 <- function(flist, statedatanames) {
     lcut <- lapply(lhs, function(x) pcut(x[[2]]))
     env1 <- new.env(parent= parent.frame(2))
     env2 <- new.env(parent= env1)
-    if (missing(statedatanames)) {
+    if (missing(statedata)) {
         assign("state", function(...) list(stateid= "state", 
                                            values=c(...)), env1)
         assign("state", list(stateid="state"))
     }
     else {
-        for (i in statedatanames) {
+        for (i in statedata) {
             assign(i, eval(list(stateid=i)), env2)
             tfun <- eval(parse(text=paste0("function(...) list(stateid='"
-                                           , i, "', values=c(...)")))
+                                           , i, "', values=c(...))")))
             assign(i, tfun, env1)
         }
     }
@@ -86,7 +86,7 @@ parsecovar1 <- function(flist, statedatanames) {
 }
 parsecovar2 <- function(covar1, statedata, dformula, Terms, transitions,states) {
     if (is.null(statedata))
-        statedata <- data.frame(state = states)
+        statedata <- data.frame(state = states, stringsAsFactors=FALSE)
     else {
         if (is.null(statedata$state)) 
             stop("the statedata data set must contain a variable 'state'")
@@ -100,7 +100,7 @@ parsecovar2 <- function(covar1, statedata, dformula, Terms, transitions,states) 
     # Statedata might have rows for states that are not in the data set,
     #  for instance if the coxph call had used a subset argument.  Any of
     #  those were eliminated above.
-    # Likewise, the covariates list might have rules for transitions that are
+    # Likewise, the formula list might have rules for transitions that are
     #  not present.  Don't worry about it at this stage.
     allterm <- attr(Terms, 'term.labels')
     nterm <- length(allterm)
@@ -113,14 +113,14 @@ parsecovar2 <- function(covar1, statedata, dformula, Terms, transitions,states) 
     k <- seq(along=dterms)
     for (i in 1:nstate) {
         for (j in 1:nstate) {
-            tmap[dterms,i,j] <- k
+            tmap[dterms,j,i] <- k    # fill in in column major order
             k <- k + length(k)
         }
     }
     ncoef <- max(tmap)  # number of coefs used so far
     inits <- NULL
     
-    # if there is no covariates statement, the middle part of the work is skipped
+    # if there is no formula extension, the middle part of the work is skipped
     if (!is.null(covar1)) {
         for (i in 1:length(covar1$rhs)) {  
             rhs <- covar1$rhs[[i]]
@@ -134,51 +134,104 @@ parsecovar2 <- function(covar1, statedata, dformula, Terms, transitions,states) 
             for (x in lhs) {
                 # x is one term
                 if (is.null(x$left)) stop("term found without a :", x)
-                
                 # left of the colon
-                if (!is.list(x$left) && length(x$left) ==1 & x$left==1) 
+                if (!is.list(x$left) && length(x$left) ==1 && x$left==0) 
                     temp1 <- 1:nrow(statedata)
+                else if (is.numeric(x$left)) {
+                    temp1 <- as.integer(x$left)
+                    if (any(temp1 != x$left)) stop("non-integer state number")
+                    if (any(temp1 <1 | temp1> nstate))
+                        stop("numeric state is out of range")
+                }
                 else if (is.list(x$left) && names(x$left)[1] == "stateid"){
                     if (is.null(x$left$value)) 
                         stop("state variable with no list of values: ",x$left$stateid)
-                    else temp1 <- which(statedata[[x$left$stateid]] %in% x$left$value)
+                    else {
+                        if (any(k= is.na(match(x$left$stateid, names(statedata)))))
+                            stop(x$left$stateid[k], ": state variable not found")
+                        zz <- statedata[[x$left$stateid]]
+                        if (any(k= is.na(match(x$left$value, zz))))
+                            stop(x$left$value[k], ": state value not found")
+                        temp1 <- which(zz %in% x$left$value)
+                    }
                 }
-                else temp1 <- which(statedata$state %in% x$left)
+                else {
+                    k <- match(x$left, statedata$state)
+                    if (any(is.na(k))) stop(x$left[k], ": state not found")
+                    temp1 <- which(statedata$state %in% x$left)
+                }
                 
                 # right of colon
-                if (!is.list(x$right) && length(x$right) ==1 && x$right ==1) 
+                if (!is.list(x$right) && length(x$right) ==1 && x$right ==0) 
                     temp2 <- 1:nrow(statedata)
+                else if (is.numeric(x$right)) {
+                    temp2 <- as.integer(x$right)
+                    if (any(temp2 != x$right)) stop("non-integer state number")
+                    if (any(temp2 <1 | temp2> nstate))
+                        stop("numeric state is out of range")
+                }
                 else if (is.list(x$right) && names(x$right)[1] == "stateid") {
                     if (is.null(x$right$value))
                         stop("state variable with no list of values: ",x$right$stateid)
-                    else temp2 <- which(statedata[[x$right$stateid]] %in% x$right$value)
+                    else {
+                        if (any(k= is.na(match(x$right$stateid, names(statedata)))))
+                            stop(x$right$stateid[k], ": state variable not found")
+                        zz <- statedata[[x$right$stateid]]
+                        if (any(k= is.na(match(x$right$value, zz))))
+                            stop(x$right$value[k], ": state value not found")
+                        temp2 <- which(zz %in% x$right$value)
+                    }
                 }
-                else temp2 <- which(statedata$state %in% x$right)
+                else {
+                    k <- match(x$right, statedata$state)
+                    if (any(is.na(k))) stop(x$right[k], ": state not found")
+                    temp2 <- which(statedata$state %in% x$right)
+                }
+
 
                 state1 <- c(state1, rep(temp1, length(temp2)))
                 state2 <- c(state2, rep(temp2, each=length(temp1)))
             }           
-            if (rhs$clear) tmap[-1, state1, state2] <- 0
+            npair <- length(state1)
+            if (rhs$clear) {
+                for(k in 1:npair) tmap[-1, state1[k], state2[k]] <- 0
+            }
             if (length(rhs$ival)) 
                 inits <- c(inits, list(term=rindex, state1=state1, 
                                        state2= state2, init= rhs$ival))
-            if (rhs$common) j <- ncoef + seq_len(length(rindex))
-            else j <- ncoef + seq_len(length(rindex)*length(state1))
-
-            tmap[rindex, state1, state2] <- j
+            j <- ncoef + seq_len(length(rindex))
+            if (rhs$common) {
+                for(k in 1:npair) tmap[rindex, state1[k], state2[k]] <-j
+            }
+            else {
+                for(k in 1:npair){
+                    tmap[rindex, state1[k], state2[k]] <-j
+                    j <- j + length(rindex)
+                }  
+            }       
             ncoef <- max(j)
         }    
     }
-    t2 <- transitions[,-1, drop=FALSE]   # transitions to 'censor' don't count
+    i <- match("(censored)", colnames(transitions), nomatch=0)
+    if (i==0) t2 <- transitions
+    else t2 <- transitions[,-i, drop=FALSE]   # transitions to 'censor' don't count
     indx1 <- match(rownames(t2), states)
     indx2 <- match(colnames(t2), states)
     tmap2 <- matrix(0L, nrow= 1+nterm, ncol= sum(t2>0))
 
     trow <- row(t2)[t2>0]
     tcol <- col(t2)[t2>0]
-    for (i in 1:length(trow)) tmap2[,i] <- tmap[,indx1[trow[i]], indx2[tcol[i]]]
+    for (i in 1:nrow(tmap2)) {
+        for (j in 1:ncol(tmap2))
+            tmap2[i,j] <- tmap[i, indx1[trow[j]], indx2[tcol[j]]]
+    }
 
-    dimnames(tmap2) <- list(c("Intercept", allterm),
+    # relabel as 1-k
+    tmap2[1,] <- match(tmap2[1,], unique(c(0L, tmap2[1,]))) -1L
+    if (nrow(tmap2) > 1)
+        tmap2[-1,] <- match(tmap2[-1,], unique(c(0L, tmap2[-1,]))) -1L
+      
+    dimnames(tmap2) <- list(c("(Baseline)", allterm),
                                 paste(indx1[trow], indx2[tcol], sep=':')) 
     list(tmap = tmap2, inits=inits, mapid= cbind(indx1[trow], indx2[tcol]))
 }
@@ -188,16 +241,18 @@ parsecovar3 <- function(tmap, Xcol, Xassign) {
     hasintercept <- (Xassign[1] ==0)
 
     cmap <- matrix(0L, length(Xcol) + !hasintercept, ncol(tmap))
-    cmap[1,] <- match(tmap[1,], sort(c(0, unique(tmap[1,])))) -1L
+    cmap[1,] <- tmap[1,]
 
     xcount <- table(factor(Xassign, levels=1:max(Xassign)))
     mult <- 1+ max(xcount)  #used to keep the coefs in the same oder
 
-    j <- 1
+    ii <- 1
     for (i in 2:nrow(tmap)) {
         k <- seq_len(xcount[i-1])
-        cmap[j+k,] <- ifelse(tmap[i,]==0, 0, tmap[i,]*mult + rep(k, ncol(tmap)))
-        j <- j + max(k)
+        for (j in 1:ncol(tmap))
+            cmap[ii+k, j] <- if(tmap[i,j]==0) 0 else tmap[i,j]*mult +k
+
+        ii <- ii + max(k)
     }
 
     # renumber coefs as 1, 2, 3, ...
@@ -205,7 +260,7 @@ parsecovar3 <- function(tmap, Xcol, Xassign) {
     
     colnames(cmap) <- colnames(tmap)
     if (hasintercept) rownames(cmap) <- Xcol
-    else rownames(cmap) <- c("(Intercept)", Xcol)
+    else rownames(cmap) <- c("(Baseline)", Xcol)
 
     cmap
 }

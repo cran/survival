@@ -42,6 +42,7 @@ matplot(ageterm$x, exp(ytemp - center), log='y',
 ###################################################
 ### code chunk number 5: hgb
 ###################################################
+getOption("SweaveHooks")[["fig"]]()
 fit <- coxph(Surv(futime, death) ~ age + pspline(hgb, 4), mgus2)
 fit
 termplot(fit, se=TRUE, term=2, col.term=1, col.se=1,
@@ -51,6 +52,7 @@ termplot(fit, se=TRUE, term=2, col.term=1, col.se=1,
 ###################################################
 ### code chunk number 6: df
 ###################################################
+getOption("SweaveHooks")[["fig"]]()
 termplot(fit, se=TRUE, col.term=1, col.se=1, term=2,
          xlab="Hemoglobin level", ylim=c(-.4, 1.3))
 df <- c(3, 2.5, 2)
@@ -64,8 +66,9 @@ legend(14, 1, paste("df=", c(4, df)), lty=1, col=1:4, lwd=2)
 
 
 ###################################################
-### code chunk number 7: fit2.5
+### code chunk number 7: fit2a
 ###################################################
+getOption("SweaveHooks")[["fig"]]()
 fit2a <- coxph(Surv(futime, death) ~ age + pspline(hgb, 2.5, nterm=8), mgus2)
 coef(fit2a)
 plot(1:10, coef(fit2a)[-1])
@@ -74,6 +77,7 @@ plot(1:10, coef(fit2a)[-1])
 ###################################################
 ### code chunk number 8: fit2b
 ###################################################
+getOption("SweaveHooks")[["fig"]]()
 temp <- c(1:7, 8,8,8)
 fit2b <- coxph(Surv(futime, death) ~ age + 
                pspline(hgb, 2.5, nterm=8, combine=temp), 
@@ -112,6 +116,7 @@ anova(nfit1, nfit2, nfit3)
 ###################################################
 ### code chunk number 11: nfit2
 ###################################################
+getOption("SweaveHooks")[["fig"]]()
 pdata <- expand.grid(age= 50:99, sex=c("F", "M"))
 pdata[1:5,]
 

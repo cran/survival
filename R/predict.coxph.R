@@ -11,7 +11,7 @@ predict.coxph <- function(object, newdata,
     type <-match.arg(type)
     if (type=="survival") {
         survival <- TRUE
-        type == "expected"  #this is to stop lots of "or" statements
+        type <- "expected"  #this is to stop lots of "or" statements
     }
     else survival <- FALSE
 
@@ -150,7 +150,7 @@ predict.coxph <- function(object, newdata,
         na.action.used <- attr(mf2, 'na.action')
         } 
     else n2 <- n
-    if (type=="expected" || type== "surv") {
+    if (type=="expected") {
         if (missing(newdata))
             pred <- y[,ncol(y)] - object$residuals
         if (!missing(newdata) || se.fit) {

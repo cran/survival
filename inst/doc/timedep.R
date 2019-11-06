@@ -35,20 +35,20 @@ legend(1.5, .85, c("Responders", "Non-responders"),
 
 
 ###################################################
-### code chunk number 4: timedep.Rnw:200-202 (eval = FALSE)
+### code chunk number 4: timedep.Rnw:201-203 (eval = FALSE)
 ###################################################
 ## fit <- coxph(Surv(time1, time2, status) ~ age + creatinine, 
 ##              data=mydata)
 
 
 ###################################################
-### code chunk number 5: timedep.Rnw:273-274 (eval = FALSE)
+### code chunk number 5: timedep.Rnw:274-275 (eval = FALSE)
 ###################################################
 ## newdata <- tmerge(data1, data2, id, newvar=tdc(time, value), ...)
 
 
 ###################################################
-### code chunk number 6: timedep.Rnw:319-320
+### code chunk number 6: timedep.Rnw:320-321
 ###################################################
 cgd0[1:4,]
 
@@ -125,20 +125,20 @@ rbind('baseline fit' = coef(fit1),
 
 
 ###################################################
-### code chunk number 11: timedep.Rnw:582-583
+### code chunk number 11: timedep.Rnw:583-584
 ###################################################
 attr(pbc2, "tcount")
 
 
 ###################################################
-### code chunk number 12: timedep.Rnw:585-587
+### code chunk number 12: timedep.Rnw:586-588
 ###################################################
 #grab a couple of numbers for the paragraph below
 atemp <- attr(pbc2, "tcount")[2:3,]
 
 
 ###################################################
-### code chunk number 13: timedep.Rnw:668-674 (eval = FALSE)
+### code chunk number 13: timedep.Rnw:669-675 (eval = FALSE)
 ###################################################
 ## temp <- subset(pbc, id <= 312, select=c(id:sex, stage))
 ## pbc2 <- tmerge(temp, temp, id=id, death = event(time, status))
@@ -187,7 +187,7 @@ vet2[1:7, c("id", "tstart", "time", "status", "tgroup", "age", "karno")]
 ###################################################
 ### code chunk number 17: split2
 ###################################################
-vfit2 <- coxph(Surv(tstart, time, status) ~ trt + prior + 
+vfit2 <- coxph(Surv(tstart, time, status) ~ trt + prior +
                   karno:strata(tgroup), data=vet2)
 vfit2
 cox.zph(vfit2)
@@ -316,7 +316,7 @@ c(tdata=nrow(tdata), tdata2=nrow(tdata2))
 
 
 ###################################################
-### code chunk number 28: timedep.Rnw:1175-1182
+### code chunk number 28: timedep.Rnw:1176-1183
 ###################################################
 function(x, t, riskset, weights){ 
     obrien <- function(x) {
@@ -328,7 +328,7 @@ function(x, t, riskset, weights){
 
 
 ###################################################
-### code chunk number 29: timedep.Rnw:1192-1194
+### code chunk number 29: timedep.Rnw:1193-1195
 ###################################################
 function(x, t, riskset, weights) 
     unlist(tapply(x, riskset, rank))

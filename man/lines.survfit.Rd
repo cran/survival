@@ -12,11 +12,13 @@ generated with \code{plot.survfit}.
 \usage{
 \method{lines}{survfit}(x, type="s", pch=3, col=1, lty=1,
         lwd=1, cex=1, mark.time=FALSE, 
-	xscale=1, xmax, fun, conf.int=FALSE,
-        conf.times, conf.cap=.005, conf.offset=.012, mark, ...)
+        fun, conf.int=FALSE,
+        conf.times, conf.cap=.005, conf.offset=.012,
+        conf.type = c("log", "log-log", "plain", "logit", "arcsin"),
+        mark, noplot="(s0)", cumhaz= FALSE,  ...)
 \method{lines}{survexp}(x, type="l", ...)
-\method{points}{survfit}(x, xscale, xmax, fun, censor=FALSE, col=1, pch,
-...)
+\method{points}{survfit}(x, fun, censor=FALSE, col=1, pch,
+        noplot="(s0)", cumhaz=FALSE, ...)
 }
 
 \arguments{
@@ -53,16 +55,6 @@ If \code{TRUE}, then curves are marked at each censoring time.
 If \code{mark.time} is a numeric vector, then curves are marked at  
 the specified time points. 
 }
-\item{xscale}{
-  this parameter is no longer necessary and is ignored.  See the
-  note in \code{\link{plot.survfit}}.
-}
-\item{xmax}{
-the maximum horizontal plot coordinate.     
-This shortens the curve before plotting it, so unlike using the 
-\code{xlim} graphical parameter, warning messages about out of bounds points are 
-not generated. 
-}
 \item{fun}{
 an arbitrary function defining a transformation of the survival curve. 
 For example \code{fun=log} is an alternative way to draw a log-survival curve 
@@ -78,7 +70,9 @@ and "cloglog" creates a complimentary log-log survival plot
 if \code{TRUE}, confidence bands for the curves are also plotted. 
 If set to \code{"only"}, then only the CI bands are plotted, and the curve 
 itself is left off.   
-This can be useful for fine control over the colors or line types of a plot. 
+This can be useful for fine control over the colors or line types of a
+plot.
+A numeric value, e.g. \code{conf.int = .90}, can be used to 
 }
   \item{conf.times}{optional vector of times at which to place a
     confidence bar on the curve(s).  If present, these will be used
@@ -91,6 +85,22 @@ This can be useful for fine control over the colors or line types of a plot.
     region. If this is a single number then each curve's bars are offset
     by this amount from the prior curve's bars, if it is a vector the values are
     used directly.}
+  \item{conf.type}{
+	One of \code{"plain"}, \code{"log"} (the default),
+	\code{"log-log"}, \code{"logit"}, or \code{"none"}.  Only
+	enough of the string to uniquely identify it is necessary.
+	The first option causes confidence intervals not to be
+	generated.  The second causes the standard intervals
+	\code{curve +- k *se(curve)}, where k is determined from
+	\code{conf.int}.  The log option calculates intervals based on the
+	cumulative hazard or log(survival). The log-log option bases the
+	intervals on the log hazard or log(-log(survival)), and the
+	logit option on log(survival/(1-survival)). 
+      }
+  \item{noplot}{for multi-state models, curves with this label will not
+    be plotted.  The default corresponds to an unspecified state.}
+  \item{cumhaz}{plot the cumulative hazard, rather than the survival or
+    probability in state.}
 }
 \value{
 a list with components \code{x} and \code{y}, containing the coordinates of the 

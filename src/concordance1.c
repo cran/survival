@@ -1,4 +1,5 @@
 /* Automatically generated from the noweb directory */
+/* Replaced by concordance3.c. */
 #include "survS.h"
 SEXP concordance1(SEXP y, SEXP wt2,  SEXP indx2, SEXP ntree2) {
     int i, j, k, index;

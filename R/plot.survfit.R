@@ -3,19 +3,20 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
                         pch=3,  col=1,lty=1, lwd=1, 
                         cex=1, log=FALSE,
                         xscale=1, yscale=1, 
-                        xmax, ymin=0,
+                        xlim, ylim, xmax, 
                         fun, xlab="", ylab="", xaxs='r', 
                         conf.times, conf.cap=.005, conf.offset=.012, 
-                        mark, ...) {
+                        conf.type=c('log',  'log-log',  'plain', 
+                                  'logit', "arcsin"),
+                        mark, noplot="(s0)", cumhaz=FALSE,
+                        firstx, ymin, ...) {
 
     dotnames <- names(list(...))
-    if (any(dotnames=='type'))
+    if (any(dotnames =='type'))
         stop("The graphical argument 'type' is not allowed")
-    if (missing(mark.time) & !missing(mark)) mark.time <- TRUE
+    x <- survfit0(x, x$start.time)   # align data at 0 for plotting
 
-    x <- survfit23(x)
-    if (missing(pch) && !missing(mark)) pch <- mark
-    if (length(pch)==1 && is.character(pch)) pch <- strsplit(pch, "")[[1]]
+    # decide on logarithmic axes, yes or no
     if (is.logical(log)) {
         ylog <- log
         xlog <- FALSE
@@ -41,8 +42,7 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
     # The default for plot and lines is to add confidence limits
     #  if there is only one curve
     if (missing(conf.int) && missing(conf.times))  
-        conf.int <- (is.null(x$strata) && !is.matrix(x$surv) 
-            && !is.matrix(x$pstate))  # a NULL is FALSE 
+        conf.int <- (!is.null(x$std.err) && prod(dim(x) ==1))
 
     if (missing(conf.times)) conf.times <- NULL   
     else {
@@ -50,32 +50,96 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
         if (missing(conf.int)) conf.int <- TRUE
     }
 
-    stime <- x$time
-    if (!missing(fun) && is.character(fun) && fun=="cumhaz") {
-        if (!is.null(x$cumhaz)) {
-            ssurv <- as.matrix(x$cumhaz)
-            fun <- "identity"
-            if (conf.int) {
-                temp <- survfit_confint(ssurv, x$std.chaz, logse=FALSE,
-                                      conf.type='plain', conf.int=.95, ulimit=FALSE)
-                supper <- as.matrix(temp$upper)
-                slower <- as.matrix(temp$lower)
+    if (!missing(conf.int)) {
+        if (is.numeric(conf.int)) {
+            conf.level <- conf.int
+            if (conf.level<0 || conf.level > 1)
+                stop("invalid value for conf.int")
+            if (conf.level ==0) conf.int <- FALSE
+            else if (conf.level != x$conf.int) {
+                x$upper <- x$lower <- NULL  # force recomputation
             }
-            else supper <- NULL
+            conf.int <- TRUE
+        }
+        else conf.level = 0.95
+    }
+
+    # Organize data into stime, ssurv, supper, slower
+    stime <- x$time
+    std   <- NULL
+    yzero <- FALSE   # a marker that we have an "ordinary survival curve" with min 0
+    smat <- function(x) {
+        # the rest of the routine is simpler if everything is a matrix
+        dd <- dim(x)
+        if (is.null(dd)) as.matrix(x)
+        else if (length(dd) ==2) x
+        else matrix(x, nrow=dd[1])
+    }
+
+    if (cumhaz) {  # plot the cumulative hazard instead
+        if (is.null(x$cumhaz)) 
+            stop("survfit object does not contain a cumulative hazard")
+
+        if (is.numeric(cumhaz)) {
+            dd <- dim(x$cumhaz)
+            if (is.null(dd)) nhazard <- 1
+            else nhazard <- prod(dd[-1])
+
+            if (cumhaz != floor(cumhaz)) stop("cumhaz argument is not integer")
+            if (any(cumhaz < 1 | cumhaz > nhazard)) stop("subscript out of range")
+            ssurv <- smat(x$cumhaz)[,cumhaz, drop=FALSE]
+            if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)[,cumhaz, drop=FALSE]
+        }
+        else if (is.logical(cumhaz)) {
+            ssurv <- smat(x$cumhaz)
+            if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)
+        }
+        else stop("invalid cumhaz argument")
+    }
+    else if (inherits(x, "survfitms")) {
+        i <- (x$states != noplot)
+        if (all(i) || !any(i)) {
+            # the !any is a failsafe, in case none are kept then ignore noplot
+            ssurv <- smat(x$pstate)
+            if (!is.null(x$std.err)) std <- smat(x$std.err)
+        }
+        else {
+            i <- which(i)  # the states to keep
+            # we have to be careful about subscripting
+            if (length(dim(x$pstate)) ==3) {
+                ssurv <- smat(x$pstate[,,i, drop=FALSE])
+                if (!is.null(x$std.err))
+                    std <- smat(x$std.err[,,i, drop=FALSE])
+            }
+            else {
+                ssurv <- x$pstate[,i, drop=FALSE]
+                if (!is.null(x$std.err)) std <- x$std.err[,i, drop=FALSE]
+            }
         }
     }
     else {
-        if (!is.null(x$pstate)) ssurv <- as.matrix(x$pstate)
-        else ssurv <- as.matrix(x$surv)
-        if( !is.null(x$upper)) {
-            supper <- as.matrix(x$upper)
-            slower <- as.matrix(x$lower)
-        }
-        else {
-            conf.int <- FALSE
-            supper <- NULL  #marker for later code
+        yzero <- TRUE
+        ssurv <- as.matrix(x$surv)   # x$surv will have one column
+        if (!is.null(x$std.err)) std <- as.matrix(x$std.err)
+        # The fun argument only applies to single state survfit objects
+        #  First deal with the special case of fun='cumhaz', which is here for
+        #  backwards compatability; people should use the cumhaz argument
+        if (!missing(fun) && is.character(fun) && fun=="cumhaz") {
+            cumhaz <- TRUE
+            if (!is.null(x$cumhaz)) {
+                ssurv <- as.matrix(x$cumhaz)
+                if (!is.null(x$std.chaz)) std <- as.matrix(x$std.chaz)
+            } 
+            else {
+                ssurv <- as.matrix(-log(x$surv))
+                if (!is.null(x$std.err)) {
+                    if (x$logse) std <- as.matrix(x$std.err)
+                    else std <- as.matrix(x$std.err/x$surv)
+                }
+             }
         }
     }
+
     # set up strata
     if (is.null(x$strata)) {
         nstrat <- 1
@@ -86,47 +150,39 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
         stemp <- rep(1:nstrat, x$strata) # same length as stime
     }
     ncurve <- nstrat * ncol(ssurv)
-    if (!missing(xmax) && any(x$time>xmax)) {
-        if (all(x$time > xmax)) stop("all points are > xmax")
-        # prune back the survival curves
-        # I need to replace x's over the limit with xmax, and y's over the
-        #  limit with the prior y value 
-        keepx <- keepy <- NULL  # lines to keep
-        tempn <- table(stemp)
-        offset <- cumsum(c(0, tempn))
-        for (i in 1:nstrat) {
-            ttime <-stime[stemp==i]
-            if (all(ttime <= xmax)) {
-                keepx <- c(keepx, 1:tempn[i] + offset[i])
-                keepy <- c(keepy, 1:tempn[i] + offset[i])
-            }
-            else {
-                bad <- min((1:tempn[i])[ttime>xmax])
-                if (bad==1)  {  #lost them all
-                    stop("code error with xmax")
-                    # this should be impossible
-                    } 
-                else  keepy<- c(keepy, c(1:(bad-1), bad-1) + offset[i])
-                keepx <- c(keepx, (1:bad)+offset[i])
-                stime[bad+offset[i]] <- xmax
-                x$n.event[bad+offset[i]] <- 1   #don't plot a tick mark
-            }
-        }        
-
-        # ok, now actually prune it
-        stime <- stime[keepx]
-        stemp <- stemp[keepx]
-        x$n.event <- x$n.event[keepx]
-        if (!is.null(x$n.censor)) x$n.censor <- x$n.censor[keepx]
-        ssurv <- ssurv[keepy,,drop=FALSE]
-        if (!is.null(supper)) {
-            supper <- supper[keepy,,drop=FALSE]
-            slower <- slower[keepy,,drop=FALSE]
+    conf.type <- match.arg(conf.type)
+    if (conf.type=="none") conf.int <- FALSE
+    if (conf.int== "none") conf.int <- FALSE
+    if (conf.int=="only") {
+        plot.surv <- FALSE
+        conf.int <- TRUE
         }
-    }
-    #stime <- stime/xscale  #scaling is deferred until xmax processing is done
+    else plot.surv <- TRUE
 
-    if (!missing(fun)) {
+    if (conf.int) {
+        if (is.null(std)) stop("object does not have standard errors, CI not possible")
+        if (cumhaz) {
+            if (missing(conf.type)) conf.type="plain"
+            temp <- survfit_confint(ssurv, std, logse=FALSE,
+                                    conf.type, conf.level, ulimit=FALSE)
+            supper <- as.matrix(temp$upper)
+            slower <- as.matrix(temp$lower)
+        }
+        else if (is.null(x$upper)) {
+            if (missing(conf.type) && !is.null(x$conf.type))
+                conf.type <- x$conf.type
+            temp <- survfit_confint(ssurv, x$std.err, logse= x$logse,
+                                    conf.type, conf.level, ulimit=FALSE)
+            supper <- as.matrix(temp$upper)
+            slower <- as.matrix(temp$lower)
+        }
+        else {
+            supper <- as.matrix(x$upper)
+            slower <- as.matrix(x$lower)
+        }
+    } else supper <- slower <- NULL
+    if (!inherits(x, "survfitms") && !cumhaz & !missing(fun)) {
+        yzero <- FALSE
         if (is.character(fun)) {
             tfun <- switch(tolower(fun),
                            'log' = function(x) x,
@@ -141,6 +197,8 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
                        'surv' = function(x) x,
                            stop("Unrecognized function argument")
                            )
+            if (tolower(fun) %in% c("identity", "s") &&
+                !inherits(x, "survfitms") && !cumhaz) yzero <- TRUE
         }
         else if (is.function(fun)) tfun <- fun
         else stop("Invalid 'fun' argument")
@@ -149,15 +207,12 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
         if (!is.null(supper)) {
             supper <- tfun(supper)
             slower <- tfun(slower)
-            }
+        }
     }
-    if (is.logical(conf.int)) plot.surv <- TRUE
-    else {
-        temp <- match.arg(conf.int, c("both", "only", "none"))
-        if (is.na(temp)) stop("invalid value for conf.int")
-        if (temp=="none") conf.int <- FALSE  else conf.int <- TRUE
-        if (temp=="only") plot.surv <- FALSE  else plot.surv <- TRUE
-    }
+    if (missing(mark.time) & !missing(mark)) mark.time <- TRUE
+    if (missing(pch) && !missing(mark)) pch <- mark
+    if (length(pch)==1 && is.character(pch)) pch <- strsplit(pch, "")[[1]]
+
     # Marks are not placed on confidence bands
     pch  <- rep(pch, length.out=ncurve)
     mcol <- rep(col, length.out=ncurve)
@@ -190,44 +245,67 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
         lty  <- rep(lty, length.out=ncurve)
         lwd  <- rep(lwd, length.out=ncurve)
     }
-    #axis setting parmaters that depend on the fun argument
-    if (!missing(fun)) {
-        ymin <- tfun(ymin)  #lines routine doesn't have it
+    # check consistency
+    if (!missing(xlim)) {
+        if (!missing(xmax)) warning("cannot have both xlim and xmax arguments, xmax ignored")
+        if (!missing(firstx)) stop("cannot have both xlim and firstx arguments")
+    }
+    if (!missing(ylim)) {
+        if (!missing(ymin)) stop("cannot have both ylim and ymin arguments")
     }
 
     # Do axis range computations
-    if (xaxs=='S') {
-        #special x- axis style for survival curves
-        xaxs <- 'i'  #what S thinks
-        tempx <- max(stime) * 1.04
-    }
-    else tempx <- max(stime)
-    tempx <- c(min(stime), tempx)
 
-    if (ylog) {
-        tempy <-  range(ssurv[is.finite(ssurv)& ssurv>0])
-        if (tempy[2]==1) tempy[2] <- .99   # makes for a prettier axis
-        if (any(ssurv==0)) {
-            tempy[1] <- tempy[1]*.8
-            ssurv[ssurv==0] <- tempy[1]
-            if (!is.null(supper)) {
-                supper[supper==0] <- tempy[1]
-                slower[slower==0] <- tempy[1]
-            }
-        }
+    if (!missing(xlim) && !is.null(xlim)) {
+        tempx <- xlim
+        if (xaxs == 'S') tempx[2] <- tempx[2] + diff(tempx)*1.04
     }
     else {
-        tempy <- range(c(ymin, ssurv), finite=TRUE, na.rm=TRUE)
+        temp <-  stime[is.finite(stime)]
+        if (!missing(xmax) && missing(xlim)) temp <- temp[temp <= xmax]
+        
+        if (xaxs=='S') {
+            #special x- axis style for survival curves
+            if (xlog) tempx <- c(min(temp[temp>0]), max(temp)+ diff(temp)*1.04)
+            else tempx <- c(min(temp), max(temp)) * 1.04
+        }
+        else if (xlog) tempx <- range(temp[temp > 0])
+        else tempx <- range(temp)
+    }  
+
+    if (!missing(ylim) && !is.null(ylim)) tempy <- ylim
+    else {
+        skeep <- is.finite(stime) & stime >= tempx[1] & stime <= tempx[2]
+
+        if (ylog) {
+            if (!is.null(supper))
+                tempy <- range(c(slower[is.finite(slower) & slower>0 & skeep], 
+                                 supper[is.finite(supper) & skeep]))
+            else tempy <-  range(ssurv[is.finite(ssurv)& ssurv>0 & skeep])
+            if (tempy[2]==1) tempy[2] <- .99   # makes for a prettier axis
+            if (any(c(ssurv, slower)[skeep] ==0)) {
+                tempy[1] <- tempy[1]*.8
+                ssurv[ssurv==0] <- tempy[1]
+                if (!is.null(slower))  slower[slower==0] <- tempy[1]
+            }
+        }
+        else {
+            if (!is.null(supper)) 
+                tempy <- range(c(supper[skeep], slower[skeep]), finite=TRUE, na.rm=TRUE)
+            else tempy <- range(ssurv[skeep], finite=TRUE, na.rm= TRUE)
+            if (yzero) tempy <- range(c(0, tempy))
+        }
     }
 
-        
+    if (!missing(ymin)) tempy[1] <- ymin
+
     #
     # Draw the basic box
     #
+    temp <- if (xaxs=='S') 'i' else xaxs
     plot(range(tempx, finite=TRUE, na.rm=TRUE)/xscale, 
          range(tempy, finite=TRUE, na.rm=TRUE)*yscale, 
-         type='n', log=logax, xlab=xlab, ylab=ylab, xaxs=xaxs,...)
-
+         type='n', log=logax, xlab=xlab, ylab=ylab, xaxs=temp,...)
     if(yscale != 1) {
         if (ylog) par(usr =par("usr") -c(0, 0, log10(yscale), log10(yscale))) 
         else par(usr =par("usr")/c(1, 1, yscale, yscale))   
@@ -236,6 +314,17 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
         if (xlog) par(usr =par("usr") -c(log10(xscale), log10(xscale), 0,0)) 
         else par(usr =par("usr")*c(xscale, xscale, 1, 1))   
     }  
+    if (xaxs=='i') resetclip <- FALSE
+    else resetclip <- !(missing(xlim) & missing(ylim) & 
+                        missing(xmax) & missing(firstx)& missing(ymin))
+
+    if (resetclip) {
+      # yes, do it
+      if (xaxs=='S') tempx <- c(tempx[1], temp[1])
+      clip(tempx[1], tempx[2], tempy[1], tempy[2])
+      options(plot.survfit = list(plotclip=c(tempx, tempy), plotreset=par('usr')))
+    }
+    else options(plot.survfit = NULL)  #remove any notes from a prior plot
     # Create a step function, removing redundancies that sometimes occur in
     #  curves with lots of censoring.
     dostep <- function(x,y) {
@@ -286,7 +375,6 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
         }
         points(xx, yy, cex=cex, ...)
     }
-    plot.surv <- TRUE
     type <- 's'
     c1 <- 1  # keeps track of the curve number
     c2 <- 1  # keeps track of the lty, col, etc
@@ -308,6 +396,7 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
             else censor <- ifelse(x$n.censor[who]==0, 0, 1 + (x$n.event[who] > 0))
             xx <- stime[who]
             yy <- ssurv[who,j]
+
             if (plot.surv) {
                 if (type=='s')
                     lines(dostep(xx, yy), lty=lty[c2], col=col[c2], lwd=lwd[c2]) 
@@ -360,25 +449,30 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
 
         }
     }
-    invisible(list(x=xend, y=yend))
+    lastx <- list(x=xend, y=yend)
+    if (resetclip) {
+        xx <- par("usr")
+        clip(xx[1], xx[2], xx[3], xx[4])  # undo the clipping
+    }
+    invisible(lastx)
 }
 
 lines.survfit <- function(x, type='s', 
                           pch=3, col=1, lty=1, lwd=1,
                           cex=1,
-                          mark.time=FALSE, xscale=1, 
-                          xmax,
+                          mark.time=FALSE, 
                           fun,  conf.int=FALSE,  
-                          conf.times, conf.cap=.005, conf.offset=.012, mark, ...) {
-    x <- survfit23(x)
+                          conf.times, conf.cap=.005, conf.offset=.012,
+                          conf.type=c('log',  'log-log',  'plain', 
+                                  'logit', "arcsin"),
+                          mark, noplot="(s0)", cumhaz=FALSE, ...) {
+    x <- survfit0(x, x$start.time)
+
     xlog <- par("xlog")
-    if (missing(mark.time) & !missing(mark)) mark.time <- TRUE
- 
     # The default for plot and lines is to add confidence limits
     #  if there is only one curve
     if (missing(conf.int) && missing(conf.times))  
-        conf.int <- (is.null(x$strata) && !is.matrix(x$surv) 
-            && !is.matrix(x$pstate))  # a NULL is FALSE 
+        conf.int <- (!is.null(x$std.err) && prod(dim(x) ==1))
 
     if (missing(conf.times)) conf.times <- NULL   
     else {
@@ -386,32 +480,96 @@ lines.survfit <- function(x, type='s',
         if (missing(conf.int)) conf.int <- TRUE
     }
 
-    stime <- x$time
-    if (!missing(fun) && is.character(fun) && fun=="cumhaz") {
-        if (!is.null(x$cumhaz)) {
-            ssurv <- as.matrix(x$cumhaz)
-            fun <- "identity"
-            if (conf.int) {
-                temp <- survfit_confint(ssurv, x$std.chaz, logse=FALSE,
-                                      conf.type='plain', conf.int=.95, ulimit=FALSE)
-                supper <- as.matrix(temp$upper)
-                slower <- as.matrix(temp$lower)
+    if (!missing(conf.int)) {
+        if (is.numeric(conf.int)) {
+            conf.level <- conf.int
+            if (conf.level<0 || conf.level > 1)
+                stop("invalid value for conf.int")
+            if (conf.level ==0) conf.int <- FALSE
+            else if (conf.level != x$conf.int) {
+                x$upper <- x$lower <- NULL  # force recomputation
             }
-            else supper <- NULL
+            conf.int <- TRUE
+        }
+        else conf.level = 0.95
+    }
+
+    # Organize data into stime, ssurv, supper, slower
+    stime <- x$time
+    std   <- NULL
+    yzero <- FALSE   # a marker that we have an "ordinary survival curve" with min 0
+    smat <- function(x) {
+        # the rest of the routine is simpler if everything is a matrix
+        dd <- dim(x)
+        if (is.null(dd)) as.matrix(x)
+        else if (length(dd) ==2) x
+        else matrix(x, nrow=dd[1])
+    }
+
+    if (cumhaz) {  # plot the cumulative hazard instead
+        if (is.null(x$cumhaz)) 
+            stop("survfit object does not contain a cumulative hazard")
+
+        if (is.numeric(cumhaz)) {
+            dd <- dim(x$cumhaz)
+            if (is.null(dd)) nhazard <- 1
+            else nhazard <- prod(dd[-1])
+
+            if (cumhaz != floor(cumhaz)) stop("cumhaz argument is not integer")
+            if (any(cumhaz < 1 | cumhaz > nhazard)) stop("subscript out of range")
+            ssurv <- smat(x$cumhaz)[,cumhaz, drop=FALSE]
+            if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)[,cumhaz, drop=FALSE]
+        }
+        else if (is.logical(cumhaz)) {
+            ssurv <- smat(x$cumhaz)
+            if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)
+        }
+        else stop("invalid cumhaz argument")
+    }
+    else if (inherits(x, "survfitms")) {
+        i <- (x$states != noplot)
+        if (all(i) || !any(i)) {
+            # the !any is a failsafe, in case none are kept then ignore noplot
+            ssurv <- smat(x$pstate)
+            if (!is.null(x$std.err)) std <- smat(x$std.err)
+        }
+        else {
+            i <- which(i)  # the states to keep
+            # we have to be careful about subscripting
+            if (length(dim(x$pstate)) ==3) {
+                ssurv <- smat(x$pstate[,,i, drop=FALSE])
+                if (!is.null(x$std.err))
+                    std <- smat(x$std.err[,,i, drop=FALSE])
+            }
+            else {
+                ssurv <- x$pstate[,i, drop=FALSE]
+                if (!is.null(x$std.err)) std <- x$std.err[,i, drop=FALSE]
+            }
         }
     }
     else {
-        if (!is.null(x$pstate)) ssurv <- as.matrix(x$pstate)
-        else ssurv <- as.matrix(x$surv)
-        if( !is.null(x$upper)) {
-            supper <- as.matrix(x$upper)
-            slower <- as.matrix(x$lower)
-        }
-        else {
-            conf.int <- FALSE
-            supper <- NULL  #marker for later code
+        yzero <- TRUE
+        ssurv <- as.matrix(x$surv)   # x$surv will have one column
+        if (!is.null(x$std.err)) std <- as.matrix(x$std.err)
+        # The fun argument only applies to single state survfit objects
+        #  First deal with the special case of fun='cumhaz', which is here for
+        #  backwards compatability; people should use the cumhaz argument
+        if (!missing(fun) && is.character(fun) && fun=="cumhaz") {
+            cumhaz <- TRUE
+            if (!is.null(x$cumhaz)) {
+                ssurv <- as.matrix(x$cumhaz)
+                if (!is.null(x$std.chaz)) std <- as.matrix(x$std.chaz)
+            } 
+            else {
+                ssurv <- as.matrix(-log(x$surv))
+                if (!is.null(x$std.err)) {
+                    if (x$logse) std <- as.matrix(x$std.err)
+                    else std <- as.matrix(x$std.err/x$surv)
+                }
+             }
         }
     }
+
     # set up strata
     if (is.null(x$strata)) {
         nstrat <- 1
@@ -422,47 +580,39 @@ lines.survfit <- function(x, type='s',
         stemp <- rep(1:nstrat, x$strata) # same length as stime
     }
     ncurve <- nstrat * ncol(ssurv)
-    if (!missing(xmax) && any(x$time>xmax)) {
-        if (all(x$time > xmax)) stop("all points are > xmax")
-        # prune back the survival curves
-        # I need to replace x's over the limit with xmax, and y's over the
-        #  limit with the prior y value 
-        keepx <- keepy <- NULL  # lines to keep
-        tempn <- table(stemp)
-        offset <- cumsum(c(0, tempn))
-        for (i in 1:nstrat) {
-            ttime <-stime[stemp==i]
-            if (all(ttime <= xmax)) {
-                keepx <- c(keepx, 1:tempn[i] + offset[i])
-                keepy <- c(keepy, 1:tempn[i] + offset[i])
-            }
-            else {
-                bad <- min((1:tempn[i])[ttime>xmax])
-                if (bad==1)  {  #lost them all
-                    stop("code error with xmax")
-                    # this should be impossible
-                    } 
-                else  keepy<- c(keepy, c(1:(bad-1), bad-1) + offset[i])
-                keepx <- c(keepx, (1:bad)+offset[i])
-                stime[bad+offset[i]] <- xmax
-                x$n.event[bad+offset[i]] <- 1   #don't plot a tick mark
-            }
-        }        
-
-        # ok, now actually prune it
-        stime <- stime[keepx]
-        stemp <- stemp[keepx]
-        x$n.event <- x$n.event[keepx]
-        if (!is.null(x$n.censor)) x$n.censor <- x$n.censor[keepx]
-        ssurv <- ssurv[keepy,,drop=FALSE]
-        if (!is.null(supper)) {
-            supper <- supper[keepy,,drop=FALSE]
-            slower <- slower[keepy,,drop=FALSE]
+    conf.type <- match.arg(conf.type)
+    if (conf.type=="none") conf.int <- FALSE
+    if (conf.int== "none") conf.int <- FALSE
+    if (conf.int=="only") {
+        plot.surv <- FALSE
+        conf.int <- TRUE
         }
-    }
-    #stime <- stime/xscale  #scaling is deferred until xmax processing is done
+    else plot.surv <- TRUE
 
-    if (!missing(fun)) {
+    if (conf.int) {
+        if (is.null(std)) stop("object does not have standard errors, CI not possible")
+        if (cumhaz) {
+            if (missing(conf.type)) conf.type="plain"
+            temp <- survfit_confint(ssurv, std, logse=FALSE,
+                                    conf.type, conf.level, ulimit=FALSE)
+            supper <- as.matrix(temp$upper)
+            slower <- as.matrix(temp$lower)
+        }
+        else if (is.null(x$upper)) {
+            if (missing(conf.type) && !is.null(x$conf.type))
+                conf.type <- x$conf.type
+            temp <- survfit_confint(ssurv, x$std.err, logse= x$logse,
+                                    conf.type, conf.level, ulimit=FALSE)
+            supper <- as.matrix(temp$upper)
+            slower <- as.matrix(temp$lower)
+        }
+        else {
+            supper <- as.matrix(x$upper)
+            slower <- as.matrix(x$lower)
+        }
+    } else supper <- slower <- NULL
+    if (!inherits(x, "survfitms") && !cumhaz & !missing(fun)) {
+        yzero <- FALSE
         if (is.character(fun)) {
             tfun <- switch(tolower(fun),
                            'log' = function(x) x,
@@ -477,6 +627,8 @@ lines.survfit <- function(x, type='s',
                        'surv' = function(x) x,
                            stop("Unrecognized function argument")
                            )
+            if (tolower(fun) %in% c("identity", "s") &&
+                !inherits(x, "survfitms") && !cumhaz) yzero <- TRUE
         }
         else if (is.function(fun)) tfun <- fun
         else stop("Invalid 'fun' argument")
@@ -485,17 +637,12 @@ lines.survfit <- function(x, type='s',
         if (!is.null(supper)) {
             supper <- tfun(supper)
             slower <- tfun(slower)
-            }
+        }
     }
+    if (missing(mark.time) & !missing(mark)) mark.time <- TRUE
     if (missing(pch) && !missing(mark)) pch <- mark
     if (length(pch)==1 && is.character(pch)) pch <- strsplit(pch, "")[[1]]
-    if (is.logical(conf.int)) plot.surv <- TRUE
-    else {
-        temp <- match.arg(conf.int, c("both", "only", "none"))
-        if (is.na(temp)) stop("invalid value for conf.int")
-        if (temp=="none") conf.int <- FALSE  else conf.int <- TRUE
-        if (temp=="only") plot.surv <- FALSE  else plot.surv <- TRUE
-    }
+
     # Marks are not placed on confidence bands
     pch  <- rep(pch, length.out=ncurve)
     mcol <- rep(col, length.out=ncurve)
@@ -528,6 +675,10 @@ lines.survfit <- function(x, type='s',
         lty  <- rep(lty, length.out=ncurve)
         lwd  <- rep(lwd, length.out=ncurve)
     }
+
+    do.clip <- options("plot.survfit")
+    if (!is.null(xx <- do.clip$plotclip)) clip(xx[1], xx[2], xx[3], xx[4])
+
     # Create a step function, removing redundancies that sometimes occur in
     #  curves with lots of censoring.
     dostep <- function(x,y) {
@@ -598,6 +749,7 @@ lines.survfit <- function(x, type='s',
             else censor <- ifelse(x$n.censor[who]==0, 0, 1 + (x$n.event[who] > 0))
             xx <- stime[who]
             yy <- ssurv[who,j]
+
             if (plot.surv) {
                 if (type=='s')
                     lines(dostep(xx, yy), lty=lty[c2], col=col[c2], lwd=lwd[c2]) 
@@ -650,20 +802,21 @@ lines.survfit <- function(x, type='s',
 
         }
     }
-    invisible(list(x=xend, y=yend))
+    lastx <- list(x=xend, y=yend)
+    if (!is.null(xx <- do.clip$plotreset)) clip(xx[1], xx[2], xx[3], xx[4])
+    invisible(lastx)
 }
 
-points.survfit <- function(x, xscale, xmax, fun, censor=FALSE,
-                           col=1, pch, ...) {
-    # this function is used rarely
-    conf.int <- FALSE  # never draw these with 'points'
+points.survfit <- function(x, fun, censor=FALSE,
+                           col=1, pch, noplot="(s0)", cumhaz=FALSE, ...) {
 
-    x <- survfit23(x)
+    conf.int <- FALSE  # never draw these with 'points'
+    x <- survfit0(x, x$start.time)
+
     # The default for plot and lines is to add confidence limits
     #  if there is only one curve
     if (missing(conf.int) && missing(conf.times))  
-        conf.int <- (is.null(x$strata) && !is.matrix(x$surv) 
-            && !is.matrix(x$pstate))  # a NULL is FALSE 
+        conf.int <- (!is.null(x$std.err) && prod(dim(x) ==1))
 
     if (missing(conf.times)) conf.times <- NULL   
     else {
@@ -671,32 +824,96 @@ points.survfit <- function(x, xscale, xmax, fun, censor=FALSE,
         if (missing(conf.int)) conf.int <- TRUE
     }
 
-    stime <- x$time
-    if (!missing(fun) && is.character(fun) && fun=="cumhaz") {
-        if (!is.null(x$cumhaz)) {
-            ssurv <- as.matrix(x$cumhaz)
-            fun <- "identity"
-            if (conf.int) {
-                temp <- survfit_confint(ssurv, x$std.chaz, logse=FALSE,
-                                      conf.type='plain', conf.int=.95, ulimit=FALSE)
-                supper <- as.matrix(temp$upper)
-                slower <- as.matrix(temp$lower)
+    if (!missing(conf.int)) {
+        if (is.numeric(conf.int)) {
+            conf.level <- conf.int
+            if (conf.level<0 || conf.level > 1)
+                stop("invalid value for conf.int")
+            if (conf.level ==0) conf.int <- FALSE
+            else if (conf.level != x$conf.int) {
+                x$upper <- x$lower <- NULL  # force recomputation
             }
-            else supper <- NULL
+            conf.int <- TRUE
+        }
+        else conf.level = 0.95
+    }
+
+    # Organize data into stime, ssurv, supper, slower
+    stime <- x$time
+    std   <- NULL
+    yzero <- FALSE   # a marker that we have an "ordinary survival curve" with min 0
+    smat <- function(x) {
+        # the rest of the routine is simpler if everything is a matrix
+        dd <- dim(x)
+        if (is.null(dd)) as.matrix(x)
+        else if (length(dd) ==2) x
+        else matrix(x, nrow=dd[1])
+    }
+
+    if (cumhaz) {  # plot the cumulative hazard instead
+        if (is.null(x$cumhaz)) 
+            stop("survfit object does not contain a cumulative hazard")
+
+        if (is.numeric(cumhaz)) {
+            dd <- dim(x$cumhaz)
+            if (is.null(dd)) nhazard <- 1
+            else nhazard <- prod(dd[-1])
+
+            if (cumhaz != floor(cumhaz)) stop("cumhaz argument is not integer")
+            if (any(cumhaz < 1 | cumhaz > nhazard)) stop("subscript out of range")
+            ssurv <- smat(x$cumhaz)[,cumhaz, drop=FALSE]
+            if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)[,cumhaz, drop=FALSE]
+        }
+        else if (is.logical(cumhaz)) {
+            ssurv <- smat(x$cumhaz)
+            if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)
+        }
+        else stop("invalid cumhaz argument")
+    }
+    else if (inherits(x, "survfitms")) {
+        i <- (x$states != noplot)
+        if (all(i) || !any(i)) {
+            # the !any is a failsafe, in case none are kept then ignore noplot
+            ssurv <- smat(x$pstate)
+            if (!is.null(x$std.err)) std <- smat(x$std.err)
+        }
+        else {
+            i <- which(i)  # the states to keep
+            # we have to be careful about subscripting
+            if (length(dim(x$pstate)) ==3) {
+                ssurv <- smat(x$pstate[,,i, drop=FALSE])
+                if (!is.null(x$std.err))
+                    std <- smat(x$std.err[,,i, drop=FALSE])
+            }
+            else {
+                ssurv <- x$pstate[,i, drop=FALSE]
+                if (!is.null(x$std.err)) std <- x$std.err[,i, drop=FALSE]
+            }
         }
     }
     else {
-        if (!is.null(x$pstate)) ssurv <- as.matrix(x$pstate)
-        else ssurv <- as.matrix(x$surv)
-        if( !is.null(x$upper)) {
-            supper <- as.matrix(x$upper)
-            slower <- as.matrix(x$lower)
-        }
-        else {
-            conf.int <- FALSE
-            supper <- NULL  #marker for later code
+        yzero <- TRUE
+        ssurv <- as.matrix(x$surv)   # x$surv will have one column
+        if (!is.null(x$std.err)) std <- as.matrix(x$std.err)
+        # The fun argument only applies to single state survfit objects
+        #  First deal with the special case of fun='cumhaz', which is here for
+        #  backwards compatability; people should use the cumhaz argument
+        if (!missing(fun) && is.character(fun) && fun=="cumhaz") {
+            cumhaz <- TRUE
+            if (!is.null(x$cumhaz)) {
+                ssurv <- as.matrix(x$cumhaz)
+                if (!is.null(x$std.chaz)) std <- as.matrix(x$std.chaz)
+            } 
+            else {
+                ssurv <- as.matrix(-log(x$surv))
+                if (!is.null(x$std.err)) {
+                    if (x$logse) std <- as.matrix(x$std.err)
+                    else std <- as.matrix(x$std.err/x$surv)
+                }
+             }
         }
     }
+
     # set up strata
     if (is.null(x$strata)) {
         nstrat <- 1
@@ -707,47 +924,8 @@ points.survfit <- function(x, xscale, xmax, fun, censor=FALSE,
         stemp <- rep(1:nstrat, x$strata) # same length as stime
     }
     ncurve <- nstrat * ncol(ssurv)
-    if (!missing(xmax) && any(x$time>xmax)) {
-        if (all(x$time > xmax)) stop("all points are > xmax")
-        # prune back the survival curves
-        # I need to replace x's over the limit with xmax, and y's over the
-        #  limit with the prior y value 
-        keepx <- keepy <- NULL  # lines to keep
-        tempn <- table(stemp)
-        offset <- cumsum(c(0, tempn))
-        for (i in 1:nstrat) {
-            ttime <-stime[stemp==i]
-            if (all(ttime <= xmax)) {
-                keepx <- c(keepx, 1:tempn[i] + offset[i])
-                keepy <- c(keepy, 1:tempn[i] + offset[i])
-            }
-            else {
-                bad <- min((1:tempn[i])[ttime>xmax])
-                if (bad==1)  {  #lost them all
-                    stop("code error with xmax")
-                    # this should be impossible
-                    } 
-                else  keepy<- c(keepy, c(1:(bad-1), bad-1) + offset[i])
-                keepx <- c(keepx, (1:bad)+offset[i])
-                stime[bad+offset[i]] <- xmax
-                x$n.event[bad+offset[i]] <- 1   #don't plot a tick mark
-            }
-        }        
-
-        # ok, now actually prune it
-        stime <- stime[keepx]
-        stemp <- stemp[keepx]
-        x$n.event <- x$n.event[keepx]
-        if (!is.null(x$n.censor)) x$n.censor <- x$n.censor[keepx]
-        ssurv <- ssurv[keepy,,drop=FALSE]
-        if (!is.null(supper)) {
-            supper <- supper[keepy,,drop=FALSE]
-            slower <- slower[keepy,,drop=FALSE]
-        }
-    }
-    #stime <- stime/xscale  #scaling is deferred until xmax processing is done
-
-    if (!missing(fun)) {
+    if (!inherits(x, "survfitms") && !cumhaz & !missing(fun)) {
+        yzero <- FALSE
         if (is.character(fun)) {
             tfun <- switch(tolower(fun),
                            'log' = function(x) x,
@@ -762,6 +940,8 @@ points.survfit <- function(x, xscale, xmax, fun, censor=FALSE,
                        'surv' = function(x) x,
                            stop("Unrecognized function argument")
                            )
+            if (tolower(fun) %in% c("identity", "s") &&
+                !inherits(x, "survfitms") && !cumhaz) yzero <- TRUE
         }
         else if (is.function(fun)) tfun <- fun
         else stop("Invalid 'fun' argument")
@@ -770,8 +950,10 @@ points.survfit <- function(x, xscale, xmax, fun, censor=FALSE,
         if (!is.null(supper)) {
             supper <- tfun(supper)
             slower <- tfun(slower)
-            }
+        }
     }
+    do.clip <- options("plot.survfit")
+    if (!is.null(xx <- do.clip$plotclip)) clip(xx[1], xx[2], xx[3], xx[4])
 
     if (ncurve==1 || (length(col)==1 && missing(pch))) {
         if (censor) points(stime, ssurv, ...)
@@ -798,4 +980,5 @@ points.survfit <- function(x, xscale, xmax, fun, censor=FALSE,
             }
         }
     }
+    if (!is.null(xx <- do.clip$plotreset)) clip(xx[1], xx[2], xx[3], xx[4])
 }

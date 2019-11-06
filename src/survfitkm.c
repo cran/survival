@@ -7,7 +7,7 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
                SEXP type2, SEXP id2, SEXP nid2,   SEXP position2,
                SEXP influence2) {
               
-    int i, i2, j, j2, k, person;
+    int i, i1, i2, j, k, person1, person2;
     int nused, nid, type, influence;
     int ny, ntime;
     double *tstart=0, *stime, *status, *wt;
@@ -62,15 +62,17 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
     else id = INTEGER(id2);
 
     /* pass 1, get the number of unique times, needed for memory allocation 
-      number of xval groups (unique id values) has been supplied 
-      data is sorted by time
+      Number of xval groups (unique id values) has been supplied 
+      Data is sorted by time
     */
     ntime =1; 
-    j2 = sort2[0];
+    temp = stime[sort2[0]];
     for (i=1; i<nused; i++) {
         i2 = sort2[i];
-        if (stime[i2] != stime[j2]) ntime++;
-        j2 = i2;
+        if (stime[i2] != temp) {
+            ntime++;
+            temp = stime[i2];
+        }
     }        
     /* Allocate memory for the output 
         n has 6 columns for number at risk, events, censor, then the 
@@ -127,14 +129,19 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
     }
 
     R_CheckUserInterrupt();  /*check for control-C */
-    person = nused-1;
+    /*
+    ** person1, person2 track through sort1 and sort2, respectively
+    **  likewise with i1 and i2
+    */
+    person1 = nused-1;  person2 = nused-1;
     n1=0; wt1=0;
-    j= nused -1;
     for (k=ntime-1; k>=0; k--) {
-        i2 = sort2[person];
-        dtime[k] = stime[i2];  /* current time point */
+        dtime[k] = stime[sort2[person2]];  /* current time point */
         n2=0; n3=0; wt2=0; wt3=0; 
-        while(person>=0 && stime[i2]==dtime[k]) {
+        for (; person2 >=0; person2--) {
+            i2= sort2[person2];
+            if (stime[i2] != dtime[k]) break;
+
             n1++;             /* number at risk */
             wt1 += wt[i2];    /* weighted number at risk */
             if (status[i2] ==1) {
@@ -148,25 +155,22 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
                 n3++;
                 wt3 += wt[i2];
             }
-            person--;
-            i2 = sort2[person];
         }
         
         if (ny==3) { /* remove any with start time >=dtime*/
             n4 =0; wt4 =0;
-            j2 = sort1[j];
-            while (j >=0 && tstart[j2] >= dtime[k]) {
+            for (; person1 >=0; person1--) {
+                i1 = sort1[person1];
+                if (tstart[i1] < dtime[k]) break;
                 n1--;
-                wt1 -= wt[j2];
-                if (hasid==0 || (position[j2] & 1)) {
+                wt1 -= wt[i1];
+                if (hasid==0 || (position[i1] & 1)) {
                     /* if there are no repeated id (hasid=0) or this is the
                     ** first of a string of (a,b](b,c](c,d] for a subject, then
                     ** this is a 'real' entry */
                     n4++;
-                    wt4 += wt[j2];
+                    wt4 += wt[i1];
                 }
-                j--;
-                j2 = sort1[j];
             }
             if (n4>0) {
                n[6][k+1] = n4;
@@ -180,11 +184,11 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
 
     if (ny ==3) {   /* fill in number entered for the initial interval */
         n4=0; wt4=0;
-        for (; j>=0; j--) {
-            j2 = sort1[j];
-            if (hasid==0 || (position[j2] & 1)) {
+        for (; person1>=0; person1--) {
+            i1 = sort1[person1];
+            if (hasid==0 || (position[i1] & 1)) {
                 n4++;
-                wt4 += wt[j2];
+                wt4 += wt[i1];
             }
         }
         n[6][0] = n4;    
@@ -238,10 +242,11 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
 
     else { /* infinitesimal jackknife variance */
         v1=0; v2 =0; km=1; nelson =0;
-        person=0; 
+        person2=0; 
         if (ny==3) {
-            j=0;  j2= sort1[0]; /* j tracks sort2 */
+            person1 =0;
         } else {
+            /* at the start, everyone is at risk */
             for (i=0; i< nused; i++) {
                 i2 = id[i];
                 gcount[i2]++;
@@ -250,15 +255,15 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
         }
             
         if (type==1) {
-            person =0; 
             for (i=0; i< ntime; i++) {
                 if (ny==3) {
                     /* add in new subjects */
-                    while(j<nused && tstart[j2] < dtime[i]) {
-                        gcount[id[j2]]++;
-                        gwt[id[j2]] += wt[j2];
-                        j++;
-                        j2 = sort1[j];
+                    for (; person1 < nused; person1++) {
+                        /* add in those whose start time is < dtime */
+                        i1 = sort1[person1];
+                        if (tstart[i1] >= dtime[i]) break;  
+                        gcount[id[i1]]++;
+                        gwt[id[i1]] += wt[i1];
                     }
                 }
          
@@ -268,9 +273,9 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
                         inf1[k] = inf1[k] *(1.0 -haz) + gwt[k]*km*haz/n[3][i];
                         inf2[k] -= gwt[k] * haz/n[3][i];
                     }
-                    for (; person<nused && stime[sort2[person]]==dtime[i]; person++) { 
-                        /* catch the endpoints up to this event time */
-                        i2 = sort2[person];
+                    for (; person2<nused; person2++) { 
+                        i2 = sort2[person2];
+                        if (stime[i2] > dtime[i]) break;   /* those at this time */
                         if (status[i2]==1) {
                             inf1[id[i2]] -= km* wt[i2]/n[3][i];
                             inf2[id[i2]] += wt[i2]/n[3][i];
@@ -288,8 +293,9 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
                         v2 += inf2[k]*inf2[k];
                     }
                 } else {  /* only need to udpate weights */
-                    for (; person<nused && stime[sort2[person]]==dtime[i]; person++) { 
-                        i2 = sort2[person];
+                    for (; person2<nused; person2++) { 
+                        i2 = sort2[person2];
+                        if (stime[i2] > dtime[i]) break;
                         gcount[id[i2]] --;
                         if (gcount[id[i2]] ==0) gwt[id[i2]] = 0.0;
                         else gwt[id[i2]] -= wt[i2];
@@ -307,15 +313,14 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
             }
         }
         else if (type==2) {  /* KM survival, Fleming-Harrington hazard */
-            person =0; 
             for (i=0; i< ntime; i++) {
                 if (ny==3) {
                     /* add in new subjects */
-                    while(j<nused && tstart[j2] < dtime[i]) {
-                        gcount[id[j2]]++;
-                        gwt[id[j2]] += wt[j2];
-                        j++;
-                        j2 = sort1[j];
+                    for (; person1<nused; person1++) {
+                        i1 = sort1[person1];
+                        if (tstart[i1] >= dtime[i]) break;
+                        gcount[id[i1]]++;
+                        gwt[id[i1]] += wt[i1];
                     }
                 }
          
@@ -344,9 +349,10 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
                         inf1[k] = inf1[k] *(1.0 -haz) + gwt[k]*km*haz/n[3][i];
                         if (gcount[k]>0) inf2[k] -= gwt[k] * dtemp3;
                     }
-                    for (; person<nused && stime[sort2[person]]==dtime[i]; person++) { 
+                    for (; person2<nused; person2++) {                
                         /* catch the endpoints up to this event time */
-                        i2 = sort2[person];
+                        i2 = sort2[person2];
+                        if (stime[i2] > dtime[i]) break;
                         if (status[i2]==1) {
                             inf1[id[i2]] -= km* wt[i2]/n[3][i];
                             inf2[id[i2]] += wt[i2] *(dtemp + dtemp3 - dtemp2);
@@ -363,8 +369,9 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
                         v2 += inf2[k]*inf2[k];
                     }
                 } else {  /* only need to udpate weights */
-                    for (; person<nused && stime[sort2[person]]==dtime[i]; person++) { 
-                        i2 = sort2[person];
+                    for (; person2<nused; person2++) { 
+                        i2 = sort2[person2];
+                        if (stime[i2] > dtime[i]) break;
                         gcount[id[i2]] --;
                         if (gcount[id[i2]] ==0) gwt[id[i2]] = 0.0;
                         else gwt[id[i2]] -= wt[i2];
@@ -383,15 +390,15 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
         }
 
         else if (type==3) {  /* exp() survival, NA hazard */
-            person =0; 
             for (i=0; i< ntime; i++) {
                 if (ny==3) {
                     /* add in new subjects */
-                    while(j<nused && tstart[j2] < dtime[i]) {
-                        gcount[id[j2]]++;
-                        gwt[id[j2]] += wt[j2];
-                        j++;
-                        j2 = sort1[j];
+                    for (; person1 < nused; person1++) {
+                        i1 = sort1[person1];
+                        if (tstart[i1] >= dtime[i]) break;
+
+                        gcount[id[i1]]++;
+                        gwt[id[i1]] += wt[i1];
                     }
                 }
                  
@@ -400,9 +407,10 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
                     for (k=0; k< nid; k++) {
                         inf2[k] -= gwt[k] * haz/n[3][i];
                     }
-                    for (; person<nused && stime[sort2[person]]==dtime[i]; person++) { 
+                    for (; person2<nused; person2++) { 
                         /* catch the endpoints up to this event time */
-                        i2 = sort2[person];
+                        i2 = sort2[person2];
+                        if (stime[i2] > dtime[i]) break;
                         if (status[i2]==1) {
                              inf2[id[i2]] += wt[i2]/n[3][i];
                         }
@@ -410,15 +418,16 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
                         if (gcount[id[i2]] ==0) gwt[id[i2]] = 0.0;
                         else gwt[id[i2]] -= wt[i2];
                     }
-                   nelson += haz;
+                    nelson += haz;
                    
                     v2=0;
                     for (k=0; k<nid; k++) {
                         v2 += inf2[k]*inf2[k];
                     }
                 } else {  /* only need to udpate weights */
-                    for (; person<nused && stime[sort2[person]]==dtime[i]; person++) { 
-                        i2 = sort2[person];
+                    for (; person2<nused; person2++) { 
+                        i2 = sort2[person2];
+                        if (stime[i2] > dtime[i]) break;
                         gcount[id[i2]] --;
                         if (gcount[id[i2]] ==0) gwt[id[i2]] = 0.0;
                         else gwt[id[i2]] -= wt[i2];
@@ -435,15 +444,14 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
             }
 
         } else {  /* exp() survival,  Fleming-Harrington hazard */
-            person =0; 
             for (i=0; i< ntime; i++) {
                 if (ny==3) {
                     /* add in new subjects */
-                    while(j<nused && tstart[j2] < dtime[i]) {
-                        gcount[id[j2]]++;
-                        gwt[id[j2]] += wt[j2];
-                        j++;
-                        j2 = sort1[j];
+                    for (; person1 < nused; person1++) {
+                        i1 = sort1[person1];
+                        if (tstart[i1] >= dtime[i]) break;
+                        gcount[id[i1]]++;
+                        gwt[id[i1]] += wt[i1];
                     }
                 }
                 if (n[1][i] > 0 && n[4][i] >0) { /* need to update the sums */
@@ -469,9 +477,9 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
                     for (k=0; k< nid; k++) {
                         if (gcount[k]>0) inf2[k] -= gwt[k] * dtemp3;
                     }
-                    for (; person<nused && stime[sort2[person]]==dtime[i]; person++) { 
-                        /* catch the endpoints up to this event time */
-                        i2 = sort2[person];
+                    for (; person2<nused; person2++) { 
+                         i2 = sort2[person2];
+                        if (stime[i2] > dtime[i]) break;
                         if (status[i2]==1) {
                             inf2[id[i2]] += wt[i2] *(dtemp + dtemp3 - dtemp2);
                         }
@@ -484,8 +492,9 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
                     for (k=0; k<nid; k++) v2 += inf2[k]*inf2[k];
                 }
                 else { /* only need to update weights */
-                    for (; person<nused && stime[sort2[person]]==dtime[i]; person++) { 
-                        i2 = sort2[person];
+                    for (; person2<nused; person2++) { 
+                        i2 = sort2[person2];
+                        if (stime[i2] > dtime[i]) break;
                         gcount[id[i2]] --;
                         if (gcount[id[i2]] ==0) gwt[id[i2]] = 0.0;
                         else gwt[id[i2]] -= wt[i2];
