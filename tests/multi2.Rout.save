@@ -191,6 +191,8 @@ Type 'q()' to quit R.
 > test_a12 <- cox.zph(fit12, transform="log",global=FALSE)
 > test_a13 <- cox.zph(fit13, transform="log", global=FALSE)
 > test_a23 <-  cox.zph(fit23, transform="log", global=FALSE)
+> aeq(test_a$y[test_a$strata==1, 1:2], test_a12$y)
+[1] TRUE
 > 
 > aeq(test_a$table[1:2,], test_a12$table)
 [1] TRUE
@@ -212,6 +214,17 @@ Type 'q()' to quit R.
 > aeq(test_b$table[5:6,], test_b23$table)
 [1] TRUE
 > 
+> # check out subscripting of a multi-state zph
+> cname <- c("table", "x", "time", "y", "var")
+> sapply(cname, function(x) aeq(test_b[1:2]$x, test_b12$x))
+table     x  time     y   var 
+ TRUE  TRUE  TRUE  TRUE  TRUE 
+> sapply(cname, function(x) aeq(test_b[3:4]$x, test_b13$x))
+table     x  time     y   var 
+ TRUE  TRUE  TRUE  TRUE  TRUE 
+> sapply(cname, function(x) aeq(test_b[5:6]$x, test_b23$x))
+table     x  time     y   var 
+ TRUE  TRUE  TRUE  TRUE  TRUE 
 > 
 > # check model.matrix
 > mat1 <- model.matrix(fit)
@@ -236,4 +249,4 @@ Type 'q()' to quit R.
 > 
 > proc.time()
    user  system elapsed 
-  0.998   0.047   1.037 
+  0.982   0.067   1.042 
