@@ -1,5 +1,18 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.1-8}{
+  \itemize{
+    \item For a multistate model which no covariates, the start.time
+    value (if present) was inadvertently omitted from the result.  This
+    affects the default plot.
+    \item Per user request, the tmerge function can now use Dates as the
+    time variable for the merge.
+    \item Fix an invalid read (one element past the end of a vector)
+    that could occur in tmerge.c; reported by Brian Ripley.
+    \item A multi-state coxph model with strata would fail when parsing
+    the formula, pointed out by Martin van't Hooft. 
+}}
+
 \section{Changes in version 3.1-7}{
   \itemize{
     \item For a coxph model with covariate*strata interactions the
