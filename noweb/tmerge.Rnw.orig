@@ -469,7 +469,7 @@ The most common is a tdc, so start with it.
 The C routine returns a set of indices: 0,1,1,2,3,0,4,... would mean that
 row 1 of the new data happens before the tdc variable, 2 and 3 take values from
 the first element of yinc, etc.  
-By returning and index, the yinc variable can be of any data type.  Using
+By returning an index, the yinc variable can be of any data type.  Using
 is.na() on the left side below causes the \emph{right} kind of NA to be inserted
 (this trick was stolen from the merge routine).
 
@@ -479,8 +479,8 @@ newvar <- newdata[[argname[ii]]]  # prior value (for sequential tmerge calls)
 if (argclass[ii] == "tdc") {
     if (argname[[ii]] %in% tevent)
         stop("attempt to turn event variable", argname[[ii]], "into a tdc")
-    if (!is.null(newvar))
-        warning(paste0("replacement of variable '", argname[ii], "'")) 
+    #if (!is.null(newvar))
+        #warning(paste0("replacement of variable '", argname[ii], "'")) 
 
     # id can be any data type; feed integers to the C routine
     storage.mode(dstop) <- storage.mode(etime) <- "double"  #if time is integer
@@ -488,24 +488,32 @@ if (argclass[ii] == "tdc") {
     index <- .Call(Ctmerge2, match(baseid, uid), dstop, 
                                match(id, uid),  etime)
 
-    if (is.null(yinc)) newvar <- ifelse(index==0, 0L, 1L) # add a 0/1 variable
+    if (is.null(yinc)) {
+        # add a 0/1 variable
+        if (is.null(newvar))newvar <- ifelse(index==0, 0L, 1L) 
+        else newvar <- ifelse(index==0, newvar, 1L)
+    }       
     else {
-        newvar <- yinc[pmax(1L, index)]
-        if (any(index==0)) {
-            if (is.na(topt$tdcstart)) is.na(newvar) <- (index==0L)
-            else {
-                if (is.numeric(newvar)) newvar[index=0L] <- as.numeric(topt$tdcstart)
+        if (is.null(newvar)) {
+            newvar <- yinc[pmax(1L, index)]
+            if (any(index==0)) {
+                if (is.na(topt$tdcstart)) is.na(newvar) <- (index==0L)
                 else {
-                    if (is.factor(newvar)) {
-                        # special case: if tdcstart isn't in the set of levels,
-                        #   add it to the levels
-                        if (is.na(match(topt$tdcstart, levels(newvar))))
-                            levels(newvar) <- c(levels(newvar), topt$tdcstart)
+                    if (is.numeric(newvar))
+                        newvar[index=0L] <- as.numeric(topt$tdcstart)
+                    else {
+                        if (is.factor(newvar)) {
+                            # special case: if tdcstart isn't in the set,
+                            #   add it to the levels
+                            if (is.na(match(topt$tdcstart, levels(newvar))))
+                              levels(newvar) <- c(levels(newvar), topt$tdcstart)
+                        }
+                        newvar[index== 0L] <- topt$tdcstart
                     }
-                    newvar[index== 0L] <- topt$tdcstart
                 }
             }
-        }
+        }      
+        else newvar <- ifelse(index==0, newvar, yinc[pmax(1L, index)])
     }
 }
 @ 

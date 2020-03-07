@@ -388,7 +388,7 @@ are okay for \emph{some} transitions.  Others could be useless.
 Those rows can be removed from the model frame before creating the X matrix.
 Also identify partially used rows, ones where the necessary covariates are
 present for some of the possible transitions but not all.  
-Those obs are dealt with later by the stackup function.
+Those obs are dealt with later by the stacker function.
 <<coxph-missing>>=
 # first vector will be true if there is at least 1 transition for which all
 #  covariates are present, second if there is at least 1 for which some are not
@@ -435,15 +435,22 @@ factors turn into multiple columns for instance.
 Also create the initial values vector.
 
 The stacker function will create a separate block of observations for every
-unique value in \code{cmat[1,]}.
+unique value in \code{cmap[1,]}.
 Now say that two transitions A:B and A:C share the same baseline hazard. 
 Then either a B or a C outcome will be an ``event'' in that stratum; they 
 would only be distinguished by perhaps having different covariates.
+The first thing we do with the result is to rebuild the transitions matrix:
+the current version was created before removing missings, and can
+seriously overstate the number of transitions available.  
+Then set up the data.
 
 <<coxph-multi-X>>=
 cmap <- parsecovar3(tmap, colnames(X), attr(X, "assign"))
 xstack <- stacker(cmap, as.integer(istate), X, Y, strata=istrat,
                   states=states)
+rkeep <- unique(xstack$rindex)
+transitions <- survcheck2(Y[rkeep,], id[rkeep], istate[rkeep])$transitions
+
 X <- xstack$X
 Y <- xstack$Y
 istrat <- xstack$strata
@@ -5500,7 +5507,7 @@ cord.getdata <- function(object, newdata=NULL, cluster=NULL, need.wt, timefix=TR
             else stop("left hand side of the formula  must be a numeric vector or a survival object")
         }
         if (timefix) y <- aeqSurv(y)
-        rval <- list(y= y, x= predict(object))
+        rval <- list(y= y, x= predict(object, newdata))
         # the type of prediction does not matter, as long as it is a 
         #  monotone transform of the linear predictor
     } 
@@ -5768,7 +5775,7 @@ cord.work <- function(data, timewt, ymin, ymax, influence=0, ranks=FALSE,
         if (is.null(wt)) vmat <- crossprod(dfbeta)
         else vmat <- t(wt * dfbeta) %*% dfbeta
         rval <- list(concordance=concordance, count=count, 
-                     n=length(flist[[1]]$x), var=vmat,
+                     n=flist[[1]]$n, var=vmat,
                      cvar= sapply(flist, function(x) x$cvar))
 
         if (influence==1) rval$dfbeta <- dfbeta
@@ -5917,7 +5924,7 @@ btree <- function(n) {
 Referring again to figure \ref{treefig}, \code{btree(13)} yields the vector
 \code{7  3  8  1  9  4 10  0 11  5 12  2  6}
 meaning that the smallest element
-will be in position 8 of the tree, the next smallest in position 2, etc,
+will be in position 8 of the tree, the next smallest in position 4, etc,
 and using indexing that starts at 0 since the results will be passed to a C
 routine.
 The code just above takes care to do all arithmetic as integer.  
@@ -8619,7 +8626,9 @@ else if (type=='dfbeta' || type== 'dfbetas' || type=='ldcase') {
         else score <- cbind(score, deriv[,4])
         }
     rr <- score %*% vv
-    if (type=='dfbetas') rr <- rr %*% diag(1/sqrt(diag(vv)))
+    # cause column names to be retained
+    # old: if (type=='dfbetas') rr[] <- rr %*% diag(1/sqrt(diag(vv)))
+    if (type=='dfbetas') rr <- rr * rep(1/sqrt(diag(vv)), each=nrow(rr))
     if (type=='ldcase')  rr<- rowSums(rr*score)
     }
 
@@ -10751,7 +10760,7 @@ docurve2 <- function(entry, etime, status, istate, wt, states, id,
 @
 \subsubsection{C-code}
 (This is set up as a separate file in the source code directory since
-it is easier to make the code stay in C-mode if the file has a .nw 
+it is easier to make emacs stay in C-mode if the file has a .nw 
 extension.)
 
 <<survfitci>>=
@@ -12070,7 +12079,7 @@ if (cumhaz) {  # plot the cumulative hazard instead
     else stop("invalid cumhaz argument")
 }
 else if (inherits(x, "survfitms")) {
-    i <- (x$states != noplot)
+    i <- !(x$states %in% noplot)
     if (all(i) || !any(i)) {
         # the !any is a failsafe, in case none are kept then ignore noplot
         ssurv <- smat(x$pstate)
@@ -12256,7 +12265,7 @@ if (!missing(ylim)) {
 
 if (!missing(xlim) && !is.null(xlim)) {
     tempx <- xlim
-    if (xaxs == 'S') tempx[2] <- tempx[2] + diff(tempx)*1.04
+    if (xaxs == 'S') tempx[2] <- tempx[1] + diff(tempx)*1.04
 }
 else {
     temp <-  stime[is.finite(stime)]
@@ -12327,7 +12336,7 @@ else resetclip <- !(missing(xlim) & missing(ylim) &
 
 if (resetclip) {
   # yes, do it
-  if (xaxs=='S') tempx <- c(tempx[1], temp[1])
+  #if (xaxs=='S') tempx <- c(tempx[1], temp[1])
   clip(tempx[1], tempx[2], tempy[1], tempy[2])
   options(plot.survfit = list(plotclip=c(tempx, tempy), plotreset=par('usr')))
 }
@@ -13256,8 +13265,8 @@ newvar <- newdata[[argname[ii]]]  # prior value (for sequential tmerge calls)
 if (argclass[ii] == "tdc") {
     if (argname[[ii]] %in% tevent)
         stop("attempt to turn event variable", argname[[ii]], "into a tdc")
-    #if (!is.null(newvar))
-        #warning(paste0("replacement of variable '", argname[ii], "'")) 
+    if (!is.null(newvar))
+        warning(paste0("replacement of variable '", argname[ii], "'")) 
 
     # id can be any data type; feed integers to the C routine
     storage.mode(dstop) <- storage.mode(etime) <- "double"  #if time is integer

@@ -1,7 +1,7 @@
 \contentsline {section}{\numberline {1}Introduction}{2}{section.1}
 \contentsline {section}{\numberline {2}Cox Models}{2}{section.2}
 \contentsline {subsection}{\numberline {2.1}Coxph}{2}{subsection.2.1}
-\contentsline {subsection}{\numberline {2.2}Exact partial likelihood}{26}{subsection.2.2}
+\contentsline {subsection}{\numberline {2.2}Exact partial likelihood}{27}{subsection.2.2}
 \contentsline {subsection}{\numberline {2.3}Andersen-Gill fits}{36}{subsection.2.3}
 \contentsline {subsection}{\numberline {2.4}Predicted survival}{55}{subsection.2.4}
 \contentsline {subsubsection}{\numberline {2.4.1}Multi-state models}{78}{subsubsection.2.4.1}
@@ -17,7 +17,7 @@
 \contentsline {section}{\numberline {7}Accelerated Failure Time models}{166}{section.7}
 \contentsline {subsection}{\numberline {7.1}Residuals}{166}{subsection.7.1}
 \contentsline {section}{\numberline {8}Survival curves}{174}{section.8}
-\contentsline {subsection}{\numberline {8.1}Kaplan-Meier}{178}{subsection.8.1}
+\contentsline {subsection}{\numberline {8.1}Kaplan-Meier}{179}{subsection.8.1}
 \contentsline {subsection}{\numberline {8.2}Kaplan-Meier}{183}{subsection.8.2}
 \contentsline {subsection}{\numberline {8.3}Competing risks}{205}{subsection.8.3}
 \contentsline {subsubsection}{\numberline {8.3.1}C-code}{215}{subsubsection.8.3.1}

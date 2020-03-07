@@ -64,10 +64,8 @@ coxph <- function(formula, data, weights, subset, na.action,
 
     tcl <- attr(Terms, 'specials')$cluster
     if (length(tcl) > 1) stop("a formula cannot have multiple cluster terms")
-    mycall <- Call
+
     if (length(tcl) > 0) { # there is one
-        if (!is.null(Call$cluster))
-            stop("cannot have both cluster() in the formula and the cluster option")
         # subscripting of formulas is broken at least through R 3.5, if the
         #  formula contains an offset.  Adding offset to the "specials" above
         #  is just a sneaky way to find out if one is present, then call
@@ -91,12 +89,15 @@ coxph <- function(formula, data, weights, subset, na.action,
             if (oo < tcl) temp <- c(ooterm, temp)
             else temp <- c(temp, ooterm)
         }
-        mycall$cluster <- attr(Terms, "variables")[[1+tcl]][[2]]
+        if (is.null(Call$cluster))
+            Call$cluster <- attr(Terms, "variables")[[1+tcl]][[2]]
+        else warning("cluster appears both in a formula and as an argument, formula term ignored")
         if (is.list(formula)) 
              formula[[1]][[3]] <- reformulate(temp[1-tcl])[[2]]
         else formula[[3]]      <- reformulate(temp[1-tcl])[[2]]
 
-        mycall$formula <- formula
+        Call$formula <- formula
+        
     }
     
     # create a call to model.frame() that contains the formula (required)
@@ -104,9 +105,9 @@ coxph <- function(formula, data, weights, subset, na.action,
     #  but don't evaluate it just yet
     indx <- match(c("formula", "data", "weights", "subset", "na.action",
                     "cluster", "id", "istate"),
-                  names(mycall), nomatch=0) 
+                  names(Call), nomatch=0) 
     if (indx[1] ==0) stop("A formula argument is required")
-    tform <- mycall[c(1,indx)]  # only keep the arguments we wanted
+    tform <- Call[c(1,indx)]  # only keep the arguments we wanted
     tform[[1L]] <- quote(stats::model.frame)  # change the function called
 
     # if the formula is a list, do the first level of processing on it.
@@ -150,12 +151,6 @@ coxph <- function(formula, data, weights, subset, na.action,
     if (!multi && multiform)
         stop("formula is a list but the response is not multi-state")
 
-    # Grab the id variable to check out multi-state data
-    id <- model.extract(mf, "id")
-    if (multi) {
-        <<coxph-multiform2>>
-    }
-
     if (control$timefix) Y <- aeqSurv(Y)
     <<coxph-bothsides>>
         
@@ -164,12 +159,27 @@ coxph <- function(formula, data, weights, subset, na.action,
     #  should be extracted after the transform
     #
     strats <- attr(Terms, "specials")$strata
+    hasinteractions <- FALSE
+    dropterms <- NULL
     if (length(strats)) {
 	stemp <- untangle.specials(Terms, 'strata', 1)
 	if (length(stemp$vars)==1) strata.keep <- mf[[stemp$vars]]
 	else strata.keep <- strata(mf[,stemp$vars], shortlabel=TRUE)
 	istrat <- as.integer(strata.keep)
+
+        for (i in stemp$vars) {  #multiple strata terms are allowed
+            # The factors attr has one row for each variable in the frame, one
+            #   col for each term in the model.  Pick rows for each strata
+            #   var, and find if it participates in any interactions.
+            if (any(attr(Terms, 'order')[attr(Terms, "factors")[i,] >0] >1))
+                hasinteractions <- TRUE  
+        }
+        if (!hasinteractions) dropterms <- stemp$terms 
     } else istrat <- NULL
+
+    if (hasinteractions && multi)
+        stop("multi-state coxph does not support strata*covariate interactions")
+
 
     timetrans <- attr(Terms, "specials")$tt
     if (missing(tt)) tt <- NULL
@@ -194,6 +204,14 @@ coxph <- function(formula, data, weights, subset, na.action,
     }
     
     contrast.arg <- NULL  #due to shared code with model.matrix.coxph
+    attr(Terms, "intercept") <- 1  # always have a baseline hazard
+
+    # Grab the id variable to check out multi-state data
+    id <- model.extract(mf, "id")
+    if (multi) {
+        <<coxph-multiform2>>
+    }
+
     <<coxph-make-X>>
     <<coxph-setup>>
     if (multi) {
@@ -265,6 +283,12 @@ tform$na.action <- na.pass  # defer any missing value work to later
 @
 
 <<coxph-multiform2>>=
+# remove strata from dformula, before any further processing
+if (length(dropterms)){ 
+    Terms2 <- Terms[-dropterms]
+    dformula <- formula(Terms2)
+} else Terms2 <- Terms
+
 # check for consistency of the states, and create a transition
 #  matrix
 if (length(id)==0) 
@@ -283,9 +307,9 @@ states <- mcheck$states
 #  build tmap, which has one row per term, one column per transition
 if (missing(statedata))
     covlist2 <- parsecovar2(covlist, NULL, dformula= dformula,
-                        Terms, transitions, states)
+                        Terms2, transitions, states)
 else covlist2 <- parsecovar2(covlist, statedata, dformula= dformula,
-                        Terms, transitions, states)
+                        Terms2, transitions, states)
 tmap <- covlist2$tmap
 if (!is.null(covlist)) {
     <<coxph-missing>>
@@ -294,7 +318,7 @@ if (!is.null(covlist)) {
  
 For multi-state models we can't tell what observations should be removed until
 any extra formulas have been processed.
-There may still be rows that are missing \emph{some} of the covariates but
+There may be rows that are missing \emph{some} of the covariates but
 are okay for \emph{some} transitions.  Others could be useless.
 Those rows can be removed from the model frame before creating the X matrix.
 Also identify partially used rows, ones where the necessary covariates are
@@ -799,20 +823,6 @@ approach.
 We instead assume that nothing is reordered and do a shift.
 
 <<coxph-make-X>>=
-attr(Terms, "intercept") <- 1
-stemp <- untangle.specials(Terms, 'strata', 1)
-hasinteractions <- FALSE
-dropterms <- NULL
-if (length(stemp$vars) > 0) {  #if there is a strata statement
-    for (i in stemp$vars) {  #multiple strata terms are allowed
-        # The factors attr has one row for each variable in the frame, one
-        #   col for each term in the model.  Pick rows for each strata
-        #   var, and find if it participates in any interactions.
-        if (any(attr(Terms, 'order')[attr(Terms, "factors")[i,] >0] >1))
-            hasinteractions <- TRUE  
-        }
-    if (!hasinteractions) dropterms <- stemp$terms 
-}
 
 if (length(dropterms)) {
     Terms2 <- Terms[ -dropterms]
@@ -865,7 +875,8 @@ An overall idea is to return something that won't blow up later code.
 <<coxph-zeroevent>>=
 if (sum(Y[, ncol(Y)]) == 0) {
     # No events in the data!
-    ncoef <    ctemp <- rep (NA, ncoef)
+    ncoef <- ncol(X)
+    ctemp <- rep(NA, ncoef)
     names(ctemp) <- colnames(X)
     concordance= c(concordant=0, discordant=0, tied.x=0, tied.y=0, tied.xy=0,
                    concordance=NA, std=NA, timefix=FALSE)
@@ -878,7 +889,7 @@ if (sum(Y[, ncol(Y)]) == 0) {
                  residuals = rep(0.0, data.n),
                  means = colMeans(X), method=method,
                  n = data.n, nevent=0, terms=Terms, assign=assign,
-                 concordance=concordance, 
+                 concordance=concordance,  wald.test=0.0,
                  y = Y, call=Call)
     class(rval) <- "coxph"
     return(rval)
@@ -1011,6 +1022,7 @@ else {
         else if (length(strats)) fit$strata <- strata.keep
     }
     if (y)  fit$y <- Y
+    fit$timefix <- control$timefix  # remember this option
 }
 @ 
 If any of the weights were not 1, save the results.
@@ -1028,6 +1040,7 @@ if (multi) {
     fit$states <- states
     fit$cmap <- cmap
     fit$resid <- rowsum(fit$resid, xstack$rindex)
+    names(fit$coefficients) <- seq(along=fit$coefficients)
     if (x) fit$strata <- istrat  # save the expanded strata
     class(fit) <- c("coxphms", class(fit))
 }
@@ -1070,6 +1083,24 @@ model.matrix.coxph <- function(object, data=NULL,
     }
     else dropterms <- NULL
     
+    strats <- attr(Terms, "specials")$strata
+    hasinteractions <- FALSE
+    if (length(strats)) {
+	stemp <- untangle.specials(Terms, 'strata', 1)
+	if (length(stemp$vars)==1) strata.keep <- mf[[stemp$vars]]
+	else strata.keep <- strata(mf[,stemp$vars], shortlabel=TRUE)
+	istrat <- as.integer(strata.keep)
+
+        for (i in stemp$vars) {  #multiple strata terms are allowed
+            # The factors attr has one row for each variable in the frame, one
+            #   col for each term in the model.  Pick rows for each strata
+            #   var, and find if it participates in any interactions.
+            if (any(attr(Terms, 'order')[attr(Terms, "factors")[i,] >0] >1))
+                hasinteractions <- TRUE  
+        }
+        if (!hasinteractions) dropterms <- c(dropterms, stemp$terms) 
+    } else istrat <- NULL
+
     <<coxph-make-X>>
     X
 }

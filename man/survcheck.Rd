@@ -13,10 +13,10 @@ survcheck(formula, data, id, istate, istate0="(s0)", timefix=TRUE,...)
   \item{data}{data frame in which to find the \code{id},
     \code{istate} and formula variables}
   \item{id}{an identifier that labels unique subjects}
-  \item{istate}{an optional vector giving the initial state for each
-    observation, i.e., the state at the start of each interval}
-  \item{istate0}{default label for the initial state when \code{istate}
-    is missing}
+  \item{istate}{an optional vector giving the current state at the start
+    of each interval}
+  \item{istate0}{default label for the initial state of each subject (at
+    their first interval) when \code{istate} is missing}
   \item{timefix}{process times through the \code{aeqSurv} function to
   eliminate potential roundoff issues.}
   \item{\ldots}{other arguments, which are ignored (but won't give an
@@ -56,7 +56,8 @@ survcheck(formula, data, id, istate, istate0="(s0)", timefix=TRUE,...)
   \item{statecount}{table of the number of visits per state, e.g., 18
     subjects had 2 visits to the "infection" state}
   \item{flags}{a vector giving the counts of each check}
-  \item{istate}{a revised initial state vector}
+  \item{istate}{a copy of the istate vector, if it was supplied;
+    otherwise a constructed istate that satisfies all the checks}
   \item{overlap}{a list with the row number and id of overlaps (not
     present if there are no overlaps)}
   \item{gaps}{a list with the row number and id of gaps (not present if
@@ -66,7 +67,26 @@ survcheck(formula, data, id, istate, istate0="(s0)", timefix=TRUE,...)
   \item{jumps}{a list with the row number and id of jumps (not present
     if there are no jumps}
 }
-\author{Terry Therneau and Beth Atkinson}
+\note{
+For data sets with time-dependent covariates, a given subject will often
+have intermediate rows with a status of `no event at this time'.  (numeric
+value of 0).
+For instance a subject who started in state 1 at time 0, transitioned to state
+2 at time 10, had a covariate \code{x} change from 135 to 156 at time
+20, and a final transition to state 3 at time 30.
+The response would be \code{Surv(c(0, 10, 20), c(10, 20, 30), c(2,0,3))}:
+the status variable records \emph{changes} in state, and there was no
+change at time 20.
+The \code{istate} variable would be (1, 2, 2); it contains the \emph{current}
+state, and so the value is unchanged when status = censored.
 
+Thus, when there are intermediate observations \code{istate} is not
+simply a lagged version of the status, and may be more challenging to
+create.
+One approach is to let \code{survcheck} do the work: call it with
+an \code{istate} argument that is correct for the first row of each
+subject, or no \code{istate} argument at all, and then insert the
+returned value into ones data frame.
+}
 \keyword{ survival }
 

@@ -125,20 +125,20 @@ rbind('baseline fit' = coef(fit1),
 
 
 ###################################################
-### code chunk number 11: timedep.Rnw:583-584
+### code chunk number 11: timedep.Rnw:585-586
 ###################################################
 attr(pbc2, "tcount")
 
 
 ###################################################
-### code chunk number 12: timedep.Rnw:586-588
+### code chunk number 12: timedep.Rnw:588-590
 ###################################################
 #grab a couple of numbers for the paragraph below
 atemp <- attr(pbc2, "tcount")[2:3,]
 
 
 ###################################################
-### code chunk number 13: timedep.Rnw:669-675 (eval = FALSE)
+### code chunk number 13: timedep.Rnw:671-677 (eval = FALSE)
 ###################################################
 ## temp <- subset(pbc, id <= 312, select=c(id:sex, stage))
 ## pbc2 <- tmerge(temp, temp, id=id, death = event(time, status))
@@ -316,7 +316,7 @@ c(tdata=nrow(tdata), tdata2=nrow(tdata2))
 
 
 ###################################################
-### code chunk number 28: timedep.Rnw:1176-1183
+### code chunk number 28: timedep.Rnw:1178-1185
 ###################################################
 function(x, t, riskset, weights){ 
     obrien <- function(x) {
@@ -328,7 +328,7 @@ function(x, t, riskset, weights){
 
 
 ###################################################
-### code chunk number 29: timedep.Rnw:1193-1195
+### code chunk number 29: timedep.Rnw:1195-1197
 ###################################################
 function(x, t, riskset, weights) 
     unlist(tapply(x, riskset, rank))
