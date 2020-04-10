@@ -262,7 +262,7 @@ mdata[1:7, c("id", "trt", "tstart", "tstop", "event", "priorcr", "priortx")]
 
 
 ###################################################
-### code chunk number 21: survival.Rnw:992-993
+### code chunk number 21: survival.Rnw:978-979
 ###################################################
 survcheck(Surv(tstart, tstop, event) ~1, mdata, id=id)
 
@@ -728,7 +728,7 @@ attr(ndata, "tcount")
 
 
 ###################################################
-### code chunk number 54: survival.Rnw:2002-2005
+### code chunk number 54: survival.Rnw:2035-2038
 ###################################################
 tc <- attr(ndata, 'tcount')   # shorter name for use in Sexpr below
 icount <- table(table(nafld3$id)) #number with 1, 2, ... intervals
@@ -783,7 +783,7 @@ print(nfit1, digits =3)
 
 
 ###################################################
-### code chunk number 59: survival.Rnw:2177-2179 (eval = FALSE)
+### code chunk number 59: survival.Rnw:2210-2212 (eval = FALSE)
 ###################################################
 ## fit2 <- coxph(Surv(time, status) ~ trt + trt*time + celltype + karno,
 ##                 data = veteran)
@@ -831,7 +831,7 @@ par(oldpar)
 
 
 ###################################################
-### code chunk number 63: survival.Rnw:2365-2366
+### code chunk number 63: survival.Rnw:2398-2399
 ###################################################
 with(subset(aml, x=="Nonmaintained"), Surv(time, status))
 

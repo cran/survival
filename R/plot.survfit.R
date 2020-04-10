@@ -262,12 +262,14 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
     }
     else {
         temp <-  stime[is.finite(stime)]
-        if (!missing(xmax) && missing(xlim)) temp <- temp[temp <= xmax]
+        if (!missing(xmax) && missing(xlim)) temp <- pmin(temp, xmax)
         
         if (xaxs=='S') {
+            rtemp <- range(temp)
+            delta <- diff(rtemp)
             #special x- axis style for survival curves
-            if (xlog) tempx <- c(min(temp[temp>0]), max(temp)+ diff(temp)*1.04)
-            else tempx <- c(min(temp), max(temp)) * 1.04
+            if (xlog) tempx <- c(min(rtemp[rtemp>0]), min(rtemp)+ delta*1.04)
+            else tempx <- c(min(rtemp), min(rtemp)+ delta*1.04)
         }
         else if (xlog) tempx <- range(temp[temp > 0])
         else tempx <- range(temp)

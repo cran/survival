@@ -1,7 +1,7 @@
-survcheck <- function(formula, data, id, istate, istate0="(s0)", 
-                      timefix=TRUE, ...) {
+survcheck <- function(formula, data, subset, na.action,  id, istate, 
+                      istate0="(s0)", timefix=TRUE, ...) {
     Call <- match.call()
-    indx <- match(c("formula", "data", "id", "istate"),
+    indx <- match(c("formula", "data", "id", "istate", "subset", "na.action"),
                   names(Call), nomatch=0) 
     if (indx[1] ==0) stop("A formula argument is required")
     tform <- Call[c(1,indx)]  # only keep the arguments we wanted
@@ -136,14 +136,17 @@ survcheck2 <- function(y, id, istate=NULL, istate0="(s0)") {
     # create the transtions table
     # if someone has an intermediate visit, i.e., (0,10, 0)(10,20,1), don't
     #  report the false 'censoring' in the transitions table
-    # make it compact by removing any rows or cols that are all 0
+    # make it compact by removing any cols that are all 0, and rows of
+    #  states that never occur (sometimes the starting state is a factor
+    #  with unused levels)
     keep <- (stat2 !=0 | check$dupid > 1)  # not censored or last obs of this id
     transitions <- table(from=cstate2[keep], 
                          to= factor(stat2[keep], c(seq(along=states), 0),
                                     c(states, "(censored)")),
                          useNA="ifany")
-   transitions <- transitions[rowSums(transitions) >0, colSums(transitions)>0,
-                              drop = FALSE]
+    nr <- nrow(transitions)
+    never <- (rowSums(transitions) + colSums(transitions[,1:nr]))==0
+    transitions <- transitions[!never, colSums(transitions)>0, drop = FALSE]
 
     # now continue with error checks
     # A censoring hole in the middle, such as happens with survSplit,
