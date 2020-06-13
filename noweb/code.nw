@@ -186,7 +186,7 @@ coxph <- function(formula, data, weights, subset, na.action,
     }
 
     # add specials to the formula
-    special <- c("strata", "tt")
+    special <- c("strata", "tt", "frailty", "ridge", "pspline")
     tform$formula <- if(missing(data)) terms(formula, special) else
                                       terms(formula, special, data=data)
 
@@ -199,12 +199,35 @@ coxph <- function(formula, data, weights, subset, na.action,
 
     # okay, now evaluate the formula
     mf <- eval(tform, parent.frame())
-    if (nrow(mf) ==0) stop("No (non-missing) observations")
     Terms <- terms(mf)
 
-    # Grab the response variable
-    Y <- model.extract(mf, "response")
-    if (!inherits(Y, "Surv")) stop("Response must be a survival object")
+    # Grab the response variable, and deal with Surv2 objects
+    n <- nrow(mf)
+    Y <- model.response(mf)
+    isSurv2 <- inherits(Y, "Surv2")
+    if (isSurv2) {
+        # this is Surv2 style data
+        # if there were any obs removed due to missing, remake the model frame
+        if (length(attr(mf, "na.action"))) {
+            tform$na.action <- na.pass
+            mf <- eval.parent(tform)
+        }
+        if (!is.null(attr(Terms, "specials")$cluster))
+            stop("cluster() cannot appear in the model statement")
+        new <- surv2data(mf)
+        mf <- new$mf
+        istate <- new$istate
+        id <- new$id
+        Y <- new$y
+        n <- nrow(mf)
+    }       
+    else {
+        if (!is.Surv(Y)) stop("Response must be a survival object")
+        id <- model.extract(mf, "id")
+        istate <- model.extract(mf, "istate")
+    }
+    if (n==0) stop("No (non-missing) observations")
+
     type <- attr(Y, "type")
     multi <- FALSE
     if (type=="mright" || type == "mcounting") multi <- TRUE
@@ -215,6 +238,12 @@ coxph <- function(formula, data, weights, subset, na.action,
 
     if (!multi && multiform)
         stop("formula is a list but the response is not multi-state")
+    if (multi && length(attr(Terms, "specials")$frailty) >0)
+        stop("multi-state models do not currently support frailty terms")
+    if (multi && length(attr(Terms, "specials")$pspline) >0)
+        stop("multi-state models do not currently support pspline terms")
+    if (multi && length(attr(Terms, "specials")$ridge) >0)
+        stop("multi-state models do not currently support ridge penalties")
 
     if (control$timefix) Y <- aeqSurv(Y)
     <<coxph-bothsides>>
@@ -249,7 +278,7 @@ coxph <- function(formula, data, weights, subset, na.action,
     timetrans <- attr(Terms, "specials")$tt
     if (missing(tt)) tt <- NULL
     if (length(timetrans)) {
-        if (multi) stop("the tt() transform is not implemented for multi-state models")
+        if (multi || isSurv2) stop("the tt() transform is not implemented for multi-state or Surv2 models")
          <<coxph-transform>>
         }
    
@@ -258,7 +287,6 @@ coxph <- function(formula, data, weights, subset, na.action,
     # grab the cluster, if present.  Using cluster() in a formula is no
     #  longer encouraged
     cluster <- model.extract(mf, "cluster")
-    id <- model.extract(mf, "id")
     weights <- model.weights(mf)
     # The user can call with cluster, id, robust, or any combination
     # Default for robust: if cluster or any id with > 1 event or 
@@ -316,8 +344,6 @@ coxph <- function(formula, data, weights, subset, na.action,
     contrast.arg <- NULL  #due to shared code with model.matrix.coxph
     attr(Terms, "intercept") <- 1  # always have a baseline hazard
 
-    # Grab the id variable to check out multi-state data
-    id <- model.extract(mf, "id")
     if (multi) {
         <<coxph-multiform2>>
     }
@@ -393,18 +419,11 @@ tform$na.action <- na.pass  # defer any missing value work to later
 @
 
 <<coxph-multiform2>>=
-# remove strata from dformula, before any further processing
-if (length(dropterms)){ 
-    Terms2 <- Terms[-dropterms]
-    dformula <- formula(Terms2)
-} else Terms2 <- Terms
-
 # check for consistency of the states, and create a transition
 #  matrix
 if (length(id)==0) 
     stop("an id statement is required for multi-state models")
 
-istate <- model.extract(mf, "istate")
 mcheck <- survcheck2(Y, id, istate)
 # error messages here
 if (mcheck$flag["overlap"] > 0)
@@ -417,9 +436,9 @@ states <- mcheck$states
 #  build tmap, which has one row per term, one column per transition
 if (missing(statedata))
     covlist2 <- parsecovar2(covlist, NULL, dformula= dformula,
-                        Terms2, transitions, states)
+                        Terms, transitions, states)
 else covlist2 <- parsecovar2(covlist, statedata, dformula= dformula,
-                        Terms2, transitions, states)
+                        Terms, transitions, states)
 tmap <- covlist2$tmap
 if (!is.null(covlist)) {
     <<coxph-missing>>
@@ -428,7 +447,7 @@ if (!is.null(covlist)) {
  
 For multi-state models we can't tell what observations should be removed until
 any extra formulas have been processed.
-There may still be rows that are missing \emph{some} of the covariates but
+There may be rows that are missing \emph{some} of the covariates but
 are okay for \emph{some} transitions.  Others could be useless.
 Those rows can be removed from the model frame before creating the X matrix.
 Also identify partially used rows, ones where the necessary covariates are
@@ -477,6 +496,25 @@ For a multi-state model, create the expanded X matrix.  Sometimes it is
 much expanded.  
 The first step is to create the cmap matrix from tmap by expanding terms;
 factors turn into multiple columns for instance.  
+If tmap has rows (terms) for strata, then we have to deal with the complication
+that a strata might be applied to some transitions and not to others.
+<<coxph-multi-X>>=
+if (length(strats) >0) {
+    stratum_map <- tmap[c(1L, strats),] # strats includes Y, + tmap has an extra row
+    stratum_map[-1,] <- ifelse(stratum_map[-1,] >0, 1L, 0L)
+    if (nrow(stratum_map) > 2) {
+        temp <- stratum_map[-1,]
+        if (!all(apply(temp, 2, function(x) all(x==0) || all(x==1)))) {
+            # the hard case: some transitions use one strata variable, some
+            #  transitions use another.  We need to keep them separate
+            strata.keep <- mf[,strats]  # this will be a data frame
+            istrat <- sapply(strata.keep, as.numeric)
+        }
+    }
+}
+else stratum_map <- tmap[1,,drop=FALSE]
+@ 
+
 Also create the initial values vector.
 
 The stacker function will create a separate block of observations for every
@@ -491,7 +529,7 @@ Then set up the data.
 
 <<coxph-multi-X>>=
 cmap <- parsecovar3(tmap, colnames(X), attr(X, "assign"))
-xstack <- stacker(cmap, as.integer(istate), X, Y, strata=istrat,
+xstack <- stacker(cmap, stratum_map, as.integer(istate), X, Y, strata=istrat,
                   states=states)
 rkeep <- unique(xstack$rindex)
 transitions <- survcheck2(Y[rkeep,], id[rkeep], istate[rkeep])$transitions
@@ -514,10 +552,10 @@ use that as the label, but if it appears twice, as separate terms for
 two different transitions, then we label it as fred\_x:y where x:y is the
 transition.
 <<coxph-multi-X>>=
-t2 <- tmap[-1,,drop=FALSE]   # remove the intercept row
-r2 <- row(t2)[!duplicated(as.vector(t2))]
-c2 <- col(t2)[!duplicated(as.vector(t2))]
-a2 <- lapply(seq(along=r2), function(i) {cmap[1+assign[[r2[i]]], c2[i]]})
+t2 <- tmap[-c(1, strats),,drop=FALSE]   # remove the intercept row and strata rows
+r2 <- row(t2)[!duplicated(as.vector(t2)) & t2 !=0]
+c2 <- col(t2)[!duplicated(as.vector(t2)) & t2 !=0]
+a2 <- lapply(seq(along=r2), function(i) {cmap[assign[[r2[i]]], c2[i]]})
 # which elements are unique?  
 tab <- table(r2)
 count <- tab[r2]
@@ -927,14 +965,16 @@ The requires a shift.  The cluster and strata terms are seen as main
 effects, so appear early in that list.
 We have found a case where terms get relabeled:
 <<relabel>>=
- t1 <- terms( (x1 + x2):x3 + strata(x4))
- t2 <- t1[-1]
+ t1 <- terms( ~(x1 + x2):x3 + strata(x4))
+ t2 <- terms( ~(x1 + x2):x3)
+ t3 <- t1[-1]
  colnames(attr(t1, "factors"))
  colnames(attr(t2, "factors"))
+ colnames(attr(t3, "factors"))
 @ 
 In t1 the strata term appears first, as it is the only thing that looks like
 a main effect, and the column labels are strata(x4), x1:x3, x2:x3.
-In t2 the column labels are x1:x3 and x3:x2 --- note left-right swap of 
+In t3 the column labels are x1:x3 and x3:x2 --- note left-right swap of 
 the second.  This means that using match() on the labels is not a reliable
 approach.
 We instead assume that nothing is reordered and do a shift.
@@ -943,7 +983,7 @@ We instead assume that nothing is reordered and do a shift.
 
 if (length(dropterms)) {
     Terms2 <- Terms[ -dropterms]
-    X <- model.matrix(Terms2, mf, constrasts=contrast.arg)
+    X <- model.matrix(Terms2, mf, constrasts.arg=contrast.arg)
     # we want to number the terms wrt the original model matrix
     temp <- attr(X, "assign")
     shift <- sort(dropterms)
@@ -951,7 +991,7 @@ if (length(dropterms)) {
     if (length(shift)==2) temp + 1*(shift[2] <= temp)
     attr(X, "assign") <- temp 
 }
-else X <- model.matrix(Terms, mf, contrasts=contrast.arg)
+else X <- model.matrix(Terms, mf, contrasts.arg=contrast.arg)
 
 # drop the intercept after the fact, and also drop strata if necessary
 Xatt <- attributes(X) 
@@ -1150,17 +1190,23 @@ model frame.
 
 <<coxph-finish>>=
 if (!is.null(weights) && any(weights!=1)) fit$weights <- weights
-names(fit$means) <- names(fit$coefficients)
-
 if (multi) {
     fit$transitions <- transitions
     fit$states <- states
     fit$cmap <- cmap
+    fit$stratum_map <- stratum_map   # why not 'stratamap'?  Confusion with fit$strata
     fit$resid <- rowsum(fit$resid, xstack$rindex)
-    names(fit$coefficients) <- seq(along=fit$coefficients)
+    # add a suffix to each coefficent name.  Those that map to multiple transitions
+    #  get the first transition they map to
+    single <- apply(cmap, 1, function(x) all(x %in% c(0, max(x)))) #only 1 coef
+    cindx <- col(cmap)[match(1:length(fit$coefficients), cmap)]
+    rindx <- row(cmap)[match(1:length(fit$coefficients), cmap)]
+    suffix <- ifelse(single[rindx], "", paste0("_", colnames(cmap)[cindx]))
+    names(fit$coefficients) <- paste0(names(fit$coefficients), suffix)
     if (x) fit$strata <- istrat  # save the expanded strata
     class(fit) <- c("coxphms", class(fit))
 }
+names(fit$means) <- names(fit$coefficients)
  
 fit$formula <- formula(Terms)
 if (length(xlevels) >0) fit$xlevels <- xlevels
@@ -1925,7 +1971,7 @@ agreg.fit <- function(x, y, strata, offset, init, control,
                    as.integer(maxiter), 
                    as.double(control$eps),
                    as.double(control$toler.chol),
-                   as.integer(0)) # internally rescale
+                   as.integer(1)) # internally rescale
 
     <<agreg-fixup>>
     <<agreg-finish>>
@@ -2904,7 +2950,7 @@ if (any(tfac >1))
 
 Terms <- object$terms
 n <- object$n[1]
-if (!has.strata) strata <- rep(0L, n)
+if (!has.strata) strata <- NULL
 else strata <- object$strata
 
 missid <- missing(id) # I need this later, and setting id below makes
@@ -2976,15 +3022,13 @@ might not have that element, if missing assume TRUE.
 position <- NULL
 Y <- object[['y']]
 if (is.null(mf)) {
-    weights <- rep(1., n)
-    offset <- rep(0., n)
+    weights <- object$weights  # let offsets/weights be NULL until needed
+    offset <- NULL
     X <- object[['x']]
 }
 else {
     weights <- model.weights(mf)
-    if (is.null(weights)) weights <- rep(1.0, n)
     offset <- model.offset(mf)
-    if (is.null(offset)) offset <- rep(0., n)
     X <- model.matrix.coxph(object, data=mf)
     if (is.null(Y) || coxms) {
         Y <- model.response(mf)
@@ -3044,10 +3088,11 @@ if (!missing(start.time)) {
         stop("start.time argument has removed all endpoints")
     Y <- Y[keep,,drop=FALSE]
     X <- X[keep,,drop=FALSE]
-    offset <- offset[keep]
-    strata <- strata[keep]
+    if (!is.null(offset)) offset <- offset[keep]
+    if (!is.null(weights)) weights <- weights[keep]
+    if (!is.null(strata))  strata <- strata[keep]
     if (length(id) >0 ) id <- id[keep]
-    if (length(position)) position <- position[keep]
+    if (length(position) >0) position <- position[keep]
     n <- nrow(Y)
 }
 @
@@ -3088,6 +3133,7 @@ if (length(object$means) ==0) { # a model with only an offset term
     #  (This case is really rare)
     # se.fit <- FALSE
     X <- matrix(0., nrow=n, ncol=1)
+    if (is.null(offset)) offset <- rep(0, n)
     xcenter <- mean(offset)
     coef <- 0.0
     varmat <- matrix(0.0, 1, 1)
@@ -3096,13 +3142,15 @@ if (length(object$means) ==0) { # a model with only an offset term
 else {
     varmat <- object$var
     beta <- ifelse(is.na(object$coefficients), 0, object$coefficients)
-    xcenter <- sum(object$means * beta)+ mean(offset)
+    if (is.null(offset)) xcenter <- sum(object$means * beta)
+    else xcenter <- sum(object$means * beta)+ mean(offset)
     if (!is.null(object$frail)) {
        keep <- !grepl("frailty(", dimnames(X)[[2]], fixed=TRUE)
        X <- X[,keep, drop=F]
     }
         
-    risk <- c(exp(X%*% beta + offset - xcenter))
+    if (is.null(offset)) risk <- c(exp(X%*% beta - xcenter))
+    else     risk <- c(exp(X%*% beta + offset - xcenter))
 }
 @ 
 
@@ -3450,7 +3498,8 @@ coxsurv.fit <- function(ctype, stype, se.fit, varmat, cluster,
     names(survlist) <- ustrata
     survtype <- if (stype==1) 1 else ctype+1
     vartype <- survtype
-        
+    if (is.null(wt)) wt <- rep(1.0, nrow(y))
+    if (is.null(strata)) strata <- rep(1L, nrow(y))
     for (i in 1:nstrata) {
         indx <- which(strata== ustrata[i])
         survlist[[i]] <- agsurv(y[indx,,drop=F], x[indx,,drop=F], 
@@ -3923,7 +3972,7 @@ On output the values are
     \end{description}
     \item d=3
       \begin{description}
-        \item[sum1] (1/3) [[(1/x1 + 1/(x1 - x2/3 + 1/(x1 - 2*x2/3))]]
+        \item[sum1] (1/3) [[(1/x1 + 1/(x1 - x2/3) + 1/(x1 - 2*x2/3))]]
         \item[sum2] (1/3) (  same terms, squared)
         \item[xbar] (1/3) [[(xsum/x1^2 + (xsum - 1/3 xsum2)/(x1- x2/3)^2 + ]]\\
           [[(xsum - 2/3 xsum2)/(x1- 2/3 x3)^2)]]
@@ -4012,7 +4061,7 @@ while for the computation proper it is easier to make use of the same
 expanded data set that coxph used for a multi-state fit.
 
 <<survfit.coxphms-setupa>>=
-# Rebuild istate using the mcheck routine
+# Rebuild istate using the survcheck routine
 istate <- model.extract(mf, "istate")
 mcheck <- survcheck2(Y, oldid, istate)
 transitions <- mcheck$transitions
@@ -4028,14 +4077,21 @@ if (missing(start.time)) start.time <- min(Y[,2], 0)
 #  remove those rows first since they won't be in the final output.
 t2 <- transitions[, is.na(match(colnames(transitions), "(censored)")), drop=FALSE]
 absorb <- row.names(t2)[rowSums(t2)==0]
+
+if (is.null(weights)) weights <- rep(1.0, nrow(Y))
+if (is.null(strata))  tempstrat <- rep(1L, nrow(Y))
+else                  tempstrat <- strata
+
 if (length(absorb)) droprow <- istate %in% absorb  else droprow <- FALSE
 if (any(droprow)) {
     j <- which(!droprow)
-    cifit <- survfitCI(as.factor(strata[j]), Y[j,], weights[j], oldid[j], 
+    cifit <- survfitCI(as.factor(tempstrat[j]), Y[j,], weights[j], 
+                       id =oldid[j], istate= istate[j],
                        istate[j], stype=stype, ctype=ctype,
                        se.fit=FALSE, start.time=start.time, p0=p0)
     }
-else cifit <- survfitCI(as.factor(strata), Y, weights, oldid, istate, 
+else cifit <- survfitCI(as.factor(tempstrat), Y, weights, 
+                        id= oldid, istate = istate, 
                         stype=stype, ctype=ctype, se.fit=FALSE, 
                         start.time=start.time, p0=p0)
 
@@ -4043,7 +4099,7 @@ else cifit <- survfitCI(as.factor(strata), Y, weights, oldid, istate,
 #  expanded data set.
 # Replicate actions found in the coxph-multi-X chunk,
 cluster <- model.extract(mf, "cluster")
-xstack <- stacker(object$cmap, as.integer(istate), X, Y,
+xstack <- stacker(object$cmap, object$stratum_map, as.integer(istate), X, Y,
                   as.integer(strata),
                   states= object$states)
 if (length(position) >0)
@@ -4065,7 +4121,7 @@ Create a matrix of risk scores, number of subjects by number of transitions.
 The reason is that different transitions often have different coefficients.
 
 <<survfit.coxphms-setup3b>>=
-risk2 <- exp(x2 %*% coef(object, type="matrix") - xcenter)
+risk2 <- exp(x2 %*% coef(object, matrix=TRUE) - xcenter)
 @ 
 
 The first step in the computation is to compute the hazard functions for
@@ -4087,7 +4143,7 @@ time points.
 if (individual) {
     stop("time dependent survival curves not yet supported for multistate")
     result <- coxsurv.fit2(ctype, stype, se.fit, varmat, cluster, start.time,
-                           object$cmap, object$transitions, object$states,
+                           object$stratum_map[1,], object$transitions, object$states,
                            Y, X, weights, risk, position, strata, oldid,
                            transition, y2, x2, risk2, strata2, id2)
                           
@@ -4099,7 +4155,7 @@ if (individual) {
         p0 <- cifit$pstate[first,, drop=FALSE]
     }
     cifit <- coxsurv.fit2(ctype, stype, se.fit, varmat, cluster, start.time,
-                           object$cmap, object$transitions, object$states,
+                           object$stratum_map[1,], object$transitions, object$states,
                            Y, X, weights, risk, position, strata, oldid,
                            transition, y2, x2, risk2, cifit=cifit)
 
@@ -4108,7 +4164,7 @@ if (individual) {
 
 <<survfit.coxphms>>=
 coxsurv.fit2 <- function (ctype, stype, se.fit, varmat, cluster, 
-                          start.time, cmap, tmat, states,
+                          start.time, smap, tmat, states,
                           y, x, weights, risk, position, strata, id,
                           transition, y2, x2, risk2, strata2, id2, cifit) {
     # args are the options (ctype, stype, se.fit), args info from the prior fit
@@ -4122,12 +4178,12 @@ coxsurv.fit2 <- function (ctype, stype, se.fit, varmat, cluster,
     nstrata <- length(ustrata)
 
     # make the expansion map.  
-    #  cmap[1,] will contain integers 1, 2,... which match the values in
+    #  smap will contain integers 1, 2,... which match the values in
     # the transtion vector, which in turn is the set of hazard functions that
     # come back from the .Call
     #  The H matrices we will need are nstate by nstate, at each time, with
     # elements that are non-zero only for observed transtions.  Some elements
-    # may be the same: cmat[1,] can have repeats.
+    # may be the same: smat[1,] can have repeats.
     nstate <- length(states)
     tmat <- tmat[,is.na(match(colnames(tmat), "(censored)")), drop=FALSE]
     from <- row(tmat)[tmat>0]  # tmat contains fit$transitions matrix
@@ -4138,7 +4194,7 @@ coxsurv.fit2 <- function (ctype, stype, se.fit, varmat, cluster,
 
     if (nstrata==1) {
         temp <- multihaz(y, x, position, weights, risk, transition,
-                                  ctype, stype, hfill, cmap[1,], 
+                                  ctype, stype, hfill, smap, 
                                   x2, risk2, varmat, nstate, se.fit, 
                                   cifit$pstate[1,], cifit$time)
         cifit$pstate <- temp$pstate
@@ -4155,7 +4211,7 @@ coxsurv.fit2 <- function (ctype, stype, se.fit, varmat, cluster,
             survlist[[i]] <- multihaz(y[indx,,drop=F], x[indx,,drop=F],
                                   position[indx], weights[indx], risk[indx],
                                   transition[indx], ctype, stype, hfill,
-                                  cmap[1,], x2, risk2, varmat, nstate, se.fit, 
+                                  smap, x2, risk2, varmat, nstate, se.fit, 
                                   cifit$pstate[firstrow[i],], timelist[[i]])
                                   
             }
@@ -4181,7 +4237,7 @@ Variables are
   \item ctype, stype = type of hazard and survival
   \item hfill: the starting and ending states for each transition, on row per
     observed transtion type
-  \item cmap: a vector giving the stratum number for each transtion.
+  \item smap: a vector giving the stratum number for each transtion.
   \item x2, risk2 = covariates and risk scores for the predicted values
   \item vmat = variance matrix of the coxph model
   \item se.fit: do or do not compute standard errors
@@ -4192,7 +4248,7 @@ Variables are
 <<survfit.coxphms>>=
 # Compute the hazard  and survival functions 
 multihaz <- function(y, x, position, weight, risk, transition, ctype, stype, 
-                     hfill, cmap, x2, risk2, vmat, nstate, se.fit, p0, utime) {
+                     hfill, smap, x2, risk2, vmat, nstate, se.fit, p0, utime) {
     if (ncol(y) ==2) {
        sort1 <- seq.int(0, nrow(y)-1L)   # sort order for a constant
        y <- cbind(-1.0, y)               # add a start.time column, -1 in case
@@ -4221,19 +4277,25 @@ multihaz <- function(y, x, position, weight, risk, transition, ctype, stype,
 
     hazard <- matrix(cn[,5] / denom1, ncol = fit$ntrans)
     varhaz <- matrix(cn[,5] / denom2, ncol = fit$ntrans)
-    if (any(cmap != seq(along=cmap))) {
-        hazard <- hazard[, cmap]
-        varhaz <- varhaz[, cmap]
+    if (any(smap != seq(along=smap))) {
+        hazard <- hazard[, smap]
+        varhaz <- varhaz[, smap]
     }
 
     # Expand the result, one "hazard set" for each row of x2
     nx2 <- nrow(x2)
     h2 <- array(0, dim=c(nrow(hazard), nx2, ncol(hazard)))
     if (se.fit) v2 <- h2
-    S <- matrix(0, nrow(hazard), nstate)
+    S <- double(nstate)  # survival at the current time
     S2 <- array(0, dim=c(nrow(hazard), nx2, nstate))
  
     H <- matrix(0, nstate, nstate)
+    if (stype==2) {
+        H[hfill] <- colMeans(hazard)
+        diag(H) <- -rowSums(H)
+        esetup <- survexpmsetup(H)
+    }
+
     for (i in 1:nx2) {
         h2[,i,] <- apply(hazard %*% diag(risk2[i,]), 2, cumsum)
         if (se.fit) {
@@ -4243,21 +4305,21 @@ multihaz <- function(y, x, position, weight, risk, transition, ctype, stype,
 #            v2[jj,] <- (apply(varhaz[jj,],2, cumsum) + d3) * (risk2[i])^2
         }
 
-        S[1,] <- p0
-        for (j in 2:ntime) {
+        S <- p0
+        for (j in 1:ntime) {
             H[,] <- 0.0
             H[hfill] <- hazard[j,] *risk2[i,]
             if (stype==1) {
                 diag(H) <- pmin(0, 1 + diag(H)- rowSums(H))
-                S[j,] <- drop(S[j-1,] %*% H)  
+                S <- as.vector(S %*% H)  # don't keep any names
             }
             else {
                 diag(H) <- diag(H) - rowSums(H)
-                S[j,] <- as.vector(S[j-1,] %*% expm(H))  # dgeMatrix issue
+                #S <- as.vector(S %*% expm(H))  # dgeMatrix issue
+                S <- as.vector(S %*% survexpm(H, 1, esetup))
             }
+            S2[j,i,] <- S
         }
-
-        S2[,i,] <- S
     }
 
     rval <- list(time=utime, xgrp=rep(1:nx2, each=nrow(hazard)),
@@ -6180,7 +6242,7 @@ node.
 The tree contains the weights for everyone whose survival is larger
 than the time currently under review, so starts with all weights
 equal to zero.  
-For any pair of observations $i,j$ we need to add [[wt[i]*wt[j]]]
+For any pair of observations $i,j$ we need to add $w_iw_j$
 to the appropriate count, $w_j$ to subject $i$'s row of the leverage
 matrix and $w_i$ to subject $j$'s row.  We use two trees to do this 
 efficiently, one with all the observations to date, one with the events to
@@ -7064,25 +7126,22 @@ are of the form \code{transitions ~ formula/options}, where the left hand side
 denotes one or more transitions, and the right hand side is used to augment
 the basic formula wrt those transitions.
 
-Step 1 is to accumulate all the terms that appear on the right hand side(s)
-into a single ``pseudo formula'' that is used to drive the model.frame
-process.  
-After the model frame is constructed we have the necessary data to
-check that state names given in the formulas actually exist in the 
-data and that initial value strings are the right length.
-We can then construct the \code{cmap} matrix.
-After this first step the left hand side ends up as a complicated
-structure:
-\begin{itemize}
-  \item a list with one element per formula in the covariates list
-  \item each element is a list, with one element per term: multiple
-    a:b terms are allowed separated by + signs on the left hand side of the ~
-  \item each of these level 3 elements is a list with two elements
-    ``left'' and ``right'', for the two sides of the : operator
-  \item left and right will be one or two element lists containing the
-    stateid and/or the values.  Any word that doesn't match one of the
-    column names of statedata ends up as a set of values.
-\end{itemize}
+Step 1 is to break the formula into parts.  There will be a list of left sides,
+a list of right sides, and a list of options.
+From this we can create a single ``pseudo formula'' that is used to drive the model.frame
+process, which ensures that all of the variables we need will be found
+in the model frame.
+Further processing has to wait until after the model frame has been constructed,
+i.e., if a left side referred to state ``deathh'' that might be a real state
+or a typing mistake, we can't know until the data is in hand.
+
+Should we walk the parse tree of the formula, or convert it to character and use
+string manipulations?  The latter looks promising until you see a fragment like this:
+\code{entry:death ~ age/sex + ns(weight/height, df=4) / common}
+Walking the parse tree is a bit more subtle, but we then can take advantage of all
+the knowledge built into the R parser.
+A formula is a 3 element list of ``~'', leftside, rightside, or 2 elements if it has
+only a right hand side.  Legal ones for coxph have both left and right.
 
 <<parsecovar>>=
 parsecovar1 <- function(flist, statedata) {
@@ -7092,58 +7151,98 @@ parsecovar1 <- function(flist, statedata) {
         stop("all formulas must have a left and right side")
     
     # split the formulas into a right hand and left hand side
-    lhs <- lapply(flist, function(x) x[-3])
-    rhs <- lapply(flist, function(x) x[-2])
+    lhs <- lapply(flist, function(x) x[-3])   # keep the ~
+    rhs <- lapply(flist, function(x) x[[3]])  # don't keep the ~
     
-    <<parse-rightside>>
+    rhs <- parse_rightside(rhs)
     <<parse-leftside>>
-    list(rhs = rh2, lhs= lterm)
+    list(rhs = rhs, lhs= lterm)
 }
 @ 
 
-First look at the right hand side of each formula.  There are 4
-possble options of common, fixed, clear, and init.  
+\begin{figure}
+  \includegraphics{figure/fig1.pdf}
+  \caption{The parse tree for the formula 
+    \code{1:2 ~ strata(sex)/(age + trt) + ns(weight/ht, df=4) / common + fixed}}
+  \label{figparse}
+\end{figure}
+
+Figure \ref{figparse} shows the parse tree for a complex formula.
+The following function splits the formula at the rightmost slash, ignoring the
+inside of any function or parenthesised phrase.
+Recursive functions like this are almost impossible to read, but luckily it is short.
+The formula recurrs on the left and right side of +*: and \%in\%, and on binary - (but
+not on unary -).
+<<parsecovar>>=
+rightslash <- function(x) {
+    if (class(x) != 'call') return(x)
+    else {
+        if (x[[1]] == as.name('/')) return(list(x[[2]], x[[3]]))
+        else if (x[[1]]==as.name('+') || (x[[1]]==as.name('-') && length(x)==3) ||
+                 x[[1]]==as.name('*') || x[[1]]==as.name(':')  ||
+                 x[[1]]==as.name('%in%')) {
+                     temp <- rightslash(x[[3]])
+                     if (is.list(temp)) {
+                         x[[3]] <- temp[[1]]
+                         return(list(x, temp[[2]]))
+                     } else {
+                         temp <- rightslash(x[[2]])
+                         if (is.list(temp)) {
+                             x[[2]] <- temp[[2]]
+                             return(list(temp[[1]], x))
+                         } else return(x)
+                     }
+                 }
+        else return(x)
+    }
+}
+@ 
+
+There are 4 possble options of common, fixed, clear, and init.  
 The first 3 appear just as words, the last should have a set of
 values attached which become the \code{ival} vector.
-The end result is a list for each formula containing the actual right
-hand side formula along with the options.
+There will, of course, one day be a user with a variable named \code{common}
+who wants a nested term \code{x/common}. Since we don't look inside
+parenthesis they will be able to use \code{1:3 ~ (x/common)}.
 
-<<parse-rightside>>=
-# take apart the right hand side of each formula
-# the function below is applied to each formula in turn.
-rh2 <- lapply(rhs, function(form) {
-    parts <- strsplit(deparse(form, width.cutoff=300, control=NULL), 
-                      '/', fixed=TRUE)[[1]]
-    if (length(parts) ==1)  { # nothing after a /
-        ival <- NULL; common <- FALSE; fixed <- FALSE; clear <- FALSE;
-    }
-    else{
-        # treat the right hand side as though it were a formula
-        optterms <- terms(formula(paste("~", parts[2])))
-        ff <- rownames(attr(optterms, "factors"))
-        index <- match(ff, c("common", "fixed", "init", "clear"))
-        if (any(is.na(index)))
-            stop("option not recognized in a covariates formula: ",
-                 paste(ff[is.na(index)], collapse=", "))
-        common <- any(index==1)
-        fixed  <- any(index==2)
-        clear  <- any(index==3)
-        if (any(index==3)) {
-            optatt <- attributes(optterms)
-            j <- optatt$variables[1 + which(index==3)]
-            j[[1]] <- as.name("list")
-            ival <- unlist(eval(j, parent.frame()))
-        } else ival <- NULL
-    }
-
-    # and now the terms before the slash, which is the actual formula
-    #  a formula of -1 +1 is recorded as intercept=TRUE, pasting a -1 on
-    #  allows us to tell if a 1 was included.  (But don't add a second ~).
-    form <- formula(paste("~ -1 +", substring(parts[1], 2, nchar(parts[1]))))
-    list(common=common, fixed=fixed, clear=clear, ival=ival, 
-       formula = form) 
-})
-@ 
+<<parsecovar>>=
+parse_rightside <- function(rhs) {
+    parts <- lapply(rhs, rightslash)
+    new <- lapply(parts, function(opt) {
+        tform <- ~ x    # a skeleton, "x" will be replaced
+        if (!is.list(opt)) { # no options for this line
+            tform[[2]] <- opt
+            list(formula = tform, ival = NULL, common = FALSE,
+                 fixed = FALSE, clear = FALSE)
+        }
+        else{
+            # treat the option list as though it were a formula
+            temp <- ~ x
+            temp[[2]] <- opt[[2]]
+            optterms <- terms(temp)
+            ff <- rownames(attr(optterms, "factors"))
+            index <- match(ff, c("common", "fixed", "init", "clear"))
+            if (any(is.na(index)))
+                stop("option not recognized in a covariates formula: ",
+                     paste(ff[is.na(index)], collapse=", "))
+            common <- any(index==1)
+            fixed  <- any(index==2)
+            clear  <- any(index==3)
+            if (any(index==3)) {
+                optatt <- attributes(optterms)
+                j <- optatt$variables[1 + which(index==3)]
+                j[[1]] <- as.name("list")
+                ival <- unlist(eval(j, parent.frame()))
+            } 
+            else ival <- NULL
+            tform[[2]] <- opt[[1]] 
+            list(formula= tform, ival= ival, common= common, fixed = fixed,
+                 clear = clear)
+        }
+    })
+    new
+}
+@
  
 The left hand side of each formula specifies the set of transitions to which
 the covariates apply, and is more complex.
@@ -7246,7 +7345,31 @@ Arguments are the results from the first pass, the statedata data frame,
 the default formula, the terms structure from the full formula,
 and the transitions count.
 
+One nuisance is that the terms function sometimes inverts things.  For 
+example in the formula
+\code{terms(~ x1 + x1:iage + x2 + x2:iage)} the label for the second
+of these becomes \code{iage:x2}.  
+I'm guessing it is because the variable first appear in the order x1, iage, x2
+and labels make use of that order. 
+But when we look at the formula fragment \code{~ x2 + x2:iage} the terms
+will be in the other order.  
+A way out of this is to use the simple \code{termmatch} function below,
+which keys off of the factors attribute instead of the names. 
+
 <<parsecovar>>=
+termmatch <- function(f1, f2) {
+    # look for f1 in f2, each the factors attribute of a terms object
+    if (length(f1)==0) return(NULL)   # a formula with only ~1
+    irow <- match(rownames(f1), rownames(f2))
+    if (any(is.na(irow))) stop ("termmatch failure 1") 
+    hashfun <- function(j) sum(ifelse(j==0, 0, 2^(seq(along=j))))
+    hash1 <- apply(f1, 2, hashfun)
+    hash2 <- apply(f2[irow,,drop=FALSE], 2, hashfun)
+    index <- match(hash1, hash2)
+    if (any(is.na(index))) stop("termmatch failure 2")
+    index
+}
+
 parsecovar2 <- function(covar1, statedata, dformula, Terms, transitions,states) {
     if (is.null(statedata))
         statedata <- data.frame(state = states, stringsAsFactors=FALSE)
@@ -7265,38 +7388,26 @@ parsecovar2 <- function(covar1, statedata, dformula, Terms, transitions,states) 
     #  those were eliminated above.
     # Likewise, the formula list might have rules for transitions that are
     #  not present.  Don't worry about it at this stage.
-    allterm <- attr(Terms, 'term.labels')
-    nterm <- length(allterm)
+    allterm <- attr(Terms, 'factors')
+    nterm <- ncol(allterm)
 
-    <<parse-tmap-setup>>
-    
-    # if there is no formula extension, the middle part of the work is skipped
+    # create a map for every transition, even ones that are not used.
+    # at the end we will thin it out
+    # It has an extra first row for intercept (baseline)
+    # Fill it in with the default formula
+    nstate <- length(states)
+    tmap <- array(0, dim=c(nterm+1, nstate, nstate))
+    dmap <- array(seq_len(length(tmap)), dim=c(nterm+1, nstate, nstate)) #unique values
+    dterm <- termmatch(attr(terms(dformula), "factors"), allterm)
+    dterm <- c(1L, 1L+ dterm)  # add intercept
+    tmap[dterm,,] <- dmap[dterm,,]
+    inits <- NULL
+
     if (!is.null(covar1)) {
         <<parse-tmap>>
     }
     <<parse-finish>>
 }
-@ 
-
-Create a map for every transition, even the ones that are not used;
-this simply makes the indexing easier.  At the end we will dispose of
-unneeded ones.
-The very first term is the intercept or strata.
-<<parse-tmap-setup>>=
-# create the map and fill it in with the default formula
-nstate <- length(states)
-tmap <- array(0L, dim=c(nterm+1, nstate, nstate))
-dterms <- match(attr(terms.formula(dformula), "term.labels"), allterm)
-dterms <- c(1L, 1L + dterms)  # add the intercept
-k <- seq(along=dterms)
-for (i in 1:nstate) {
-    for (j in 1:nstate) {
-        tmap[dterms,j,i] <- k    # fill in in column major order
-        k <- k + length(k)
-    }
-}
-ncoef <- max(tmap)  # number of coefs used so far
-inits <- NULL
 @ 
 
 Now go through the formulas one by one.  The left hand side tells us which
@@ -7308,7 +7419,7 @@ entry can have left and right portions.
 state1 <- state2 <- NULL
 for (x in lhs) {
     # x is one term
-    if (is.null(x$left)) stop("term found without a :", x)
+    if (!is.list(x) || is.null(x$left)) stop("term found without a ':' ", x)
     # left of the colon
     if (!is.list(x$left) && length(x$left) ==1 && x$left==0) 
         temp1 <- 1:nrow(statedata)
@@ -7332,7 +7443,7 @@ for (x in lhs) {
     }
     else {
         k <- match(x$left, statedata$state)
-        if (any(is.na(k))) stop(x$left[k], ": state not found")
+        if (any(is.na(k))) stop(x$left[is.na(k)], ": state not found")
         temp1 <- which(statedata$state %in% x$left)
     }
     
@@ -7369,35 +7480,62 @@ for (x in lhs) {
 }           
 @ 
 
-The inits need to wait a little longer, until the X matrix is in hand.
+The init clause (initial values) are gathered but not checked:
+we don't yet know how many columns a term will expand into.
 <<parse-tmap>>=
 for (i in 1:length(covar1$rhs)) {  
     rhs <- covar1$rhs[[i]]
-    lhs <- covar1$lhs[[i]]  # the two are the same length
-    rterm <- terms.formula(rhs$formula)
-    rindex <- 1L + match(attr(rterm, "term.labels"), allterm, nomatch=0)
-    if (any(rindex== 1L)) stop("dterm mismatch bug 2")
-    if (attr(rterm, "intercept")==1) rindex <- c(1L, rindex)
-    
+    lhs <- covar1$lhs[[i]]  # one rhs and one lhs per formula
+     
     <<parse-lmatch>>
-    npair <- length(state1)
-    if (rhs$clear) {
+    npair <- length(state1)  # number of state:state pairs for this line
+
+    # update tmap for this set of transitions
+    # first, what variables are mentioned, and check for errors
+    rterm <- terms(rhs$formula)
+    rindex <- 1L + termmatch(attr(rterm, "factors"), allterm)
+
+    # second, were any variables dropped from the base formula?
+    if (rhs$clear) {  # drop everything
         for(k in 1:npair) tmap[-1, state1[k], state2[k]] <- 0
     }
+    else {
+        # the update.formula function is good at identifying changes
+        # formulas that start with  "- x" have to be pasted on carefully
+        temp <- substring(deparse(rhs$formula, width.cutoff=500), 2)
+        if (substring(temp, 1,1) == '-') dummy <- formula(paste("~ .", temp))
+        else dummy <- formula(paste("~. +", temp))
+
+        rindex1 <- termmatch(attr(terms(dformula), "factors"), allterm)
+        rindex2 <- termmatch(attr(terms(update(dformula, dummy)), "factors"),
+                         allterm)
+        dropped <- 1L + rindex1[is.na(match(rindex1, rindex2))] # remember the intercept
+        if (length(dropped) >0) {
+            for (k in 1:npair) tmap[dropped, state1[k], state2[k]] <- 0
+        }
+    }
+    
+    # grab initial values
     if (length(rhs$ival)) 
         inits <- c(inits, list(term=rindex, state1=state1, 
                                state2= state2, init= rhs$ival))
-    j <- ncoef + seq_len(length(rindex))
-    if (rhs$common) {
-        for(k in 1:npair) tmap[rindex, state1[k], state2[k]] <-j
+    
+    # adding -1 to the front is a trick, to check if there is a "+1" term
+    dummy <- ~ -1 + x
+    dummy[[2]][[3]] <- rhs$formula
+    if (attr(terms(dummy), "intercept") ==1) rindex <- c(1L, rindex)
+ 
+    # an update of "- sex" won't generate anything to add
+    if (length(rindex) > 0) {
+        if (rhs$common) {
+            j <- dmap[rindex, state1[1], state2[1]] 
+            for(k in 1:npair) tmap[rindex, state1[k], state2[k]] <- j
+        }
+        else {
+            for (k in 1:npair)
+                tmap[rindex, state1[k], state2[k]] <- dmap[rindex, state1[k], state2[k]]
+        }
     }
-    else {
-        for(k in 1:npair){
-            tmap[rindex, state1[k], state2[k]] <-j
-            j <- j + length(rindex)
-        }  
-    }       
-    ncoef <- max(j)
 }    
 @ 
 
@@ -7420,12 +7558,11 @@ for (i in 1:nrow(tmap2)) {
         tmap2[i,j] <- tmap[i, indx1[trow[j]], indx2[tcol[j]]]
 }
 
-# relabel as 1-k
 tmap2[1,] <- match(tmap2[1,], unique(c(0L, tmap2[1,]))) -1L
 if (nrow(tmap2) > 1)
     tmap2[-1,] <- match(tmap2[-1,], unique(c(0L, tmap2[-1,]))) -1L
   
-dimnames(tmap2) <- list(c("(Baseline)", allterm),
+dimnames(tmap2) <- list(c("(Baseline)", colnames(allterm)),
                             paste(indx1[trow], indx2[tcol], sep=':')) 
 list(tmap = tmap2, inits=inits, mapid= cbind(indx1[trow], indx2[tcol]))
 @
@@ -7435,35 +7572,49 @@ Last is a helper routine that converts tmap, which has one row per term,
 into cmap, which has one row per coefficient.  Both have one column per 
 transition.
 It uses the assign attribute of the X matrix along with the column names.
-Be careful to make 0 stay as a 0.
+
+Consider the model \code{~ x1 + strata(x2) + factor(x3)} where x3 has 4 levels.
+The Xassign vector will be 1, 3, 3, 3, since it refers to terms and there are 3
+columns of X for term number 3.
+If there were an intercept the first column of X
+would be a 1 and Xassign would be 0, 1, 3, 3, 3.
+
+Let's say that there were 3 transitions and tmap looks like this:
+\begin{tabular}{rccc}
+            & 1:2 & 1:3 & 2:3 \\
+(Baseline)  & 1   & 2   & 3 \\
+ x1         & 1   & 4   & 4 \\ 
+ strata(x2) & 2   & 5   & 6 \\
+ factor(x3) & 3   & 3   & 7
+\end{tabular}
+The cmap matrix will ignore rows 1 and 3 since they do not correspond to 
+coefficients in the model.   
 
 <<parsecovar>>=
 parsecovar3 <- function(tmap, Xcol, Xassign) {
-    # sometime X will have an intercept, sometimes not, tmap and cmap
-    #  always do
+    # sometime X will have an intercept, sometimes not; cmap never does
     hasintercept <- (Xassign[1] ==0)
 
-    cmap <- matrix(0L, length(Xcol) + !hasintercept, ncol(tmap))
-    cmap[1,] <- tmap[1,]
-
+    cmap <- matrix(0L, length(Xcol) - hasintercept, ncol(tmap))
+    uterm <- unique(Xassign[Xassign != 0])   # terms that will have coefficients
+    
     xcount <- table(factor(Xassign, levels=1:max(Xassign)))
-    mult <- 1+ max(xcount)  #used to keep the coefs in the same oder
+    mult <- 1+ max(xcount)  # temporary scaling
 
-    ii <- 1
-    for (i in 2:nrow(tmap)) {
-        k <- seq_len(xcount[i-1])
-        for (j in 1:ncol(tmap))
-            cmap[ii+k, j] <- if(tmap[i,j]==0) 0 else tmap[i,j]*mult +k
-
+    ii <- 0
+    for (i in uterm) {
+        k <- seq_len(xcount[i])
+        for (j in 1:ncol(tmap)) 
+            cmap[ii+k, j] <- if(tmap[i+1,j]==0) 0 else tmap[i+1,j]*mult +k
         ii <- ii + max(k)
     }
 
     # renumber coefs as 1, 2, 3, ...
-    cmap[-1,] <- match(cmap[-1,], sort(unique(c(0L, cmap[-1,])))) -1L
+    cmap[,] <- match(cmap, sort(unique(c(0L, cmap)))) -1L
     
     colnames(cmap) <- colnames(tmap)
-    if (hasintercept) rownames(cmap) <- Xcol
-    else rownames(cmap) <- c("(Baseline)", Xcol)
+    if (hasintercept) rownames(cmap) <- Xcol[-1]
+    else rownames(cmap) <- Xcol
 
     cmap
 }
@@ -8999,8 +9150,38 @@ survfit.formula <- function(formula, data, weights, subset,
 	    stop("Interaction terms are not valid for this function")
 
     n <- nrow(mf)
-    Y <- model.extract(mf, 'response')
-    if (!is.Surv(Y)) stop("Response must be a survival object")
+    Y <- model.response(mf)
+    if (inherits(Y, "Surv2")) {
+        # this is Surv2 style data
+        # if there are any obs removed due to missing, remake the model frame
+        if (length(attr(mf, "na.action"))) {
+            temp$na.action <- na.pass
+            mf <- eval.parent(temp)
+        }
+        if (!is.null(attr(Terms, "specials")$cluster))
+            stop("cluster() cannot appear in the model statement")
+        new <- surv2data(mf)
+        mf <- new$mf
+        istate <- new$istate
+        id <- new$id
+        Y <- new$y
+        if (anyNA(mf[-1])) { #ignore the response still found there
+            if (missing(na.action)) temp <- get(getOption("na.action"))(mf[-1])
+            else temp <- na.action(mf[-1])
+            omit <- attr(temp, "na.action")
+            mf <- mf[-omit,]
+            Y <- Y[-omit]
+            id <- id[-omit]
+            istate <- istate[-omit]
+        }                      
+        n <- nrow(mf)
+    }       
+    else {
+        if (!is.Surv(Y)) stop("Response must be a survival object")
+        id <- model.extract(mf, "id")
+        istate <- model.extract(mf, "istate")
+    }
+    if (n==0) stop("data set has no non-missing observations")
 
     casewt <- model.extract(mf, "weights")
     if (is.null(casewt)) casewt <- rep(1.0, n)
@@ -9013,8 +9194,6 @@ survfit.formula <- function(formula, data, weights, subset,
 
     if (!is.null(attr(Terms, 'offset'))) warning("Offset term ignored")
 
-    id    <- model.extract(mf, 'id')
-    istate <- model.extract(mf,"istate")
     cluster <- model.extract(mf, "cluster")
     temp <- untangle.specials(Terms, "cluster")
     if (length(temp$vars)>0) {
@@ -9027,8 +9206,6 @@ survfit.formula <- function(formula, data, weights, subset,
     ll <- attr(Terms, 'term.labels')
     if (length(ll) == 0) X <- factor(rep(1,n))  # ~1 on the right
     else X <- strata(mf[ll])
-    
-    if (!is.Surv(Y)) stop("y must be a Surv object")
     
     # Backwards support for the now-depreciated etype argument
     etype <- model.extract(mf, "etype")
@@ -9317,6 +9494,16 @@ survfitKM <- function(x, y, weights=rep(1.0,length(x)),
         # if the user asked for no standard error, skip any robust computation
         ncluster <- 0L
         influence <- 0L
+    }
+
+    # if start.time was set, delete obs if necessary
+    keep <- y[,ny-1] >= time0
+    if (!all(keep)) {
+        y <- y[keep,]
+        if (length(id) >0) id <- id[keep]
+        if (length(cluster) >0) cluster <- cluster[keep]
+        x <- x[keep]
+        weights <- weights[keep]
     }
 
 
@@ -11654,6 +11841,8 @@ findrow <- function(fit, times, extend) {
     
     index1 <- findInterval(ptimes, fit$time) 
     index2 <- 1 + findInterval(ptimes, fit$time, left.open=TRUE)
+    if (length(index1) ==0)
+        stop("no points selected for one or more curves, consider using the extend argument")
     # The pmax() above encodes the assumption that n.risk for any
     #  times before the first observation = n.risk at the first obs
     fit$time <- ptimes
@@ -11960,6 +12149,371 @@ survmean2 <- function(x, scale=1, rmean) {
     else list(matrix=outmat, end.time=maxtime/scale)
 }
 @ 
+\section{Matrix exponentials and transition matrices}
+For multi-state models, we need to compute the exponential of the transition
+matrix, sometimes many times.
+The matrix exponential is a hard problem, formally defined as
+\begin{equation*}
+  \exp(R) = I + \sum_{j=1}^\infty R^i/i!
+  \end{equation*}
+The computation is nicely solved by the expm package
+\emph{if} we didn't need derivatives and/or high speed.  
+We want both.
+The key idea is from a paper by Kalbfleisch and Lawless: if the rate matrix
+$R$ has distinct eigenvalues then $\exp(R)$ and its derivative can be written
+in terms of a matrix decomposition.  
+If $R$ is upper triangular this decompostion is itself very easy to compute.
+If the transition matrix is acylic then it can be rearranged to be in upper
+triangular form.  
+As importantly, the decomposition leads to a simple computation for the
+first derivative of each element.
+
+Also be aware that $\exp(A)\exp(B) \ne \exp(A+B)$ for the case of matrices.
+
+Nearly all the rate matrices encountered during an iteration will have
+distint eigenvalues.
+For the few which do not we can use the Pade' approximation found in the
+matexp package.
+If the rate matrix is upper triangular (\code{uppertri}), then the
+eigenvalues are found on the diagonal of $R$.  
+The overall stategy is the following:
+\begin{enumerate} 
+  \item Call \code{survexpmsetup} once, which will decide if the matrix is
+    acyclic, and return a reorder vector if so or a flag if it is not.
+  \item Call \code{survexpm} multiple times.  For that routine
+    \begin{itemize}
+      \item Do not need derivatives: call survexpm or pade as appropriate
+      \item Do need derivatives
+        \begin{itemize}
+          \item If upper triangular and no tied values, use the deriv routine
+          \item Otherwise use the Pade routine
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+
+<<survexpm>>=
+survexpmsetup <- function(rmat) {
+    # check the validity of the transition matrix, and determine if it
+    #  is acyclic, i.e., can be reordered into an upper triangular matrix.
+    if (!is.matrix(rmat) || nrow(rmat) != ncol(rmat) || any(diag(rmat) > 0) ||
+        any(rmat[row(rmat) != col(rmat)] < 0))
+        stop ("input is not a transition matrix")
+    if (!is.logical(all.equal(rowSums(rmat), rep(0, ncol(rmat)))))
+        stop("input is not a transition matrix")
+    nc <- ncol(rmat)
+    lower <- row(rmat) > col(rmat)
+    if (all(rmat[lower] ==0))  return(0)  # already in order
+    
+    # score each state by (number of states it follows) - (number it precedes)
+    temp <- 1*(rmat >0) # 0/1 matrix
+    indx <- order(colSums(temp) - rowSums(temp))
+    temp <- rmat[indx, indx]  # try that ordering
+    if (all(temp[lower]== 0)) indx  # it worked!
+    else -1  # there is a loop in the states
+}
+@ 
+
+\subsection{Decompostion}
+Based on Kalbfleisch and Lawless, ``The analysis of panel data under a 
+Markov assumption'' (J Am Stat Assoc, 1985:863-871), the
+rate matrix $R$ can be written as $ADA^{-1}$ for some matrix $A$, where
+$D$ is a diagonal matrix of eigenvalues, provided all of the eigenvalues
+are distinct.
+Then $\exp(R) = A \exp(D) A^{-1}$, and the exponential of a diagonal
+matrix is simply a diagonal matrix of the exponentials.
+The matrix $Rt$ for a scalar $t$ has decomposition $A\exp(Dt)A^{-1}$; a
+single decompostion suffices for all values of $t$.
+
+A particular example is
+\begin{equation}
+  R =
+  \begin{pmatrix}
+    r_{11} & r_{12} & r_{13} & 0 & 0 & r_{15}\\
+    0 & r_{22} & 0 & r_{24} & 0 & r_{25}\\
+    0 & 0 & r_{33} & r_{34} & r_{35} & r_{35}\\
+    0 & 0 & 0 & r_{44} & r_{45} & r_{45} \\
+    0 & 0 & 0 & 0 & r_{55} & r_{55} \\
+    0 & 0 & 0 & 0 & 0 & 0
+  \end{pmatrix}.
+\end{equation}
+Since this is a transition matrix the diagonal elements are constrained so that
+row sums are zero: $r_{ii} = -\sum_{j\ne i} r_{ij}$.
+Since R is an upper triangular matrix it's eigenvalues lie on the diagonal.
+If none of the the eigenvalues are
+repeated, then the Prentice result applies.
+
+The decompostion is quite simple since $R$ is triangular.
+We want the eigenvectors, i.e. solutions to 
+\begin{align*}
+  R v_i &= r_{ii} v_i \\
+%  R v_2 &= r_{22} v_2 \\
+%  R v_3 &= r_{33} v_3 \\
+%  R v_4 &= r_{44} v_4 \\
+%  R v_5 &= r_{55} v_5 \\
+%  R v_6 &= r_{66} v_6
+\end{align*}
+for $i= 1, \dots, 6$, where $v_i$ are the colums of $V$. 
+
+A sneaky fact is that the set of eigenvectors is
+also upper triangular; we can solve for them one by one
+using back substitution.
+For the first eigenvector we have 
+$v_1 = (1, 0,0,0,0,0)$.
+For the second we have the equations
+\begin{align*}
+  r_{11} x + r_{12}y &=  r_{22} x \\
+             r_{22}y &=  r_{22} y
+\end{align*}
+which has the solution $(r_{12}/(r_{22}- r_{11}), 1, 0,0,0,0)$,
+and the process recurs for other rows.
+Since $V$ is triangular the inverse of $V$ is upper triangular
+and also easy to compute.
+
+This approach fails if there are tied eigenvalues.
+Kalbfleice and Lawless comment that this case is rare,
+but one can then use a decomposition to Jordan canonical form re
+Cox and Miller, the Theory of Stochastic Processes, 1965.
+Although this leads to some nice theorems it does not give a 
+simple comutational form, however, 
+and it is easier to fall back on the pade routine.
+At this time, the pade routine is as fast as the triangluar code,
+at least for small matrices without deriviatives.
+
+<<survexpm>>=
+survexpm <- function(rmat, time=1.0, setup, eps=1e-6) {
+    if (missing(setup) || setup[1] < 0 ||
+        any(diff(sort(diag(rmat)))< eps)) pade(rmat*time)
+    else {
+        if (setup==1) .Call(Ccdecomp, rmat, time)$P
+        else {
+            temp <- rmat
+            temp[setup, setup] <- .Call(Ccdecomp, rmat[setup, setup], time)
+            temp$P
+        }
+    }
+}
+@ 
+
+The routine below is modeled after the cholesky routines in the survival
+library.  
+To help with notation, the return values are labeled as in the 
+Kalbfleisch and Lawless paper,
+except that their Q = our rmat.  Q = A diag(d) Ainv and P= exp(Qt)
+
+<<cdecomp>>=
+/*
+** Compute the eigenvectors for the upper triangular matrix R
+*/
+#include <math.h>
+#include "R.h"
+#include "Rinternals.h"
+
+SEXP cdecomp(SEXP R2, SEXP time2) {
+    int i,j,k;
+    int nc, ii;
+    
+    static const char *outnames[]= {"d", "A", "Ainv", 
+				    "P", ""};    
+    SEXP rval, stemp;
+    double *R, *A, *Ainv, *P;
+    double *dd, temp, *ediag;
+    double time;
+
+    nc = ncols(R2);   /* number of columns */
+    R = REAL(R2);
+    time = asReal(time2);
+
+    /* Make the output matrices as copies of R, so as to inherit
+    **   the dimnames and etc
+    */
+    
+    PROTECT(rval = mkNamed(VECSXP, outnames));
+    stemp=  SET_VECTOR_ELT(rval, 0, allocVector(REALSXP, nc));
+    dd = REAL(stemp);
+    stemp = SET_VECTOR_ELT(rval, 1, allocMatrix(REALSXP, nc, nc));
+    A = REAL(stemp);
+    for (i =0; i< nc*nc; i++) A[i] =0;   /* R does not zero memory */
+    stemp = SET_VECTOR_ELT(rval, 2, duplicate(stemp));
+    Ainv = REAL(stemp);
+    stemp = SET_VECTOR_ELT(rval, 3, duplicate(stemp));
+    P = REAL(stemp);
+   
+    ediag = (double *) R_alloc(nc, sizeof(double));
+    
+    /* 
+    **	Compute the eigenvectors
+    **   For each column of R, find x such that Rx = kx
+    **   The eigenvalue k is R[i,i], x is a column of A
+    **  Remember that R is in column order, so the i,j element is in
+    **   location i + j*nc
+    */
+    ii =0; /* contains i * nc */
+    for (i=0; i<nc; i++) { /* computations for column i */
+	dd[i] = R[i +ii];    /* the i,i diagonal element = eigenvalue*/
+	A[i +ii] = 1.0;
+	for (j=(i-1); j >=0; j--) {  /* fill in the rest */
+	    temp =0;
+	    for (k=j; k<=i; k++) temp += R[j + k*nc]* A[k +ii];
+	    A[j +ii] = temp/(dd[i]- R[j + j*nc]);
+	}
+	ii += nc;
+    }
+    
+    /*
+    ** Solve for A-inverse, which is also upper triangular. The diagonal
+    **  of A and the diagonal of A-inverse are both 1.  At the same time 
+    **  solve for P = A D Ainverse, where D is a diagonal matrix 
+    **  with exp(eigenvalues) on the diagonal.
+    ** P will also be upper triangular, and we can solve for it using
+    **  nearly the same code as above.  The prior block had RA = x with A the
+    **  unknown and x successive colums of the identity matrix. 
+    **  We have PA = AD, so x is successively columns of AD.
+    ** Imagine P and A are 4x4 and we are solving for the second row
+    **  of P.  Remember that P[2,1]= A[2,3] = A[2,4] =0; the equations for
+    **  this row of P are:
+    **
+    **    0*A[1,2] + P[2,2]A[2,2] + P[2,3] 0     + P[2,4] 0     = A[2,2] D[2]
+    **    0*A[1,3] + P[2,2]A[2,3] + P[2,3]A[3,3] + P[2,4] 0     = A[2,3] D[3]
+    **    0*A[1,4] + P[2,2]A[2,4] + P[2,3]A[3,4] + P[2,4]A[4,4] = A[2,4] D[4]
+    **
+    **  For A-inverse the equations are (use U= A-inverse for a moment)
+    **    0*A[1,2] + U[2,2]A[2,2] + U[2,3] 0     + U[2,4] 0     = 1
+    **    0*A[1,3] + U[2,2]A[2,3] + U[2,3]A[3,3] + U[2,4] 0     = 0
+    **    0*A[1,4] + U[2,2]A[2,4] + U[2,3]A[3,4] + U[2,4]A[4,4] = 0
+    */
+    
+    ii =0; /* contains i * nc */
+    for (i=0; i<nc; i++) ediag[i] = exp(time* dd[i]);
+    for (i=0; i<nc; i++) { 
+	/* computations for column i of A-inverse */
+	Ainv[i+ii] = 1.0 ;
+	for (j=(i-1); j >=0; j--) {  /* fill in the rest of the column*/
+	    temp =0;
+	    for (k=j+1; k<=i; k++) temp += A[j + k*nc]* Ainv[k +ii];
+	    Ainv[j +ii] = -temp;
+	}
+	
+        /* column i of P */
+	P[i + ii] = ediag[i];
+        for (j=0; j<i; j++) {
+	    temp =0;
+            for (k=j; k<nc; k++) temp += A[j + k*nc] * Ainv[k+ii] * ediag[k];
+            P[j+ii] = temp;
+        }
+        
+	/* alternate computations for row i of P, does not use Ainv*/
+	/*P[i +ii] = ediag[i];
+	  for (j=i+1; j<nc; j++) { 
+	      temp =0;
+	      for (k=i; k<j; k++) temp += P[i+ k*nc]* A[k + j*nc];
+              P[i + j*nc] = (A[i + j*nc]*ediag[j] - temp)/A[j + j*nc];
+	  } 
+        */
+	ii += nc;
+    }
+    UNPROTECT(1);
+    return(rval);
+}
+@ 
+
+\subsection{Derivatives}
+From Kalbfliesch and Lawless, the first derivative of 
+$P = \exp(Rt)$ is
+\begin{align*}
+  \frac{\partial P}{\partial \theta} &= AVA^{-1} \\
+     V_{ij} &= \left\{ \begin{array}{ll}
+         G_{ij}(e^{d_i t} - e^{d_j t})/(d_i - d_j) & i \ne j \\
+         G_{ii}t e^{d_it} & i=j 
+         \end{array} \right. \\
+       G&= A (\partial R /\partial \theta) A^{-1}
+\end{align*}
+The formula for the off diagonal elements collapses to give the formula for
+the diagonal ones by an application of L'Hospital's rule (for the math
+geeks).
+
+Each off diagonal element of R is $\exp(X_i\beta)= \exp(\eta_i)$ for a fixed
+vector $X_i$ --- we are computing the derivative at a particular trial value.
+The first derivative with respect to
+$\beta_j$ is then $X_{ij} \exp(\eta_{i})$.
+Since the rows of R sum to a constant then the rows of 
+its derivative must sum to zero;
+we can fill in the diagonal element after the off diagonal ones are computed.
+This notation has left something out: there is a separate $\eta$ vector
+for each of the non-zero transitions, there is a matrix
+of derivatives ($P$ is a matrix after all) for each $\beta_j$.
+
+This computation is more bookkeeping than the earlier one, but no
+single portion is particularly intensive computationally when the number
+of states is modest.
+
+The input will be the $X$ matrix row for the particular subject, 
+the coefficient matrix, the rates matrix, time interval, and the mapping
+vector from eta to the rates.  The last tells us where the zeros are.
+
+<<survexpm>>=
+derivative <- function(rmat, time, dR, setup, eps=1e-8) {
+    if (missing(setup) || setup[1] <0 || any(diff(sort(diag(rmat)))< eps)) 
+        return (pade(rmat*time, dR*time))
+
+    if (setup==0) dlist <- .Call(Ccdecomp, rmat, time)
+    else dlist <- .Call(Ccdecomp, rmat[setup, setup], time)
+    ncoef <- dim(dR)[3]
+    nstate <- nrow(rmat)
+    
+    dmat <- array(0.0, dim=c(nstate, nstate, ncoef))
+    vtemp <- outer(dlist$d, dlist$d,
+                   function(a, b) {
+                       ifelse(abs(a-b)< eps, time* exp(time* (a+b)/2),
+                         (exp(a*time) - exp(b*time))/(a-b))})
+
+    # two transitions can share a coef, but only for the same X variable
+    for (i in 1:ncoef) {
+        G <- dlist$Ainv %*% dR[,,i] %*% dlist$A
+        V <- G*vtemp
+        dmat[,,i] <- dlist$A %*% V %*% dlist$Ainv
+    }
+    dlist$dmat <- dmat
+    
+    # undo the reordering, if needed
+    if (setup[1] >0) {
+        indx <- order(setup)
+        dlist <- list(P = dlist$P[indx, indx],
+                      dmat = apply(dmat,1:2, function(x) x[indx, indx]))
+    }
+                      
+    dlist
+}
+@ 
+
+The Pade approximation is found in the file pade.R.  There is a good discussion
+of the problem at www.maths.manchester.ac.uk/~higham/talks/exp09.pdf.
+The pade function copied code from the matexp package, which in turn is based
+on Higham 2005.  Let B be a matrix and define
+\begin{eqnarray*}
+  r_m(B) &= p(B)/q(B) \\
+  p(B)   &= \sum_{j=0^m} \frac{((2m-j)! m!}{(2m)!(m-j)! j!} B^j \\
+    q(B) &= p(-B)
+\end{eqnarray*}
+
+The algorithm for calculating $\exp(A)$ is based on the following table
+\begin{center}
+\begin{tabular}{c|ccccc}
+   $||A||_1$ & 0.15 & .25 & .95 & 2.1 & 3.4 \\
+    m        & 3    & 5   &  7  & 9   & 13
+\end{tabular} \end{center}
+The 1 norm of a matrix is \code{max(colSums(A))}.  If the norm is $\le 3.4$
+the $\exp(A) = r_m(A)$ using the table.
+Otherwise, find $s$ such that $B = A/2^s$ has norm $<=3.4$ and use the table
+method to find $\exp(B)$, then $\exp(A) \approx B^(2^s)$, the latter involves
+repeated squaring of the matrix.  
+
+The expm code has a lot of extra steps whose job is to make sure that elements
+of $A$ are not too disparate in size.  Transition matrices are nice and we can
+skip all of that.  This makes the pade function conserably faster than the
+expm function from the Matrix library.  In fact, if there aren't any
+tied event times, most elements of the rate matrix will be zero, and 
+others are on the order of 1/(number at risk), so that $m=3$ is the most common
+outcome. 
 \section{Plotting survival curves}
 This version of the curves uses the newer form of the survfit object, which
 fixes an original design decision that I now consider to have been a mistake.
@@ -12025,7 +12579,7 @@ lines.survfit <- function(x, type='s',
     <<plot-transform>>
     <<plot-setup-marks>>
 
-    do.clip <- options("plot.survfit")
+    do.clip <- getOption("plot.survfit")
     if (!is.null(xx <- do.clip$plotclip)) clip(xx[1], xx[2], xx[3], xx[4])
 
     <<plot-functions>>
@@ -12417,10 +12971,12 @@ else resetclip <- !(missing(xlim) & missing(ylim) &
                     missing(xmax) & missing(firstx)& missing(ymin))
 
 if (resetclip) {
-  # yes, do it
-  #if (xaxs=='S') tempx <- c(tempx[1], temp[1])
-  clip(tempx[1], tempx[2], tempy[1], tempy[2])
-  options(plot.survfit = list(plotclip=c(tempx, tempy), plotreset=par('usr')))
+    # yes, do it
+    #if (xaxs=='S') tempx <- c(tempx[1], temp[1])
+    ctemp <- par('usr')
+    ctemp[2] <- tempx[2]  # only be stronger on the right edge, per xmax
+    clip(ctemp[1], ctemp[2], ctemp[3], ctemp[4])
+    options(plot.survfit = list(plotclip= ctemp, plotreset=par('usr')))
 }
 else options(plot.survfit = NULL)  #remove any notes from a prior plot
 @ 
@@ -12960,8 +13516,8 @@ tmerge.control <- function(idname="id", tstartname="tstart", tstopname="tstop",
     if (length(na.rm) !=1 || ! is.logical(na.rm))
         stop("na.rm option must be TRUE or FALSE")
     if (length(tdcstart) !=1) stop("tdcstart must be a single value")
-   list(idname=idname, tstartname=tstartname, tstopname=tstopname, 
-        delay=delay, na.rm=na.rm, tdcstart=tdcstart)
+    list(idname=idname, tstartname=tstartname, tstopname=tstopname, 
+         delay=delay, na.rm=na.rm, tdcstart=tdcstart)
 }
 
 tname <- attr(data1, "tname")
@@ -13055,6 +13611,7 @@ dimnames(tcount) <- list(argname, c("early","late", "gap", "within",
                                     "tied"))
 tevent <- attr(data1, "tevent") # event type variables
 tcens  <- attr(data1, "tcensor")# censor code for variables
+tdcvar <- attr(data1, "tdcvar")   # tdc type varaiables
 if (is.null(tcens)) tcens <- vector('list', 0)
 @ 
 
@@ -13337,9 +13894,13 @@ The most common is a tdc, so start with it.
 The C routine returns a set of indices: 0,1,1,2,3,0,4,... would mean that
 row 1 of the new data happens before the tdc variable, 2 and 3 take values from
 the first element of yinc, etc.  
-By returning and index, the yinc variable can be of any data type.  Using
+By returning an index, the yinc variable can be of any data type.  Using
 is.na() on the left side below causes the \emph{right} kind of NA to be inserted
 (this trick was stolen from the merge routine).
+
+If this is a first call, don't allow the new variable to overwrite a variable
+already existing in the data set, we found it leads to problems.  (Usually it
+is a user mistake.)  However, tdc calls themselves can stack.
 
 <<tmerge-addin2>>=
 # add a tdc variable
@@ -13359,28 +13920,50 @@ if (argclass[ii] == "tdc") {
     index <- .Call(Ctmerge2, match(baseid, uid), dstop, 
                                match(id, uid),  etime)
 
-    #if (!is.null(newvar))      
-    #   warning(paste0("replacement of variable '", argname[ii], "'")) 
+    if (!(argname[[ii]] %in% tdcvar) && !is.null(newvar)) {
+        warning(paste0("replacement of variable '", argname[ii], "'"))
+        newvar <- NULL
+    }
 
-    if (is.null(yinc)) newvar <- ifelse(index==0, 0L, 1L) # add a 0/1 variable
-    else {
-        newvar <- yinc[pmax(1L, index)]
-        if (any(index==0)) {
-            if (is.na(default)) is.na(newvar) <- (index==0L)
-            else {
-                if (is.numeric(newvar)) newvar[index==0L] <- as.numeric(default)
+    if (is.null(newvar)) {
+        if (is.null(yinc)) newvar <- ifelse(index==0, 0L, 1L) # add a 0/1 variable
+        else {
+            newvar <- yinc[pmax(1L, index)]
+            if (any(index==0)) {
+                if (is.na(default)) is.na(newvar) <- (index==0L)                
                 else {
-                    if (is.factor(newvar)) {
-                        # special case: if default isn't in the set of levels,
-                        #   add it to the levels
-                        if (is.na(match(default, levels(newvar))))
-                            levels(newvar) <- c(levels(newvar), default)
+                    if (is.numeric(newvar)) newvar[index==0L] <- as.numeric(default)
+                    else {
+                        if (is.factor(newvar)) {
+                            # special case: if default isn't in the set of levels,
+                            #   add it to the levels
+                            if (is.na(match(default, levels(newvar))))
+                                levels(newvar) <- c(levels(newvar), default)
+                        }
+                        newvar[index== 0L] <- default
                     }
-                    newvar[index== 0L] <- default
                 }
             }
         }
+    } else {
+        # make sure new data type matches the old
+        if (is.null(yinc)){
+            if (is.integer(newvar) && all(newvar==0L | newvar==1L))
+                newvar[index!=0L] <- 1L
+            else stop("tdc update does not match prior variable type: ", argname[ii])
+        }
+        else if (is.factor(yinc)) {
+            if (!is.factor(newvar)) 
+                stop("tdc update does not match prior variable type: ", argname[ii])
+            if (!identical(levels(yinc), levels(newvar)))      
+                stop("tdc update's levels do not match prior variable: ", argname[ii])
+            newvar[index!= 0L] <- yinc[index]
+        } 
+        else if (class(yinc) != class(newvar))
+            stop("tdc update does not match prior variable type: ", argname[ii]) 
+        else newvar[index!= 0L] <- yinc[index]
     }
+    tdcvar <- unique(c(tdcvar, argname[[ii]]))
 }
 @ 
 
@@ -13479,6 +14062,8 @@ if (length(tevent)) {
     attr(newdata, "tevent") <- tevent
     attr(newdata, "tcensor" ) <- tcens
     }
+if (length(tdcvar)) attr(newdata, "tdcvar") <- tdcvar
+
 row.names(newdata) <- NULL  #These are a mess; kill them off.
 # Not that it works: R just assigns new row names.
 class(newdata) <- c("data.frame")

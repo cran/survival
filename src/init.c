@@ -37,6 +37,7 @@ static const R_CallMethodDef Callentries[] = {
     {"Cagfit4",       (DL_FUNC) &agfit4,      14},
     {"Cagmart3",      (DL_FUNC) &agmart3,      8},
     {"Cagscore2",     (DL_FUNC) &agscore2,     6},
+    {"Ccdecomp",      (DL_FUNC) &cdecomp,      2},
     {"Cconcordance1", (DL_FUNC) &concordance1, 4}, 
     {"Cconcordance2", (DL_FUNC) &concordance2, 6}, 
     {"Cconcordance3", (DL_FUNC) &concordance3, 6},
@@ -61,6 +62,7 @@ static const R_CallMethodDef Callentries[] = {
     {"Csurvsplit",    (DL_FUNC) &survsplit,    3},
     {"Ctmerge",       (DL_FUNC) &tmerge,       7},
     {"Ctmerge2",      (DL_FUNC) &tmerge2,      4},
+    {"Ctmerge3",      (DL_FUNC) &tmerge3,      2},
     {"Czph1",         (DL_FUNC) &zph1,         8},
     {"Czph2",         (DL_FUNC) &zph2,         9},
     {NULL, NULL, 0}
@@ -76,7 +78,7 @@ void R_init_survival(DllInfo *dll){
     R_useDynamicSymbols(dll, FALSE); 
     /*
     ** This line makes them only be available via the symbols above
-    **  i.e., .Call("tmerge", ) won't work but .Call(Ctmerge, )  will
+    **  i.e., .Call("tmerge", ) won't work but .Call(Ctmerge, ) will.
     ** This feature was added in version 2.16
     */
 #if defined(R_VERSION) && R_VERSION >= R_Version(2, 16, 0)
