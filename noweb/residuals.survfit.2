@@ -1,0 +1,699 @@
+\section{Residuals for survival curves}
+\subsection{R-code}
+For all the more complex cases, the variance of a survival curve is based on 
+the infinitesimal jackknife:
+$$
+D_i(t) = \frac{\partial S(t)}{w_i}
+$$
+evaluated at the the observed vector of weights.  The variance at a given 
+time is then  $D'WD'$ where $D$ is a diagonal matrix of the case weights.
+When there are multiple states $S$ is replaced by the vector $p(t)$, with
+one element per state, and the formula gets a bit more complex.
+The predicted curve from a Cox model is the most complex case.
+
+Realizing that we need to return the matrix $D$ to the user, in order to compute
+the variance of derived quantities like the restricted mean time in state, 
+the code has been changed from a primarily internal focus (compute within the
+survfit routine) to an external one. 
+
+The underlying C code is very similar to that in survfitkm.c
+One major difference in the routines is that this code is designed to return
+values at a fixed set of time points; it is an error if the user does not
+provide one.  This allows the result to be presented as a matrix or array.
+Computational differences will be discussed later.
+
+<<residuals.survfit>>=
+# residuals for a survfit object
+residuals.survfit <- function(object, times, 
+                              type=c("surv", "cumsurv", "cumhaz")){
+    if (!inherits(object, "survfit"))
+        stop("argument must be a survfit object")
+    survfitms <- inherits(object, "survfitms")
+    coxsurv <- inherits(object, "survfitcox")
+    timefix <- (is.null(object$timefix) || object$timefix)
+    type <- match.arg(type)
+    type.int <- match(type, c("surv", "cumsurv", "cumhaz"))
+    
+    start.time <- object$start.time
+    if (is.null(start.time)) start.time <- min(c(0, object$time))
+
+    # check input arguments
+    if (missing(times)) 
+        stop ("the times argument is required")
+    else {
+        if (!is.numeric(times)) stop("times must be a numeric vector")
+        times <- sort(unique(times))
+        if (timefix) times <- aeqSurv(Surv(times))[,1]
+    }
+    
+    # get the data
+    <<rsurvfit-data>>
+
+    ny <- ncol(newY)
+    if (ny==3) {
+        sort1 <- order(newY[,1]) 
+        sort2 <- order(newY[,2]) 
+    } else {
+        sort1 <- 1L  # a dummy value
+        sort2 <- order(newY[,1]) 
+    }
+
+    # What survival curves was used?
+    if (!coxsurv) {
+        stype <- Call$stype
+        if (is.null(stype)) stype <- 1
+        ctype <- Call$ctype
+        if (is.null(ctype)) ctype <- 1
+        
+        if (!survfitms) {
+            if (length(xlev)==1) { # only one group
+                etime <- object$time[object$n.event > 0]
+                resid <- .Call(Csurvfitr1, newY, casewt,  sort1-1L, sort2-1L, 
+                             cluster-1L, as.integer(ncluster), times, 
+                             type.int, stype, ctype, etime)
+                dimnames(resid) <- list(clname, times)
+            }
+            else { # multiple curves, one at a time
+                if (length(xlev) != dim(object)[1])
+                    stop("reconsituted data has wrong number of groups")
+                resid <- array(0, dim=c(ncluster, length(times), length(xlev)))
+                for (i in 1:length(xlev)) {
+                    tsurv <- object[i]
+                    etime <- tsurv$time[tsurv$n.event>0]
+                    if (ny==3) keep1 <- (X[sort1] == xlev[i]) else keep1 <- 1
+                    keep2 <- (X[sort2] == xlev[i])
+                    resid[,,i] <- .Call(Csurvfitr1, newY, casewt, 
+                              sort1[keep1] -1L, sort2[keep2] -1L, 
+                              cluster-1L, as.integer(ncluster), times, 
+                              type.int, stype, ctype, etime) 
+                    browser()
+                }
+            }
+        }
+    }
+    resid
+}
+@ 
+
+The first part of the work is retrieve the data set.  This is done in multiple
+places in the survival code, all essentially the same.  
+If I gave up (like lm) and forced the model frame to be saved this would be
+easier of course.
+
+<<rsurvfit-data>>=
+# I always need the model frame
+if (coxsurv) {
+    mf <- model.frame(object)
+    if (is.null(object$y)) Y <- model.response(mf)
+    else Y <- object$y
+}
+else {
+    Call <- object$call
+    formula <- formula(object)
+
+    # the chunk below is shared with survfit.formula 
+    <<survfit.formula-getdata>>
+    # end of shared code 
+}
+
+xlev <- levels(X)
+
+# Deal with ties
+if (is.null(Call$timefix) || Call$timefix) newY <- aeqSurv(Y) else newY <- Y
+
+# Find the clustering, if any
+if (!is.null(cluster)) {
+    if (is.factor(cluster)) {
+        clname <- levels(cluster)
+        cluster <- as.integer(cluster)
+    } else {
+        clname  <- sort(unique(cluster))
+        cluster <- match(cluster, clname)
+    }
+    ncluster <- length(clname)
+} 
+else if (!is.null(id)) {
+    # treat the id as both identifier and clustering
+    clname <- levels(id)
+    cluster <- as.integer(id)
+    ncluster <- length(clname)
+}
+else {
+    # create our own clustering
+    n <- nrow(Y)
+    cluster <- 1:n
+    ncluster <- n
+    clname <- NULL
+}   
+@
+
+\subsection{C-code}
+Computation of the influence matrix in survfitkm has a computational time
+of essentially $O(md)$ where $d$ is the number of events and $m$ the number
+of clusters; this is because the variance is needed at each event time,
+and each variance is a sum of squared influence values, one per cluster.
+Can we make this code be $O(kd)$ where $k$ is the number of report times, i.e,
+the size of the final matrix?  The answer is that we can.
+Here is the outline of the C code.
+
+<<survfitr1>>=
+/* 
+** dfbeta residuals for ordinary KM curves
+**
+** y:      survival time, 2 or 3 columns
+** weight: case weight
+** sort1 : order vector for start time (not used if y has 2 columns)
+** sort2 : order vector for stop time
+** type  : 1= survival
+**         2= mean restricted time in state (area under curve)
+**         3= cumulative hazard
+** stype : 1= Aalen-Johansen (Kaplan-Meier)
+**         2= exp(-cum hazard)
+** ctype : 1 = Nelson-Aalen
+**       : 2 = Fleming-Harrington
+** id    : grouping variable for the observations
+** nid   : number of unique id
+** time  : time points at which the result are desired
+** dtime : vector of event times
+**
+** the AUC of the survival curve (3-5) is the mean time
+**   in state (up to the time point)
+*/
+
+#include <math.h>
+#include "survS.h"
+#include "survproto.h"
+
+SEXP survfitr1(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22, 
+               SEXP id2,    SEXP nid2, SEXP time2,  SEXP type2,
+	       SEXP stype2, SEXP ctype2, SEXP dtime2) {
+
+    <<survfitr1-setup>>
+    <<survfitr1-counts>>
+                   
+    if (ctype==1 && (type==3 || stype==2)) {
+        /* Nelson-Aalen or exp(-NA) */
+        <<survfitr1-nelson>>
+    } else if (ctype==2 && (type==3 || stype==2)) {
+        /* Fleming-Harrington hazard or exp(-FH)  */
+        <<survfitr1-FH>>
+    } else {
+        /* Aalen-Johansen estimate */
+        <<survfitr1-AJ>>
+    } 
+UNPROTECT(1);
+return(influence);
+}
+@ 
+
+The first part of the code goes through the data from last time point to
+first time point to create 3 vectors each of length \code{nevent},
+containing the number of events, the weigthed number of subjects, and the
+weighted number of events.  These are used as input for the 3 main code
+paths.
+
+<<survfitr1-counts>>=
+/*
+** person1, person2 track through sort1 and sort2, respectively
+**  likewise with i1 and i2
+*/
+person1 = nused-1;  person2 = nused-1;
+n1=0; wt1=0;
+for (k=ntime-1; k>=0; k--) {
+    n2=0; wt2=0;
+    for (; person2 >=0; person2--) {
+        i2= sort2[person2];
+        if (tstop[i2] < dtime[k]) break;
+
+        n1++;             /* number at risk */
+        wt1 += wt[i2];    /* weighted number at risk */
+        if (status[i2] ==1) {
+            n2++;            /* events */
+            wt2 += wt[i2];
+        }    
+    }
+    if (ny==3) { /* remove any with start time >=dtime*/
+        for (; person1 >=0; person1--) {
+            i1 = sort1[person1];
+            if (tstart[i1] < dtime[k]) break;
+            n1--;
+            wt1 -= wt[i1];
+        }
+    }
+    nevent[k] = n2; wtrisk[k]= wt1; wtevent[k] = wt2;
+}
+
+/* if the data set is large, it is polite to allow users to stop */
+R_CheckUserInterrupt();  /*check for control-C */
+
+if (ny==2) {
+    /* everyone starts in the risk set */
+    for (i=0; i<nused; i++) {
+        gwt[id[i]] += wt[i];
+        gcount[id[i]]++;
+    }
+}
+
+for (oindex=0; otime[oindex] < dtime[0]; oindex++) {
+    /* influence before the first event is zero */
+    for (j=0; j< nid; j++)  imat[j] =0;
+    imat += nid;
+}
+@
+
+For the Aalen-Johansen and Nelson-Aalen estimates 
+the influence at time $t$ for subject $i$ is
+\begin{align}
+  S(t) &= S(t-)[1-h(t)] \nonumber \\
+  \frac{\partial S(t)}{\partial w_i} &= 
+     \frac{\partial S(t-)}{\partial w_i} [1-h(t)] + S(t-)
+                                 [Y_i(t)h(t) - dN_i(t)] w_i/ r(t)
+                                 \label{AJderiv} \\
+  H(t) &= H(t-) + h(t) \nonumber \\
+  \frac{\partial H(t)}{\partial w_i} &= \frac{\partial H(t-)}{\partial w_i} +
+       [dN_i(t) - Y_i(t)h(t)] w_i/r(t) \label{NAderiv}
+\end{align}
+where $S$ is the estimated survival, $H$ the cumulative hazard, 
+$h$ is the increment to the cumulative hazard, $Y_i$ is 1 when a
+subject is at risk, $dN_i$ marks an event for the subject, and $r$ is the
+total weighted number at risk. 
+The influence for a cluster is the sum of the influence for members of the
+cluster. 
+
+To work out efficient computation,
+start with the simpler case of $H$, the Nelson-Aalen (NA) estimate.
+Let \code{lsum} be the running sum $h(t)/r(t)$, and for each cluster keep two
+totals: the current sum of weights in \code{gwt}, and the current estimate
+of the influence in \code{inf1}.
+For any given cluster, $w_i/r(t)$ is added to \code{inf1} whenever a subject
+has an event.
+The gwt variable counts observations that are currently accumulating hazard:
+wt is added to gwt and \code{-wt * lsum} is added to inf1 when a subject 
+enters a cluster.
+At each reporting time \code{gwt * lsum}  is added to the output, 
+to account for influence that is currently outstanding (in the sense of a
+running bar tab) and has not yet been totaled in \code{inf1}.
+When someone exits the risk set we ``settle their tab'', add the accumulated
+total wt*lsum to inf1, and remove them from gwt, the total subjects in the 
+cluster who are still accumulating. 
+The key trick here is that lsum is the same for everyone and can be updated
+once per death.
+Writing out the results will be $O(kd)$ but the other steps are $O(d)$ or
+$O(n)$.
+
+The code below has 4 sections. 
+First, finish up the influence for anyone ending before this death time.
+Second, write out any output times before this death, using the
+accumulated values up to this point.
+Third, add any new subjects to the data, and compute the hazard,
+cumulative hazard, and survival (km).
+Fourth, after the loop is done, care for any further event times.
+
+<<survfitr1-nelson>>=
+nelson=0; km=0; lsum=0; auc=0;
+person1=0; person2=0; 
+
+for (i=0; i<ntime; i++) { /* ntime = event times */
+    printf("i=%d, dtime=%4.1f, lsum=%5.2f\n", i, dtime[i], lsum);
+    /* close out those censored in the interim (their running bar tab) */
+    if (type !=2) {
+        for (; person2 < nused; person2++) {
+            i2 = sort2[person2];
+            if (tstop[i2] >= dtime[i]) break;
+
+            printf("close out person2=%d, i2=%d, id=%d\n",person2, i2, id[i2]);
+            if (type==1) inf1[id[i2]] -= wt[i2]* lsum;
+            gcount[id[i2]] --;
+            if (gcount[id[i2]] ==0) gwt[id[i2]] = 0.0; /*avoid round off*/
+            else gwt[id[i2]] -= wt[i2];
+        }
+    }
+
+    /* write out any times */
+   if (type!=2) {
+        <<survfitr1-output1>>
+    } else {
+        <<survfitr1-output2>>
+    }
+
+    /* add in new subjects and update estimates */
+    if (ny==3) {
+        /* add in those whose start time is < dtime */        
+        for (; person1 < nused; person1++) {
+            i1 = sort1[person1];
+            if (tstart[i1] >= dtime[i]) break;  
+            gcount[id[i1]]++;
+            gwt[id[i1]] += wt[i1];
+            if (i >1) {  /* no correction before the first death */
+                if (type==2) {
+                    inf1[id[i1]] -= wt[i1]*auc;
+                }
+                else inf1[id[i1]] -= lsum * wt[i1];
+            }
+        }
+    }	
+    
+    /* compute hazard, cumhaz, survival */
+    if (type==2 && i>0) auc += km * (dtime[i] - dtime[i-1]); /* lagged value*/
+    printf("i=%d, dtime=%4.1f, auc=%5.2f\n", i, dtime[i], auc);
+    haz = wtevent[i]/wtrisk[i];
+    nelson += haz;
+    km = exp(-nelson);
+    lsum += haz/wtrisk[i];
+ 
+    for (; person2 < nused; person2++) {
+        i2 = sort2[person2];
+        if (tstop[i2] > dtime[i]) break;
+        /* values exactly at a death time */
+        if (type != 2) {
+            /* Add event contribution and close out the tab */
+            if (status[i2] ==1){
+                inf1[id[i2]] += wt[i2]* (1/wtrisk[i] - lsum);
+            }
+            else inf1[id[i2]] -= wt[i2]* lsum; 
+            
+            gcount[id[i2]] --;
+            if (gcount[id[i2]] ==0) gwt[id[i2]] = 0.0; /* avoid round off*/
+            else gwt[id[i2]] -= wt[i2];
+        }
+        else if (status[i2]==1) {
+            ewt[id[i2]] += wt[i2]/wtrisk[i];
+            inf1[id[i2]] += wt[i2] * auc; 
+        }
+    }
+}
+
+/* output times after the last event */
+if (type !=2) {
+    for (; oindex < nout; oindex++) {
+        for (j=0; j<nid; j++) {
+            if (gcount[j] ==0) {
+                /* No one remains at risk in this cluster */
+                if (type==1) imat[j] = -inf1[j] * exp(-nelson);
+                else imat[j] = inf1[j];
+            } else {
+                temp = inf1[j] - gwt[j]*lsum;
+                if (type==1) imat[j] = -temp * exp(-nelson);
+                else imat[j] = temp;
+            }
+        }   
+        imat += nid;
+    }
+}else {
+    temp2 = dtime[ntime-1];  /* last event time */
+    for (; oindex < nout; oindex++) {
+        for (j=0; j<nid; j++)
+            imat[j] = inf1[j] - gwt[j]*(auc + km*(otime[oindex] - temp2));
+        imat += nid;
+    }
+}
+@ 
+
+The \code{gcount} variable is used to avoid round-off error. 
+If an observation had for instance a weight of $\pi/3$, it is quite possible
+that when it is removed from \code{gwt} the result should be 0 but is not
+quite zero.
+Whenever an output time arises, we need to write out the result for all of
+the subjects.  This is done whenever the next survival
+time would be greater than the current output time.
+
+For a survival curve of exp(-cumhaz), i.e., if \code{stype==2}, the body of the
+influence calculation is identical.
+The influence will be
+\begin{equation*}
+  \frac{\partial \exp(-H(t))}{\partial w_i} = 
+  -\frac{\partial H(t) )}{\partial w_i} e^{-H(t)}
+\end{equation*}
+When the influence is copied to the
+output matrix \code{imat} we multiply by \code{-exp(nelson)}.  
+If the user requests time points before the first event those
+influence values will be zero,
+and after the last event they will repeat the last value, since the curve
+stays constant after that point.
+
+<<survfitr1-output1>>=
+for (; (oindex < nout) && (otime[oindex] < dtime[i]); oindex++) {
+    printf("  oindex=%d, otime=%4.1f \n", oindex, otime[oindex]);
+    /* write out a column of the matrix, one element per group*/
+    for (j=0; j<nid; j++) {
+        if (gcount[j] ==0) {
+            /* No one remains at risk in this cluster */
+            if (type==1) imat[j] = -inf1[j] * exp(-nelson);
+            else imat[j] = inf1[j];
+        } else {
+            temp = inf1[j] - gwt[j]*lsum;
+            if (type==1) imat[j] = -temp * exp(-nelson);
+            else imat[j] = temp;
+        }
+    }
+    imat += nid;
+}
+@ 
+
+Influence for the restricted mean time in state (RMST) is more complex.
+The RMST is the area under $S(t)$ up to a given time. 
+For the hazard we keep two totals: gwt and lsum are the part of the influence
+that is still accumulating and inf1 contains the part due to events and/or
+When someone exits the risk set we ``settle their tab'', add the accumulated
+total to inf1, and remove them from gwt, the sum of subjects in the cluster
+who are still accumulating.  
+The influence for S is -inflence(H) * S,
+the influence on the RMST segment from $d_j$ to $d_{j+1}$ will be 
+$-{\rm influence}(H(d_j)) S(d_j) [d_{j+1}-d_j]$), where $d$ are the death times.
+Let $A(s,t)$ be the area under the survival curve from $s$ to $t$,
+$dH_{ij}$ the influence of subject $i$ on the $j$th cumulative hazard,
+and $dh_{ij}$ the influence on the $j$th increment in the cumulative hazard.
+Then we have
+\begin{align*}
+  \frac{\partial A(0,t)}{\partial w_i} &= \sum_j -dH_{ij} 
+  A(d_j, t \wedge d_{j+1})  \\
+  \sum_j \left(\sum_{k \le j}(-dh_{ik}\right) A(d_j, t \wedge d_{j+1}) \right) \\
+   \sum_{jk} \left(Y_i(d_k)h(d_k) - dN_i(d_k)\right)/r(t_k) 
+          A(d_k\vee d_j, t \wedge d_{j+1}) \\
+ &= \sum_{k}\left[Y_i(d_k)h(d_k) - dN_i(d_k))/r(t_k)\right]
+   \left(\sum_j A(d_j\vee d_k, t \wedge d_{j+1}) \right) \\
+&= \sum_{k} \frac{Y_i(d_k)h(d_k)- dN_i(d_k)}{/r(d_k)} A(d_k, t)
+\end{align*}
+where $A(s,t)=0$ for $s \ge t$.
+
+Each dfbeta increment for the cumulative hazard at event time $d_k$ is 
+an increment to the CH for all later times, and so accumulates a weight
+of $A(d_k, t)$ in the AUC dfbeta at time $t$.
+This is fairly straightforward to add up.
+\begin{enumerate}
+  \item Let auc = a running total $A(0, t)$, and lsum a running total of $h$
+    as before.
+  \item Decompose the weight as $A(d_k, t) = A(0,t) - A(0, d_k)$.
+  \begin{itemize}
+    \item A subject who enters between event time $k$ and $k+1$
+      contributes the $A(0, d_k)$ portion at that point
+    \item An event at time $k$ contributes an $A(0, d_{k-1})$ term
+  \end{itemize}
+  \item Two weight vectors gwt and ewt contain the current counts of those
+    who are part of the $h$ and $dN$ terms, respectively.  
+\end{enumerate}
+The only nuisance are reporting times that fall between events.
+
+The variable gwt now keeps a running sum of events
+for all time after
+Adding this up, an event at time $d_k$ will get a weight of $A(d_k, t) =
+A(0,t) - A(0, d_k)$ in the influence.  
+This is computed by keeping a running sum of events for each cluster in
+a counter \code{ewt}, along with a running total of $A(0,t)$ kept in auc.
+A given hazard increment $h(t_j)$ has a weight of
+\begin{equation}
+\sum_i Y_i(t_j) A(t_j, t)=  (\sum Y_i(t_j)) A(0,t) -  (\sum Y_i(t_j)) A(0, t_j)
+\end{equation}
+In this case we add the negative portions to inf1 when a subject enters
+or has an event, at the same time adding to ewt and gwt.
+Since $A(0,t)$ continues to increase the running tab is not settled when
+someone leaves the risk set.  This makes the output routine simpler.
+
+<<survfitr1-output2>>=
+for (; (oindex < nout) && (otime[oindex] < dtime[i]); oindex++) {
+    temp2 = auc + km*(otime[oindex] - dtime[i-1]); /* updated auc */
+    printf("auc=%5.2f, km=%5.2f, temp2=%5.2f\n", auc, km, temp2);
+    for (j=0; j<nid; j++){
+        imat[j] = inf1[j] + (gwt[j]*lsum - ewt[j])* temp2;
+        printf(" j=%d, inf1=%5.2f, gwt=%4.1f, ewt=%5.2f, imat=%5.2f\n",
+               j, inf1[j], gwt[j], ewt[j], imat[j]);
+    }
+    imat += nid;
+}
+@ 
+
+
+The logic for the Fleming-Harrington estimate is essentially the same,
+but with a slightly more complex hazard  when there are tied events.
+
+<<survfitr1-FH>>=
+nelson=0; km=0; lsum=0; auc=0;
+for (i=0; i<ntime; i++) { /* ntime = event times */
+    if (ny==3) {
+        /* add in those whose start time is < dtime */        
+        for (; person1 < nused; person1++) {
+            i1 = sort1[person1];
+            if (tstart[i1] >= dtime[i]) break;  
+            gcount[id[i1]]++;
+            gwt[id[i1]] += wt[i1];
+            inf1[id[i1]] = -lsum * wt[i1];
+        }
+    }	
+
+    dtemp =0;  /* the working denominator */
+    dtemp2=0;  /* sum of squares */
+    dtemp3=0;
+    temp = wtrisk[i] - wtevent[i];  /* sum of weights for the non-deaths*/
+    for (k=nevent[i]; k>0; k--) {
+        frac = k/nevent[i];  
+        btemp = 1/(temp + frac*wtrisk[i]);  /* "b" in the math */
+        dtemp += btemp;
+        dtemp2 += btemp*btemp*frac;
+        dtemp3 += btemp*btemp;    /* non-death deriv */
+    } 
+    
+    dtemp /=  nevent[i];        /* average denominator */
+    dtemp2 *= wtrisk[i]/ nevent[i];
+    dtemp3 *= wtrisk[i]/ nevent[i];
+
+    haz = wtevent[i]*dtemp;
+    lsum += haz/wtrisk[i];
+    nelson += haz;
+    km = exp(-nelson);
+
+    if (type==2 && i< (ntime-1)) 
+        auc -=  haz/wtrisk[i] * km * (dtime[i+1]-dtime[i]);
+
+    /* find all the intervals that end at or before this time */
+    for (; person2 < nused; person2++) {
+        i2 = sort2[person2];
+        if (tstop[i2] > dtime[i]) break;
+        if (status[i2] ==1) 
+            inf1[id[i2]] += wt[i2]* (dtemp + dtemp3 - dtemp2);
+        if (type==2) inf1[id[i2]] += auc*wt2;
+        else inf1[id[i2]] += lsum* wt[i2];
+        gcount[id[i2]] --;
+        if (gcount[id[i2]] ==0) gwt[id[i2]] = 0.0; /*fix accumulated round off*/
+        else gwt[id[i2]] -= wt[i2];
+    }
+}
+@ 
+
+The Aalen-Johansen is multiplicative, which makes the derivatives more
+complicated, see equation \eqref{AJderiv}.
+As an example, look at the term for an observation that enters at or
+just before the fifth
+event and has an event (an exits) on the 7th, with a weight of 1.
+\begin{equation*}
+D(t_k) = \left\{ \begin{array}{lc}
+         0& k<5 \\
+         h(t_5)S(t_4)/r(t_5) & k=5 \\
+         (1-h(t_6))h(t_5)S(t_4)/r(t_5)+ h(t_6)S(t_5)/r(t_6) & k=6 \\
+         (1-h(t_7)) \left\{[1-h(t_6)]h(t_5)S(t_4)/r(t_5) + h(t_6)S(t_5)/r(t_6)\right\} +
+            (h(t_7)-1)S(t_6)/r(t_7)  & k=7
+  \end{array} \right.
+\end{equation*}
+Now re-write this in the following way
+\begin{equation*}
+D(t_k) = \prod_{i=1}^k [1-h(t_i)] \begin{array}{lc}
+          0& k<5 \\
+          \frac{h(t_5)S(t_4)}{r(t_5)\prod_{i=1}^5 [1-h(t_i)]} & k=5 \\
+          \frac{h(t_5)S(t_4)}{r(t_5)\prod_{i=1}^5 [1-h(t_i)]} + 
+          \frac{h(t_6)S(t_5)}{r(t_6)\prod_{i=1}^6 [1-h(t_i)]} & k=6 \\
+          \frac{h(t_5)S(t_4)}{r(t_5)\prod_{i=1}^5 [1-h(t_i)]} + 
+          \frac{h(t_6)S(t_5)}{r(t_6)\prod_{i=1}^6 [1-h(t_i)]} + 
+          \frac{[h(t_7)-1] S(t_6)}{ r(t_7)\prod_{i=1}^7[1-h(t_i)]} & k \ge 7 \\
+          \vdots
+\end{array} 
+\end{equation*}
+
+<<survfitr1-AJ>>=
+
+@ 
+
+
+The setup code for the C routines is here at the end.  
+It is standard, boring stuff.  The only worthwhile note is that the
+routine was set up so that sort1/sort2 can point to a subset of the data.
+When there are multiple curves in an object, this is used to do each one
+separately, but without needing to subset y, wt, or id.  
+
+<<survfitr1-setup>>=
+int i, i1, i2, j, k, person1, person2;
+int nused, nid, type, stype, ctype;
+int ny, ntime;
+double *tstart=0, *tstop, *status, *wt;
+double temp, dtemp, haz;
+double lsum, auc;
+double temp2, dtemp2, dtemp3, frac, btemp;
+int *sort1=0, *sort2, *id=0;
+int nout, oindex, n1, n2;
+double *otime;
+
+SEXP  influence;
+double *imat =0;  /* =0 to silence -Wall */
+
+double *gwt=0, *inf1=0, *ewt=0;  /* =0 to silence -Wall */
+int *gcount=0;
+double wt1, wt2;
+double *nevent, *wtevent, *wtrisk;
+                  
+double km, nelson;  /* current estimates */
+double *dtime;       /* current death time */
+
+/* map the input data */
+ny = ncols(y2);     /* 2= ordinary survival 3= start,stop data */
+nused = nrows(y2);  /* nused a temporary -- length of y */
+if (ny==3) { 
+    tstart = REAL(y2);
+    tstop = tstart + nused;
+    sort1 = INTEGER(sort12);
+}
+else tstop = REAL(y2);
+status= tstop +nused;
+wt = REAL(weight2);
+sort2 = INTEGER(sort22);
+nused = LENGTH(sort22);  /* nused version in the code, length of sort2 */
+dtime = REAL(dtime2);
+ntime = LENGTH(dtime2);  /* number of death times */
+nout  = length(time2);    /* number of output times */
+otime = REAL(time2);   /* these are the output times */
+type  = asInteger(type2);
+stype = asInteger(stype2);
+ctype = asInteger(ctype2);
+
+id = INTEGER(id2);
+nid = asInteger(nid2);
+
+/* allocate memory for the output  and work arrays */
+PROTECT(influence = allocMatrix(REALSXP, nid, nout));
+imat = REAL(influence);  /* no need to zero this */
+
+nevent = (double *) R_alloc(3*ntime, sizeof(double));
+wtevent = nevent + ntime;
+wtrisk  = wtevent + ntime;
+
+gcount = (int *) R_alloc(nid, sizeof(int)); /* per group counts */
+if (type==2) {  /* I need 3 scratch vectors */
+    gwt  = (double *) R_alloc(3*nid, sizeof(double)); 
+    inf1 = gwt + nid;  /* temporary vectors  for each cluster */
+    ewt = inf1 + nid; 
+    
+    for (i=0; i< nid; i++) {
+	gwt[i] =0.0;
+	gcount[i] = 0;
+	inf1[i] =0;
+	ewt[i] =0;
+    }
+} else {
+    gwt  = (double *) R_alloc(3*nid, sizeof(double)); 
+    inf1 = gwt + nid;  /* temporary vectors  for each cluster */
+    
+    for (i=0; i< nid; i++) {
+	gwt[i] =0.0;
+	gcount[i] = 0;
+	inf1[i] =0;
+    }
+}
+@ 
+

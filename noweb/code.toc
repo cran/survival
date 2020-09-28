@@ -4,7 +4,7 @@
 \contentsline {subsection}{\numberline {2.2}Exact partial likelihood}{29}{subsection.2.2}
 \contentsline {subsection}{\numberline {2.3}Andersen-Gill fits}{38}{subsection.2.3}
 \contentsline {subsection}{\numberline {2.4}Predicted survival}{57}{subsection.2.4}
-\contentsline {subsubsection}{\numberline {2.4.1}Multi-state models}{80}{subsubsection.2.4.1}
+\contentsline {subsubsection}{\numberline {2.4.1}Multi-state models}{81}{subsubsection.2.4.1}
 \contentsline {section}{\numberline {3}The Fine-Gray model}{87}{section.3}
 \contentsline {subsection}{\numberline {3.1}The predict method}{93}{subsection.3.1}
 \contentsline {section}{\numberline {4}Concordance}{104}{section.4}
@@ -14,19 +14,27 @@
 \contentsline {subsection}{\numberline {5.1}Parsing the covariates list}{143}{subsection.5.1}
 \contentsline {section}{\numberline {6}Person years}{153}{section.6}
 \contentsline {subsection}{\numberline {6.1}Print and summary}{161}{subsection.6.1}
-\contentsline {section}{\numberline {7}Accelerated Failure Time models}{171}{section.7}
-\contentsline {subsection}{\numberline {7.1}Residuals}{171}{subsection.7.1}
-\contentsline {section}{\numberline {8}Survival curves}{179}{section.8}
-\contentsline {subsection}{\numberline {8.1}Kaplan-Meier}{184}{subsection.8.1}
-\contentsline {subsection}{\numberline {8.2}Kaplan-Meier}{188}{subsection.8.2}
-\contentsline {subsection}{\numberline {8.3}Competing risks}{211}{subsection.8.3}
-\contentsline {subsubsection}{\numberline {8.3.1}C-code}{222}{subsubsection.8.3.1}
-\contentsline {subsubsection}{\numberline {8.3.2}Printing and plotting}{230}{subsubsection.8.3.2}
-\contentsline {section}{\numberline {9}Matrix exponentials and transition matrices}{245}{section.9}
-\contentsline {subsection}{\numberline {9.1}Decompostion}{246}{subsection.9.1}
-\contentsline {subsection}{\numberline {9.2}Derivatives}{250}{subsection.9.2}
-\contentsline {section}{\numberline {10}Plotting survival curves}{252}{section.10}
-\contentsline {section}{\numberline {11}State space figures}{265}{section.11}
-\contentsline {section}{\numberline {12}tmerge}{271}{section.12}
-\contentsline {section}{\numberline {13}Linear models and contrasts}{284}{section.13}
-\contentsline {section}{\numberline {14}The cox.zph function}{305}{section.14}
+\contentsline {section}{\numberline {7}Residuals for survival curves}{171}{section.7}
+\contentsline {subsection}{\numberline {7.1}R-code}{171}{subsection.7.1}
+\contentsline {subsection}{\numberline {7.2}Simple survival}{175}{subsection.7.2}
+\contentsline {paragraph}{Nelson-Aalen}{176}{section*.2}
+\contentsline {paragraph}{Fleming-Harrington}{179}{section*.3}
+\contentsline {paragraph}{Aalen-Johansen}{180}{section*.4}
+\contentsline {subsection}{\numberline {7.3}Multi-state Aalen-Johansen estimate}{181}{subsection.7.3}
+\contentsline {paragraph}{Aalen-Johansen}{185}{section*.5}
+\contentsline {section}{\numberline {8}Accelerated Failure Time models}{191}{section.8}
+\contentsline {subsection}{\numberline {8.1}Residuals}{191}{subsection.8.1}
+\contentsline {section}{\numberline {9}Survival curves}{199}{section.9}
+\contentsline {subsection}{\numberline {9.1}Kaplan-Meier}{204}{subsection.9.1}
+\contentsline {subsection}{\numberline {9.2}Kaplan-Meier}{209}{subsection.9.2}
+\contentsline {subsection}{\numberline {9.3}Competing risks}{231}{subsection.9.3}
+\contentsline {subsubsection}{\numberline {9.3.1}C-code}{242}{subsubsection.9.3.1}
+\contentsline {subsubsection}{\numberline {9.3.2}Printing and plotting}{250}{subsubsection.9.3.2}
+\contentsline {section}{\numberline {10}Matrix exponentials and transition matrices}{265}{section.10}
+\contentsline {subsection}{\numberline {10.1}Decompostion}{266}{subsection.10.1}
+\contentsline {subsection}{\numberline {10.2}Derivatives}{270}{subsection.10.2}
+\contentsline {section}{\numberline {11}Plotting survival curves}{272}{section.11}
+\contentsline {section}{\numberline {12}State space figures}{285}{section.12}
+\contentsline {section}{\numberline {13}tmerge}{291}{section.13}
+\contentsline {section}{\numberline {14}Linear models and contrasts}{304}{section.14}
+\contentsline {section}{\numberline {15}The cox.zph function}{325}{section.15}

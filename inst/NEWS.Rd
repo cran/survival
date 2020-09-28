@@ -1,10 +1,53 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.2-7}{
+  \itemize{
+    \item Fix one URL, revealed by the CRAN submission.
+    \item Column labels had been lost on the riskmat argument of
+    coxph.detail, which broke the linERR package.  Found in reverse
+    dependency checks for CRAN.
+}}
+\section{Changes in version 3.2-5}{
+  \itemize{
+    \item Fix error in summary.coxph.penal; it was incorrectly copying
+    se(concordance) to the new object.
+    \item Minor error in survfit.coxphms; it would fail if the model had
+    an NA coefficient.
+    \item Relax a check in concordance, to allow comparing two models
+    with the same subjects but different response vector.
+    \item If multiple strata() terms were first in a coxph model, the labels
+    of the assign component would be incorrect, which affected labeling of
+    cox.zph results (numeric values were correct, however).
+    \item The riskmat option of the coxph.detail command now returns the
+    matrix in data order rather than time-sorted order.
+    \item The summary.survfit function had overlooked the std.chaz
+    component when subsetting based on the times argument.
+    \item The documentation for print.survfit stated that rmean="common"
+    would use the largest time across curves, the code had the median.
+    Make code agree with the documentation.  Pointed out by Qingxia Chen.
+    \item Add the rttright function (redistribute to the right) and the
+    R^2 measure of Royston and Sauerbrei.
+    \item Add residuals.survfit, which will be important for
+    pseudo-values.  Still incomplete.
+    \item Better hardening of coxph against a particular kind of skewed
+    variable, based on a test case from Michael Young.  This had led to the
+    "This should never happen, please contact the author" message.
+}}
+
+\section{Changes in version 3.2-4}{
+  \itemize{
+    \item Add na.omit to the output of survcheck.
+    \item Undo an ifelse typo (added in 3.2-3) in survexpm that caused it to
+    return NULL for an upper triangular rate matrix, breaking survfit
+    for a multi-state coxph model.  (Upper triangular has the simplest
+    algorithm, and all the tests in the suite were for the more complex
+    cases of course -- aargh.)
+}}
+
 \section{Changes in version 3.2-3}{
   \itemize{
     \item Fix error in survfit.coxphms: an internal routine was being
-    called with arguments in the wrong order.  Example due to Beth
-    Atkinson.
+    called with arguments in the wrong order. 
     \item Add support routines for the derivative of a matrix
     exponential, needed for survival curve variance (post Cox model).
     \item Add explicit error message to summary.survfit, when the times

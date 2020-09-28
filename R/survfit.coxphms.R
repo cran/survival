@@ -134,16 +134,15 @@ function(formula, newdata, se.fit=TRUE, conf.int=.95, individual=FALSE,
     else                  tempstrat <- strata
 
     if (length(absorb)) droprow <- istate %in% absorb  else droprow <- FALSE
+    # we will ignore the survival estimates, so let it use defaults for ctype/stype
     if (any(droprow)) {
         j <- which(!droprow)
         cifit <- survfitCI(as.factor(tempstrat[j]), Y[j,], weights[j], 
                            id =oldid[j], istate= istate[j],
-                           istate[j], stype=stype, ctype=ctype,
                            se.fit=FALSE, start.time=start.time, p0=p0)
         }
     else cifit <- survfitCI(as.factor(tempstrat), Y, weights, 
-                            id= oldid, istate = istate, 
-                            stype=stype, ctype=ctype, se.fit=FALSE, 
+                            id= oldid, istate = istate, se.fit=FALSE, 
                             start.time=start.time, p0=p0)
 
     # For computing the  actual estimates it is easier to work with an
@@ -303,7 +302,8 @@ function(formula, newdata, se.fit=TRUE, conf.int=.95, individual=FALSE,
         else offset2 <- 0
         x2 <- model.matrix(Terms2, mf2)[,-1, drop=FALSE]  #no intercept
     }
-    risk2 <- exp(x2 %*% coef(object, matrix=TRUE) - xcenter)
+    temp <- coef(object, matrix=TRUE) # ignore missing coefs
+    risk2 <- exp(x2 %*% ifelse(is.na(temp), 0, temp) - xcenter)
     if (individual) {
         stop("time dependent survival curves not yet supported for multistate")
         result <- coxsurv.fit2(ctype, stype, se.fit, varmat, cluster, start.time,
@@ -434,7 +434,7 @@ multihaz <- function(y, x, position, weight, risk, transition, ctype, stype,
     H <- matrix(0, nstate, nstate)
     if (stype==2) {
         H[hfill] <- colMeans(hazard)
-        diag(H) <- -rowSums(H)
+        diag(H) <- diag(H) -rowSums(H)
         esetup <- survexpmsetup(H)
     }
 

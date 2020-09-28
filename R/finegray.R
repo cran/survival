@@ -85,17 +85,6 @@ finegray <- function(formula, data, weights, subset, na.action= na.pass,
     if (!missing(count)) count <- make.names(count) else count <- NULL
     oname <- paste0(prefix, c("start", "stop", "status", "wt"))
         
-    find2 <- function(x, vec, left.open=FALSE, ...) {
-        if (!left.open) findInterval(x, vec, ...)
-        else {
-            # the left.open arg is a recent addition to findInterval, and I want
-            #  this to work in 3.2.0 (my employer's default).  In another cycle or
-            #  so we can drop this workaround and call findInterval directly
-            #
-            length(vec) - findInterval(-x, rev(-vec), ...)
-        }
-    }
-        
     if (ncol(Y) ==2) {
         temp <- min(Y[,1], na.rm=TRUE)
         if (temp >0) zero <- 0
@@ -163,7 +152,7 @@ finegray <- function(formula, data, weights, subset, na.action= na.pass,
 
         ct2 <- c(ctime, maxtime)
         cp2 <- c(1.0, cprob)
-        index <- find2(times, ct2, left.open=TRUE)
+        index <- findInterval(times, ct2, left.open=TRUE)
         index <- sort(unique(index))  # the intervals that were actually seen
         # times before the first ctime get index 0, those between 1 and 2 get 1
         ckeep <- rep(FALSE, length(ct2))

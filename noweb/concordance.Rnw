@@ -628,14 +628,15 @@ cord.work <- function(data, timewt, ymin, ymax, influence=0, ranks=FALSE,
         rval <- eval(fcall, parent.frame())
     }
     else {
-        # Check that all of the models have the identical Y and weights
+        # Check that all of the models used the same data set, in the same
+        #  order, to the best of our abilities
         n <- length(data[[1]]$x)
         for (i in 2:nfit) {
             if (length(data[[i]]$x) != n)
                 stop("all models must have the same sample size")
             
             if (!identical(data[[1]]$y, data[[i]]$y))
-                stop("all models must have the exact same response vector")
+                warning("models do not have the same response vector")
             
             if (!identical(data[[1]]$weights, data[[i]]$weights))
                 stop("all models must have the same weight vector")
@@ -867,8 +868,8 @@ Thus the inner loop must be repeated at least twice.
 A second variance computation treats the data as a Cox model.
 Create zero-centered scores for all subjects in the risk set:
 \begin{align}
-  z_i(t) &= \sum_{j \in R(t)} w_j \sign(x_i - x_j) \nonumber
-  D-C = \sum_i \delta_i z_i(t_i)              \label{zcord}
+  z_i(t) &= \sum_{j \in R(t)} w_j \sign(x_i - x_j) \nonumber \\
+  D-C &= \sum_i \delta_i z_i(t_i)              \label{zcord}
 \end{align}
 At any event time $\sum w_i z_i =0$.  
 Equation \eqref{zcord} is the score equation

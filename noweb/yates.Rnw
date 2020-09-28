@@ -110,7 +110,8 @@ cmatrix <- function(fit, term,
     # What kind of term is being tested.  It can be categorical, continuous,
     #  an interaction of only categorical terms, interaction of only continuous
     #  terms, or a mixed interaction.
-    parts <- row.names(Tatt$factors)[Tatt$factors[,indx] !=0]
+    parts <- row.names(Tatt$factors)[apply(Tatt$factors[,indx, drop=FALSE] !=0,
+                                           1, any)]
     types <- Tatt$dataClasses[parts]
     iscat <- as.integer(types=="factor" | types=="character")
     if (length(parts)==1) termtype <-iscat
@@ -121,10 +122,10 @@ cmatrix <- function(fit, term,
     #  or double check them (categorical)
     if (missing(levels)) {
         temp <- fit$xlevels[match(parts, names(fit$xlevels), nomatch=0)]
-        if (length(temp) ==0) 
+        if (length(temp) < length(parts))
             stop("continuous variables require the levels argument")
         levels <- do.call(expand.grid, c(temp, stringsAsFactors=FALSE))
-        }
+    }
     else {  #user supplied
         if (is.data.frame(levels)) {
             temp <- match(names(levels), parts)
@@ -136,12 +137,16 @@ cmatrix <- function(fit, term,
         else if (is.list(levels)) {
             if (length(levels) != length(parts))
                 stop("levels list should have", length(parts), "components")
-            if (!is.null(names(levels))) {
-                temp <- match(names(levels), parts)
-                if (any(is.null(temp)))
-                    stop("names of levels does not match the terms")
-                else levels <- levels[temp]  #reorder them
+            if (is.null(names(levels))) {
+                if (length(levels) == length(user.name)) 
+                    names(levels) <- user.name
+                else stop("levels list should have names")
             }
+            temp <- match(names(levels), parts)
+            if (any(is.null(temp)))
+                stop("names of levels does not match the terms")
+            else levels <- levels[temp]  #reorder them
+        
             if (any(sapply(levels, function(x) any(duplicated(x)))))
                 stop("one or more elements of the levels list has duplicates")
             levels <- do.call("expand.grid", levels)
@@ -160,8 +165,10 @@ cmatrix <- function(fit, term,
          }
         else if (length(parts) > 1)
             stop("levels should be a data frame or matrix")
-        else levels <- data.frame(x=unique(levels), stringsAsFactors=FALSE)
-        names(levels) <- user.name
+        else {
+            levels <- data.frame(x=unique(levels), stringsAsFactors=FALSE)
+            names(levels) <- user.name
+        }       
     }
 
     # check that any categorical levels are legal
