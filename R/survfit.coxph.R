@@ -35,6 +35,7 @@ survfit.coxph <-
           ctype <- c(1,1,2)[temp1]
       }
       else if (!(ctype %in% 1:2)) stop ("ctype must be 1 or 2")
+      if (!(stype %in% 1:2)) stop("stype must be 1 or 2")
 
       if (!se.fit) conf.type <- "none"
       else conf.type <- match.arg(conf.type)
@@ -57,17 +58,16 @@ survfit.coxph <-
       if (!has.strata) strata <- NULL
       else strata <- object$strata
 
+      if (!missing(individual)) warning("the `id' option supersedes `individual'")
       missid <- missing(id) # I need this later, and setting id below makes
                             # "missing(id)" always false
-      if (!missid & !missing(individual))
-          warning("the `id' option supersedes `individual'")
 
       if (!missid) individual <- TRUE
-      else if (missid && individual) id <- rep(0,n)  #dummy value
+      else if (missid && individual) id <- rep(0L,n)  #dummy value
       else id <- NULL
 
       if (individual & missing(newdata)) {
-          stop("the id and/or individual options only make sense with new data")
+          stop("the id option only makes sense with new data")
       }
       if (has.strata) {
           temp <- attr(Terms, "specials")$strata
@@ -123,7 +123,6 @@ survfit.coxph <-
       type <- attr(Y, 'type')
       if (!type %in% c("right", "counting", "mright", "mcounting"))
           stop("Cannot handle \"", type, "\" type survival data")
-      if (type=="right" || type== "mright") individual <- FALSE
 
       if (!missing(start.time)) {
           if (!is.numeric(start.time) || length(start.time) > 1)

@@ -55,7 +55,7 @@ rightslash <- function(x) {
     if (class(x) != 'call') return(x)
     else {
         if (x[[1]] == as.name('/')) return(list(x[[2]], x[[3]]))
-        else if (x[[1]]==as.name('+') || (x[[1]]==as.name('-') && length(x)==3) ||
+        else if (x[[1]]==as.name('+') || (x[[1]]==as.name('-') && length(x)==3)||
                  x[[1]]==as.name('*') || x[[1]]==as.name(':')  ||
                  x[[1]]==as.name('%in%')) {
                      temp <- rightslash(x[[3]])
@@ -80,7 +80,7 @@ parse_rightside <- function(rhs) {
         if (!is.list(opt)) { # no options for this line
             tform[[2]] <- opt
             list(formula = tform, ival = NULL, common = FALSE,
-                 fixed = FALSE, clear = FALSE)
+                 shared = FALSE)
         }
         else{
             # treat the option list as though it were a formula
@@ -88,13 +88,12 @@ parse_rightside <- function(rhs) {
             temp[[2]] <- opt[[2]]
             optterms <- terms(temp)
             ff <- rownames(attr(optterms, "factors"))
-            index <- match(ff, c("common", "fixed", "init", "clear"))
+            index <- match(ff, c("common", "shared", "init"))
             if (any(is.na(index)))
                 stop("option not recognized in a covariates formula: ",
                      paste(ff[is.na(index)], collapse=", "))
             common <- any(index==1)
-            fixed  <- any(index==2)
-            clear  <- any(index==3)
+            shared  <- any(index==2)
             if (any(index==3)) {
                 optatt <- attributes(optterms)
                 j <- optatt$variables[1 + which(index==3)]
@@ -103,8 +102,7 @@ parse_rightside <- function(rhs) {
             } 
             else ival <- NULL
             tform[[2]] <- opt[[1]] 
-            list(formula= tform, ival= ival, common= common, fixed = fixed,
-                 clear = clear)
+            list(formula= tform, ival= ival, common= common, shared=shared)
         }
     })
     new
@@ -159,7 +157,7 @@ parsecovar2 <- function(covar1, statedata, dformula, Terms, transitions,states) 
         for (i in 1:length(covar1$rhs)) {  
             rhs <- covar1$rhs[[i]]
             lhs <- covar1$lhs[[i]]  # one rhs and one lhs per formula
-             
+          
             state1 <- state2 <- NULL
             for (x in lhs) {
                 # x is one term
@@ -229,26 +227,20 @@ parsecovar2 <- function(covar1, statedata, dformula, Terms, transitions,states) 
             rterm <- terms(rhs$formula)
             rindex <- 1L + termmatch(attr(rterm, "factors"), allterm)
 
-            # second, were any variables dropped from the base formula?
-            if (rhs$clear) {  # drop everything
-                for(k in 1:npair) tmap[-1, state1[k], state2[k]] <- 0
-            }
-            else {
-                # the update.formula function is good at identifying changes
-                # formulas that start with  "- x" have to be pasted on carefully
-                temp <- substring(deparse(rhs$formula, width.cutoff=500), 2)
-                if (substring(temp, 1,1) == '-') dummy <- formula(paste("~ .", temp))
-                else dummy <- formula(paste("~. +", temp))
+            # the update.formula function is good at identifying changes
+            # formulas that start with  "- x" have to be pasted on carefully
+            temp <- substring(deparse(rhs$formula, width.cutoff=500), 2)
+            if (substring(temp, 1,1) == '-') dummy <- formula(paste("~ .", temp))
+            else dummy <- formula(paste("~. +", temp))
 
-                rindex1 <- termmatch(attr(terms(dformula), "factors"), allterm)
-                rindex2 <- termmatch(attr(terms(update(dformula, dummy)), "factors"),
-                                 allterm)
-                dropped <- 1L + rindex1[is.na(match(rindex1, rindex2))] # remember the intercept
-                if (length(dropped) >0) {
-                    for (k in 1:npair) tmap[dropped, state1[k], state2[k]] <- 0
-                }
+            rindex1 <- termmatch(attr(terms(dformula), "factors"), allterm)
+            rindex2 <- termmatch(attr(terms(update(dformula, dummy)), "factors"),
+                             allterm)
+            dropped <- 1L + rindex1[is.na(match(rindex1, rindex2))] # remember the intercept
+            if (length(dropped) >0) {
+                for (k in 1:npair) tmap[dropped, state1[k], state2[k]] <- 0
             }
-            
+
             # grab initial values
             if (length(rhs$ival)) 
                 inits <- c(inits, list(term=rindex, state1=state1, 
@@ -260,7 +252,9 @@ parsecovar2 <- function(covar1, statedata, dformula, Terms, transitions,states) 
             if (attr(terms(dummy), "intercept") ==1) rindex <- c(1L, rindex)
          
             # an update of "- sex" won't generate anything to add
-            if (length(rindex) > 0) {
+            # dmap is simply an indexed set of unique values to pull from, so that
+            #  no number is used twice
+            if (length(rindex) > 0) {  # rindex = things to add
                 if (rhs$common) {
                     j <- dmap[rindex, state1[1], state2[1]] 
                     for(k in 1:npair) tmap[rindex, state1[k], state2[k]] <- j
@@ -269,6 +263,13 @@ parsecovar2 <- function(covar1, statedata, dformula, Terms, transitions,states) 
                     for (k in 1:npair)
                         tmap[rindex, state1[k], state2[k]] <- dmap[rindex, state1[k], state2[k]]
                 }
+            }
+
+            # Deal with the shared argument, using - for a separate coef
+            if (rhs$shared && npair>1) {
+                j <- dmap[1, state1[1], state2[1]]
+                for (k in 2:npair) 
+                    tmap[1, state1[k], state2[k]] <- -j
             }
         }    
     }
@@ -286,19 +287,31 @@ parsecovar2 <- function(covar1, statedata, dformula, Terms, transitions,states) 
             tmap2[i,j] <- tmap[i, indx1[trow[j]], indx2[tcol[j]]]
     }
 
-    tmap2[1,] <- match(tmap2[1,], unique(c(0L, tmap2[1,]))) -1L
+    # Remember which hazards had ph
+    # tmap2[1,] is the 'intercept' row
+    # If the hazard for colum 6 is proportional to the hazard for column 2,
+    # the tmap2[1,2] = tmap[1,6], and phbaseline[6] =2
+    temp <- tmap2[1,]
+    tmap2[1,] <- match(abs(tmap2[1,]), unique(abs(temp)))
+    phbaseline <- ifelse(temp<0, tmap2[1,], 0)
+                      
     if (nrow(tmap2) > 1)
         tmap2[-1,] <- match(tmap2[-1,], unique(c(0L, tmap2[-1,]))) -1L
       
     dimnames(tmap2) <- list(c("(Baseline)", colnames(allterm)),
                                 paste(indx1[trow], indx2[tcol], sep=':')) 
-    list(tmap = tmap2, inits=inits, mapid= cbind(indx1[trow], indx2[tcol]))
+    # mapid gives the from,to for each realized state
+    list(tmap = tmap2, inits=inits, mapid= cbind(from=indx1[trow], to=indx2[tcol]),
+         phbaseline = phbaseline)
 }
-parsecovar3 <- function(tmap, Xcol, Xassign) {
+parsecovar3 <- function(tmap, Xcol, Xassign, phbaseline=NULL) {
     # sometime X will have an intercept, sometimes not; cmap never does
     hasintercept <- (Xassign[1] ==0)
 
-    cmap <- matrix(0L, length(Xcol) - hasintercept, ncol(tmap))
+    ptemp <- phbaseline[phbaseline >0]
+    nph.coef <- length(ptemp)
+    nph.row  <- length(unique(ptemp))
+    cmap <- matrix(0L, length(Xcol) + nph.row - hasintercept, ncol(tmap))
     uterm <- unique(Xassign[Xassign != 0])   # terms that will have coefficients
     
     xcount <- table(factor(Xassign, levels=1:max(Xassign)))
@@ -312,12 +325,19 @@ parsecovar3 <- function(tmap, Xcol, Xassign) {
         ii <- ii + max(k)
     }
 
+    if (nph.row > 0) {
+        i <- length(Xcol)- hasintercept      # non-ph rows in cmap
+        j <- cbind(i+ match(ptemp, unique(ptemp)), which(phbaseline>0)) 
+        cmap[j] <- max(cmap) + seq(along=ptemp)
+        newname <- paste0("ph(",colnames(tmap)[unique(ptemp)], ")")
+    } else newname <- NULL
+
     # renumber coefs as 1, 2, 3, ...
     cmap[,] <- match(cmap, sort(unique(c(0L, cmap)))) -1L
     
     colnames(cmap) <- colnames(tmap)
-    if (hasintercept) rownames(cmap) <- Xcol[-1]
-    else rownames(cmap) <- Xcol
+    if (hasintercept) rownames(cmap) <- c(Xcol[-1], newname)
+    else rownames(cmap) <- c(Xcol, newname)
 
     cmap
 }

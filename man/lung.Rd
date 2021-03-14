@@ -8,9 +8,8 @@
   Central Cancer Treatment Group.  Performance
   scores rate how well the patient can perform usual daily activities.
 }
-\usage{
-lung
-cancer
+\usage{lung
+data(cancer, package="survival")
 }
 \format{
   \tabular{ll}{

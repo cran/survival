@@ -13,6 +13,8 @@
   A set of data for simple reliablility analyses, taken from the book by
 Meeker and Escobar.
 }
+\usage{data(reliability, package="survival")
+}
 \details{
   \itemize{
     \item \code{capacitor}:
@@ -83,7 +85,6 @@ Meeker and Escobar.
 }
 
 \examples{
-data(capacitor)
 survreg(Surv(time, status) ~ temperature + voltage, capacitor)
 }
 \keyword{datasets}

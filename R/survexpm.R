@@ -19,15 +19,28 @@ survexpmsetup <- function(rmat) {
     else -1  # there is a loop in the states
 }
 survexpm <- function(rmat, time=1.0, setup, eps=1e-6) {
-    if (length(rmat)==1) exp(rmat[1]*time)
-    else if (missing(setup) || setup[1] < 0 ||
-        any(diff(sort(diag(rmat)))< eps)) pade(rmat*time)
+    # rmat is a transition matrix, so the diagonal elements are 0 or negative
+    if (length(rmat)==1) exp(rmat[1]*time)  #failsafe -- should never be called
     else {
-        if (setup[1]==0) .Call(Ccdecomp, rmat, time)$P
+        nonzero <- (diag(rmat) != 0)
+        if (sum(nonzero ==0)) diag(nrow(rmat))  # expm(0 matrix) = identity
+        if (sum(nonzero) ==1) {
+            j <- which(nonzero)
+            emat <- diag(nrow(rmat))
+            temp <- exp(rmat[j,j] * time)
+            emat[j,j] <- temp
+            emat[j, -j] <- (1-temp)* rmat[j, -j]/sum(rmat[j,-j])
+            emat
+        }
+        else if (missing(setup) || setup[1] < 0 ||
+                 any(diff(sort(diag(rmat)))< eps)) pade(rmat*time)
         else {
-            temp <- rmat
-            temp[setup, setup] <- .Call(Ccdecomp, rmat[setup, setup], time)
-            temp$P
+            if (setup[1]==0) .Call(Ccdecomp, rmat, time)$P
+            else {
+                temp <- rmat
+                temp[setup, setup] <- .Call(Ccdecomp, rmat[setup, setup], time)
+                temp$P
+            }
         }
     }
 }

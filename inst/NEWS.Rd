@@ -1,5 +1,68 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.2-9}{
+  \itemize{
+    \item More careful tests of the rttright function.
+    \item Fix bug in tmerge that was introduced in 3.2-8. A new
+    consistency check was too aggressive and would flag a legal dataset.
+    \item Fix tmerge bug reported by E Lundt: if two or more additions
+    were before the start of a subject's timeline, tdc would pick the
+    first rather than the last.
+    \item Add the last test case for residuals.survfit (auc for tstart,
+    tstop data), and yes, it uncovered an error.
+    \item Error in survit.coxph for a multistate fit with strata, an array
+    dimension was wrong (but contents correct).  It led to downstream
+    problems with print and plot.  Pointed out by Matthew Hall.
+    \item Add ability for a multistate coxph model to have shared
+    (proportional) baselines for transitions.
+    \item The coxph routine no longer recenters 0/1 predictors (fit$mean
+    will be 0), per the default value of the new \code{nocenter}
+    argument. Application of survfit to a coxph model without specifying
+    newdata remains a bad idea, but this change makes it a little
+    less bad since for factors the curve will refer to the reference
+    level.  The results of predict(fit) are now more defensible for a
+    factor variable.
+    \item Add an explicit error message for survreg() with a frailty
+    term.  This usage was never supported -- it is integrating out the
+    appropriate density for a coxph model, which is the wrong one for
+    survreg -- but because the code would run we've found that people
+    assumed it must be right, despite a statement to the contrary in the
+    survival vignette.  Long overdue fix. 
+}}
+\section{Changes in version 3.2-8}{
+  \itemize{
+    \item In tmerge, if data2 contains identifiers not found in data1
+    these rows are now counted in the "missid" column of the tcount
+    attribute, rather than treated as an error.
+    \item In a survfit() call with the start.time option, if one curve
+    had no subjects past the start time the dim of the result was wrong,
+    leading to multiple downstream failures.
+    \item Add a scale argument to quantile.survfit.
+    \item Revert a change to plot.survfit, which was the use of clip() to
+    keep lines away from the right margin.  This had some unforseen downstream
+    consequences, e.g., later addition of a legend.
+    \item Minor fix to survcheck: if the events table had only 1 row the
+    matrix property was lost. Pointed out by Oleguer Plana-Ripoll.
+    \item Error in plot.survfit: the noplot argument had been overlooked
+    for the confidence intervals, and the wrong interval could be matched to
+    each curve.
+    \item The neardate routine implicitly assumed that data set 2 was in
+    sorted order, if it is not an error message ensues from the internal
+    call to findInterval.  Now repaired and a new test added.  Pointed
+    out by Bruce Macwilliams.
+    \item Add an error message to survfit recognizing that it can not
+    yet deal with multistate coxph models that have shared baseline
+    hazards.
+    \item Add the pseudo function for psuedo-values. The vignette is in
+    vignette2 since it uses svyglm (survey) to get proper standard
+    errors (see the 'other' vignette).
+    Add supporting routine residuals.survfit (which does the real work.)
+    \item Add the nsk function.
+    \item Add the aggregate.survfit method
+    \item Formally depricate survConcordance, replaced with the more capable
+    concordance method which has formula, lm, glm, and coxph methods.    
+}}
+
 \section{Changes in version 3.2-7}{
   \itemize{
     \item Fix one URL, revealed by the CRAN submission.

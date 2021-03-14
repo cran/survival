@@ -39,7 +39,7 @@ tmerge(data1, data2,  id,\dots, tstart, tstop, options)
  Time dependent covariates change their values before an event,
  events are outcomes.
  \itemize{
-   \item{newname = tdc(y, x)}{ A new time dependent covariate
+   \item{newname = tdc(y, x, init)}{ A new time dependent covariate
      variable will created. 
    The argument \code{y} is assumed to be on the
    scale of the start and end time, and each instance describes the
@@ -48,13 +48,16 @@ tmerge(data1, data2,  id,\dots, tstart, tstop, options)
    \code{x} is missing the count variable starts at 0 for each subject
    and becomes 1 at the time of the event.
    If \code{x} is present the value of the time dependent covariate
-   is initialized to the \code{tdcstart} option and is reset to the
+   is initialized to value of \code{init}, if present, or
+   the \code{tdcstart} option otherwise, and is updated to the
    value of \code{x} at each observation.
    If the option \code{na.rm=TRUE} missing values of \code{x} are
    first removed, i.e., the update will not create missing values.  
 
- \item{newname = cumtdc(y,x)}{ Similar to tdc, except that the event
-   count is accumulated over time for each subject.}
+ \item{newname = cumtdc(y,x, init)}{ Similar to tdc, except that the event
+   count is accumulated over time for each subject.  The variable
+   \code{x} must be numeric.
+ }
 
  \item{newname = event(y,x)}{ Mark an event at time y.
    In the usual case that \code{x} is missing the new 0/1 variable
@@ -67,6 +70,8 @@ tmerge(data1, data2,  id,\dots, tstart, tstop, options)
 The function adds three new variables to the output data set: 
 \code{tstart}, \code{tstop}, and \code{id}.  The \code{options} argument
 can be used to change these names.
+If, in the first call, the \code{id} argument is a simple name, that
+variable name will be used as the default for the \code{idname} option.
 If \code{data1} contains the \code{tstart} variable then that is used as
 the starting point for the created time intervals, otherwise the initial
 interval for each id will begin at 0 by default.
@@ -91,13 +96,16 @@ value to be delayed, see the vignette for an example.
   The tcount variable contains counts of the match types.
   New time values that occur before the first interval for a subject
   are "early", those after the last interval for a subject are "late",
-  and those that fall into a gap are of type "gap".
+  and those that fall into a gap are of type "gap". 
   All these are are considered to be outside the specified time frame for the
-  given subject.  An event of this type will be discarded.  A
-  time-dependent covariate value will be applied to later intervals but
+  given subject.  An event of this type will be discarded.
+  An observation in \code{data2} whose identifier matches no rows in
+  \code{data1} is of type "missid" and is also discarded.
+  A time-dependent covariate value will be applied to later intervals but
   will not generate a new time point in the output.
 
-  The most common type will usually be "within", for those new times that
+  The most common type will usually be "within", corresponding to
+  those new times that
   fall inside an existing interval and cause it to be split into two.
   Observations that fall exactly on the edge of an interval but within the
   (min, max] time for a subject are counted

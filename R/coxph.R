@@ -4,7 +4,7 @@ coxph <- function(formula, data, weights, subset, na.action,
         init, control, ties= c("efron", "breslow", "exact"),
         singular.ok =TRUE,  robust,
         model=FALSE, x=FALSE, y=TRUE,  tt, method=ties, 
-        id, cluster, istate, statedata,...) {
+        id, cluster, istate, statedata, nocenter=c(-1, 0, 1), ...) {
 
     ties <- match.arg(ties)
     Call <- match.call()
@@ -94,6 +94,8 @@ coxph <- function(formula, data, weights, subset, na.action,
                 stop("statedata data frame must contain a 'state' variable")
             covlist <- parsecovar1(formula[-1], names(statedata))
         }
+
+        # create the master formula, used for model.frame
         # the term.labels + reformulate + environment trio is used in [.terms;
         #  if it's good enough for base R it's good enough for me
         tlab <- unlist(lapply(covlist$rhs, function(x) 
@@ -488,9 +490,10 @@ coxph <- function(formula, data, weights, subset, na.action,
             }
         }
         else stratum_map <- tmap[1,,drop=FALSE]
-        cmap <- parsecovar3(tmap, colnames(X), attr(X, "assign"))
+        cmap <- parsecovar3(tmap, colnames(X), attr(X, "assign"), covlist2$phbaseline)
         xstack <- stacker(cmap, stratum_map, as.integer(istate), X, Y, strata=istrat,
                           states=states)
+
         rkeep <- unique(xstack$rindex)
         transitions <- survcheck2(Y[rkeep,], id[rkeep], istate[rkeep])$transitions
 
@@ -542,21 +545,31 @@ coxph <- function(formula, data, weights, subset, na.action,
         fit <- coxpenal.fit(X, Y, istrat, offset, init=init,
                             control,
                             weights=weights, method=method,
-                            row.names(mf), pcols, pattr, assign)
+                            row.names(mf), pcols, pattr, assign, 
+                            nocenter= nocenter)
     }
     else {
+        rname <- row.names(mf)
+        if (multi) rname <- rname[xstack$rindex]
         if( method=="breslow" || method =="efron") {
-            if (grepl('right', type))  fitter <- get("coxph.fit")
-            else                 fitter <- get("agreg.fit")
+            if (grepl('right', type))  
+                fit <- coxph.fit(X, Y, istrat, offset, init, control, 
+                                 weights=weights, method=method, 
+                                 rname, nocenter=nocenter)
+            else  fit <- agreg.fit(X, Y, istrat, offset, init, control, 
+                                   weights=weights, method=method, 
+                                   rname, nocenter=nocenter)
         }
         else if (method=='exact') {
-            if (type== "right")  fitter <- get("coxexact.fit")
-            else  fitter <- get("agexact.fit")
+            if (type== "right")  
+                fit <- coxexact.fit(X, Y, istrat, offset, init, control, 
+                                    weights=weights, method=method, 
+                                    rname, nocenter=nocenter)
+            else fit <- agexact.fit(X, Y, istrat, offset, init, control, 
+                                    weights=weights, method=method, 
+                                    rname, nocenter=nocenter)
         }
         else stop(paste ("Unknown method", method))
-
-        fit <- fitter(X, Y, istrat, offset, init, control, weights=weights,
-                      method=method, row.names(mf))
     }
     if (is.character(fit)) {
         fit <- list(fail=fit)
@@ -671,6 +684,7 @@ coxph <- function(formula, data, weights, subset, na.action,
     if (length(xlevels) >0) fit$xlevels <- xlevels
     fit$contrasts <- contr.save
     if (any(offset !=0)) fit$offset <- offset
+
     fit$call <- Call
     fit
     }

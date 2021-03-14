@@ -211,7 +211,7 @@ dim(csurv)
 ### code chunk number 13: PCMcurve2
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
-plot(csurv[,,'pcm'], xmax=25*12, xscale=12, 
+plot(csurv[,'pcm'], xmax=25*12, xscale=12, 
      xlab="Years after MGUS diagnosis", ylab="PCM",
      col=1:2, lty=c(1,1,2,2), lwd=2)
 legend(10, .14, outer(c("female", "male   "), 

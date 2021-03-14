@@ -668,7 +668,7 @@ print(cfit, digits=1)  # narrow the printout a bit
 getOption("SweaveHooks")[["fig"]]()
 dummy <- expand.grid(sex=c("F", "M"), age=c(60, 80), mspike=1.2)
 csurv  <- survfit(cfit, newdata=dummy)
-plot(csurv[,,2], xmax=20*12, xscale=12,
+plot(csurv[,2], xmax=20*12, xscale=12,
      xlab="Years after MGUS diagnosis", ylab="Pr(has entered PCM state)",
      col=1:2, lty=c(1,1,2,2), lwd=2)
 legend(100, .04, outer(c("female,", "male,  "), 
@@ -728,10 +728,11 @@ ndata <- tmerge(ndata, subset(nafld3, event %in% c("diabetes", "htn",
                                                    "dyslipidemia")), 
                 id=id, comorbid= cumevent(days))
 attr(ndata, "tcount")
+# summary(ndata) gives the same information
 
 
 ###################################################
-### code chunk number 54: survival.Rnw:2038-2041
+### code chunk number 54: survival.Rnw:2040-2043
 ###################################################
 tc <- attr(ndata, 'tcount')   # shorter name for use in Sexpr below
 icount <- table(table(nafld3$id)) #number with 1, 2, ... intervals
@@ -758,7 +759,16 @@ check1
 ###################################################
 ### code chunk number 56: nafld3
 ###################################################
-
+getOption("SweaveHooks")[["fig"]]()
+states <- c("No comorbidity", "1 comorbidity", "2 comorbidities", 
+            "3 comorbitities", "Death")
+cmat <- matrix(0, 5,5)
+cmat[,5] <- 1
+cmat[1,2] <- cmat[2,3] <- cmat[3,4] <- 1
+cmat[1,3] <- cmat[2,4] <- 1.6
+cmat[1,4] <- 1.6
+dimnames(cmat) <- list(states, states)
+statefig(cbind(4,1), cmat, alty=c(1,2,1,2,2,1,1,1,1,1,1))
 
 
 ###################################################
@@ -777,20 +787,28 @@ nfit1$cmap
 ### code chunk number 58: nafld5b
 ###################################################
 print(coef(nfit1), digits=3)
+
 print(coef(nfit1, matrix=TRUE), digits=3)  # alternate form
 
+print(nfit1)
+
 
 ###################################################
-### code chunk number 59: nafld5
+### code chunk number 59: survival.Rnw:2238-2240
 ###################################################
 options(show.signif.stars = FALSE) # display statistical maturity
-print(nfit1, digits =3)
-
-
-###################################################
-### code chunk number 60: survival.Rnw:2242-2243
-###################################################
 summary(nfit1, digits=3)
+
+
+###################################################
+### code chunk number 60: nafld5c
+###################################################
+nfit2 <- coxph(list(Surv(age1, age2, event) ~ nafld + male,
+                    "0mc":state("1mc", "2mc", "3mc") ~ nafld+ male / common,
+                     2:3 + 2:4   ~ nafld + male / common,
+                     1:5 + 2:5 +3:5 ~ male / common + shared),
+               data=ndata, id=id, istate=cstate)
+nfit2$cmap
 
 
 ###################################################
@@ -895,7 +913,7 @@ round(coef(nfit2), 3)
 
 
 ###################################################
-### code chunk number 65: survival.Rnw:2435-2437 (eval = FALSE)
+### code chunk number 65: survival.Rnw:2446-2448 (eval = FALSE)
 ###################################################
 ## fit2 <- coxph(Surv(time, status) ~ trt + trt*time + celltype + karno,
 ##                 data = veteran)
@@ -943,7 +961,7 @@ par(oldpar)
 
 
 ###################################################
-### code chunk number 69: survival.Rnw:2623-2624
+### code chunk number 69: survival.Rnw:2634-2635
 ###################################################
 with(subset(aml, x=="Nonmaintained"), Surv(time, status))
 

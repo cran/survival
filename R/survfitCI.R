@@ -304,7 +304,8 @@ survfitCI <- function(X, Y, weights, id, cluster, robust, istate,
                      n.censor=grabit(curves, "n.censor"),
                      pstate = grabit(curves, "pstate"),
                      p0     = grabit(curves, "p0"),
-                     strata= unlist(lapply(curves, function(x) length(x$time))))
+                     strata= unlist(lapply(curves, function(x)
+                         if (is.null(x$time)) 0L else length(x$time))))
         kfit$p0 <- matrix(kfit$p0, ncol=nstate, byrow=TRUE,
                           dimnames=list(names(curves), states))
         if (se.fit) {
@@ -330,14 +331,10 @@ survfitCI <- function(X, Y, weights, id, cluster, robust, istate,
     #       
     # Last bit: add in the confidence bands:
     #  
-    if (se.fit) {
-        kfit$conf.int <- conf.int
-        kfit$conf.type <- conf.type
-        if (conf.type != "none") {
-            ci <- survfit_confint(kfit$pstate, kfit$std.err, logse=FALSE, 
+    if (se.fit && conf.type != "none") {
+        ci <- survfit_confint(kfit$pstate, kfit$std.err, logse=FALSE, 
                                   conf.type, conf.int)
-            kfit <- c(kfit, ci, conf.type=conf.type, conf.int=conf.int)
-        }
+        kfit <- c(kfit, ci, conf.type=conf.type, conf.int=conf.int)
     }
     kfit$states <- states
     kfit$type   <- attr(Y, "type")

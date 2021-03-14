@@ -205,6 +205,8 @@ survreg <- function(formula, data, weights, subset, na.action,
     # Check for penalized terms
     pterms <- sapply(m, inherits, 'coxph.penalty')
     if (any(pterms)) {
+        if (any(grepl("frailty", names(pterms))))
+            stop("survreg does not support frailty terms")
 	pattr <- lapply(m[pterms], attributes)
 	# 
 	# the 'order' attribute has the same components as 'term.labels'
