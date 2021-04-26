@@ -15,15 +15,15 @@ data(cancer, package="survival")
    A data set with 686 observations and 11 variables.
    \describe{
    \item{\code{pid}}{patient identifier}
-    \item{\code{age}}{age}
+    \item{\code{age}}{age, years}
     \item{\code{meno}}{menopausal status (0= premenopausal, 1= postmenopausal)}
-    \item{\code{size}}{tumor size}
+    \item{\code{size}}{tumor size, mm}
     \item{\code{grade}}{tumor grade}
     \item{\code{nodes}}{number of positive lymph nodes}
     \item{\code{pgr}}{progesterone receptors (fmol/l)}
     \item{\code{er}}{estrogen receptors (fmol/l)}
     \item{\code{hormon}}{hormonal therapy, 0= no, 1= yes}
-    \item{\code{rfstime}}{recurrnece free survival time; days to first of reccurence, death or last follow-up}
+    \item{\code{rfstime}}{recurrence free survival time; days to first of reccurence, death or last follow-up}
     \item{\code{status}}{0= alive without recurrence, 1= recurrence or
 death}
 }}

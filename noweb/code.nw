@@ -301,7 +301,7 @@ coxph <- function(formula, data, weights, subset, na.action,
 
     if (missing(robust) || is.null(robust)) {
         if (has.cluster || has.rwt ||
-                 (has.id && anyDuplicated(id[Y[,ncol(Y)]==1])))
+                 (has.id && (multi || anyDuplicated(id[Y[,ncol(Y)]==1]))))
             robust <- TRUE else robust <- FALSE
     }
     if (!is.logical(robust)) stop("robust must be TRUE/FALSE")
@@ -558,7 +558,7 @@ transition.
 t2 <- tmap[-c(1, strats),,drop=FALSE]   # remove the intercept row and strata rows
 r2 <- row(t2)[!duplicated(as.vector(t2)) & t2 !=0]
 c2 <- col(t2)[!duplicated(as.vector(t2)) & t2 !=0]
-a2 <- lapply(seq(along=r2), function(i) {cmap[assign[[r2[i]]], c2[i]]})
+a2 <- lapply(seq(along.with=r2), function(i) {cmap[assign[[r2[i]]], c2[i]]})
 # which elements are unique?  
 tab <- table(r2)
 count <- tab[r2]
@@ -990,7 +990,7 @@ if (length(dropterms)) {
     # we want to number the terms wrt the original model matrix
     temp <- attr(X, "assign")
     shift <- sort(dropterms)
-    for (i in seq(along=shift))
+    for (i in seq(along.with=shift))
         temp <- temp + 1*(shift[i] <= temp)
     attr(X, "assign") <- temp 
 }
@@ -4183,12 +4183,18 @@ if (robust & length(cluster)==0) cluster <- oldid
 @ 
 
 The survfit.coxph-setup3 chunk, shared with single state Cox models, has created
-an mf3 model frame and an x2 matrix. 
+an mf2 model frame and an x2 matrix. 
+For multi-state, we ignore any strata variables in mf2.
 Create a matrix of risk scores, number of subjects by number of transitions.
 Different transitions often have different coefficients, so there is a risk
 score vector per transition.
 
 <<survfit.coxphms-setup3b>>=
+if (has.strata && !is.null(mf2[[stangle$vars]])){
+    mf2 <- mf2[is.na(match(names(mf2), stangle$vars))]
+    mf2 <- unique(mf2)
+    x2 <- unique(x2)
+}
 temp <- coef(object, matrix=TRUE)[!phbase,,drop=FALSE] # ignore missing coefs
 risk2 <- exp(x2 %*% ifelse(is.na(temp), 0, temp) - xcenter)
 @ 
@@ -4198,22 +4204,20 @@ expanded into a new X and Y.
 \begin{itemize}
   \item \code{strata} contains any strata that were specified by the user
     in the original fit. We do completely separate computations for each
-    stratum: the time scale starts over, nrisk, etc.  The final survival
-    curve will have a block of rows for each stratum.
+    stratum: the time scale starts over, nrisk, etc.  Each has a separate
+    call to the multihaz function.
   \item \code{transtion} contains the transition to which each observation
     applies
-  \item \code{istrat} contains the combination of strata and transition.
-    Each istrat defines a separate hazard function.  Separate istrat within
-    the same stratum will share the same time scale.
-  \item \code{baselinecoef} maps from hazards (istrat) to transitions.  It
-    has one column per transition, which strata that points to, and the
-    multiplier.  
-    Most multipliers will be 1.
+  \item \code{istrat} comes from the xstack routine, and marks each
+    strata * basline hazard combination.
+  \item \code{baselinecoef} maps from baseline hazards to transitions.  It
+    has one column per transition, which hazard it points to, and a
+    multiplier. Most multipliers will be 1.
   \item \code{hfill} is constructed below. It contains the row/column to which
     each column of baselinecoef is mapped, within the H matrix used to compute
     P(state).
 \end{itemize}
-The coxph routine fit all strata and transitions at once, since the loglik is
+The coxph routine fits all strata and transitions at once, since the loglik is
 a sum over strata.  This routine does each stratum separately.
 
 <<survfit.coxphms-result>>=
@@ -4253,7 +4257,7 @@ else {
         indx <- which(strata== ustrata[i])  # divides the data
         tfit[[i]] <- multihaz(Y[indx,,drop=F], X[indx,,drop=F],
                               position[indx], weights[indx], risk[indx],
-                              itemp, ctype, stype, baselinecoef, hfill,
+                              istrat[indx], ctype, stype, baselinecoef, hfill,
                               x2, risk2, varmat, nstate, se.fit,
                               cifit$p0[i,], timelist[[i]])
     }
@@ -4355,11 +4359,11 @@ multihaz <- function(y, x, position, weight, risk, istrat, ctype, stype,
             H[,] <- 0.0
             H[hfill] <- hazard[j,] *risk2[i,]
             if (stype==1) {
-                diag(H) <- pmin(0, 1 + diag(H)- rowSums(H))
+                diag(H) <- pmax(0, 1.0 - rowSums(H))
                 S <- as.vector(S %*% H)  # don't keep any names
             }
             else {
-                diag(H) <- diag(H) - rowSums(H)
+                diag(H) <- 0.0 - rowSums(H)
                 #S <- as.vector(S %*% expm(H))  # dgeMatrix issue
                 S <- as.vector(S %*% survexpm(H, 1, esetup))
             }
@@ -6180,7 +6184,7 @@ The routine will return list with three components:
 
 <<walkup>>
     
-    SEXP concordance3(SEXP y, SEXP x2, SEXP wt2, SEXP timewt2, 
+SEXP concordance3(SEXP y, SEXP x2, SEXP wt2, SEXP timewt2, 
                       SEXP sortstop, SEXP doresid2) {
     int i, j, k, ii, jj, kk, j2;
     int n, ntree, nevent;
@@ -6475,7 +6479,7 @@ void addin(double *nwt, double *twt, int index, double wt) {
 @ 
 
 The code for [start, stop) data is almost identical, the primary call
-simply has one more index  
+simply has one more index.  
 As in the agreg routines there are two sort indices, the first indexes
 the data by stop time, longest to earliest, and the second by start time. 
 The [[y]] variable now has three columns.
@@ -7380,7 +7384,7 @@ termmatch <- function(f1, f2) {
     if (length(f1)==0) return(NULL)   # a formula with only ~1
     irow <- match(rownames(f1), rownames(f2))
     if (any(is.na(irow))) stop ("termmatch failure 1") 
-    hashfun <- function(j) sum(ifelse(j==0, 0, 2^(seq(along=j))))
+    hashfun <- function(j) sum(ifelse(j==0, 0, 2^(seq(along.with=j))))
     hash1 <- apply(f1, 2, hashfun)
     hash2 <- apply(f2[irow,,drop=FALSE], 2, hashfun)
     index <- match(hash1, hash2)
@@ -7650,7 +7654,7 @@ parsecovar3 <- function(tmap, Xcol, Xassign, phbaseline=NULL) {
     if (nph.row > 0) {
         i <- length(Xcol)- hasintercept      # non-ph rows in cmap
         j <- cbind(i+ match(ptemp, unique(ptemp)), which(phbaseline>0)) 
-        cmap[j] <- max(cmap) + seq(along=ptemp)
+        cmap[j] <- max(cmap) + seq(along.with =ptemp)
         newname <- paste0("ph(",colnames(tmap)[unique(ptemp)], ")")
     } else newname <- NULL
 
@@ -7987,7 +7991,10 @@ if (data.frame) {
         #  (unless it is a tcut variable, then we know what to do)
         tdata <- lapply(1:length(ovars), function(i) {
             temp <- mf[[ovars[i]]]
-            if (inherits(temp, "tcut")) factor(outdname[[i]], outdname[[i]])
+            if (inherits(temp, "tcut")) { #if levels are numeric, return numeric
+                if (is.numeric(outdname[[i]])) outdname[[i]]
+                else  factor(outdname[[i]], outdname[[i]]) # else factor
+            }
             else temp[match(outdname[[i]], temp)]
         })
         tdata$stringsAsFactors <- FALSE  # argument for expand.grid
@@ -8982,7 +8989,7 @@ stop("residuals function still imcomplete, for FH estimate")
 if (any(casewt != casewt[1])) {
     # Have to reconstruct the number of obs with an event, the curve only
     # contains the weighted sum
-    nevent <- unlist(lapply(seq(along=levels(X)), function(i) {
+    nevent <- unlist(lapply(seq(along.with=levels(X)), function(i) {
         keep <- which(as.numeric(X) ==i)
         counts <- table(Y[keep, ny-1], status)
         as.vector(counts[, ncol(counts)])
@@ -9495,7 +9502,7 @@ from <- as.numeric(istate[transition])  # from this state
 to   <- Y[transition, ny]   # to this state
 nrisk <- fit$n.risk[cbind(yindex[transition], from)]  # number at risk
 wt <- casewt[transition]
-for (i in seq(along=from)) {
+for (i in seq(along.with =from)) {
     j <- c(from[i], to[i])
     haz <- wt[i]/nrisk[i]
     cmat[from[i], j, i2[i]] <- cmat[from[i], j, i2[i]] + c(-haz, haz)
@@ -10178,7 +10185,7 @@ dim.survfit <- function(x) {
             jj <- col(itemp)[keep]
             # at this point we have a matrix subscript of (ii, jj)
             # expand into a long pair of rows and cols
-            temp <- split(seq(along=x$time), 
+            temp <- split(seq(along.with=x$time), 
                           rep(1:length(x$strata), x$strata))
             indx1 <- unlist(temp[ii])   # rows of the surv object
             indx2 <- rep(jj, x$strata[ii])
@@ -10201,12 +10208,12 @@ dim.survfit <- function(x) {
     # irow will be the rows that need to be taken
     #  j the columns (of present)
     if (is.null(x$strata)) {
-           if (is.null(i) || all(i==1)) irow <- seq(along=x$time)
+           if (is.null(i) || all(i==1)) irow <- seq(along.with=x$time)
            else stop("subscript out of bounds")
            newx$n <- x$n
     }
     else { 
-        if (is.null(i)) indx <- seq(along= x$strata)
+        if (is.null(i)) indx <- seq(along.with= x$strata)
         else indx <- nmatch(i, names(x$strata)) #strata to keep
         if (any(is.na(indx))) 
             stop(paste("strata", 
@@ -10214,7 +10221,7 @@ dim.survfit <- function(x) {
                        'not matched'))
         # Now, indx may not be in order: some can use curve[3:2] to reorder
         #  The list/unlist construct will reorder the data
-        temp <- split(seq(along=x$time), 
+        temp <- split(seq(along.with =x$time), 
                       rep(1:length(x$strata), x$strata))
         irow <- unlist(temp[indx])
         
@@ -11635,7 +11642,7 @@ from this point forward.
 
 The easiest way to understand the estimate is to consider first the
 case of no censoring.  
-In that setting the estimate of $F_k(t) = 1-S_k(t)$ for all states
+In that setting the estimate of $p_k(t)$ for all states
 is obtained from a simple table of the current state at time $t$
 of the subjects, divided by $n$, the original
 sample size.
@@ -11650,8 +11657,7 @@ but the routine name survfitCI endures.
 The cannonical call is one of
 \begin{verbatim}
   fit <- survfit(Surv(time, status) ~ sex, data=mine)
-  fit <- survfit(Surv(time1, time2, status) ~ sex, data=mine)
-
+  fit <- survfit(Surv(time1, time2, status) ~ sex, id= id, data=mine)
 \end{verbatim}
 where \code{status} is a factor variable.
 Optionally, there can be an id statement
@@ -11760,7 +11766,7 @@ survfitCI <- function(X, Y, weights, id, cluster, robust, istate,
         id <- 1:n  # older default, which could lead to invalid curves
     }
     if (influence && !(has.cluster || has.id)) {
-        cluster <- seq(along=X)
+        cluster <- seq(along.with=X)
         has.cluster <- TRUE
     }
 
@@ -12606,11 +12612,12 @@ or integer indices.
         # This function lets R worry about character, negative, 
         # or logical subscripts
         #  It always returns a set of positive integer indices
-        temp <- seq(along=target)
+        temp <- seq(along.with=target)
         names(temp) <- target
         temp[i]
     }
-    x <- survfit0(x, x$start.time)  # otherwise influence and pstate don't align
+    if (!is.null(x$influence.pstate) || !is.null(x$influence.cumhaz))
+        x <- survfit0(x, x$start.time)  # make influence and pstate align
     ndots <- ...length()      # the simplest, but not avail in R 3.4
     # ndots <- length(list(...))# fails if any are missing, e.g. fit[,2]
     # ndots <- if (missing(drop)) nargs()-1 else nargs()-2  # a workaround
@@ -12630,8 +12637,10 @@ or integer indices.
     # Make a new object
     newx <- vector("list", length(x))
     names(newx) <- names(x)
-    for (kk in c("logse", "version", "conf.int", "conf.type", "type", "call"))
+    for (kk in c("logse", "version", "conf.int", "conf.type", "type", 
+                 "start.time", "call"))
         if (!is.null(x[[kk]])) newx[[kk]] <- x[[kk]]
+    newx$transitions <- NULL # may no longer be accurate, and not needed
     class(newx) <- class(x)
 
     # Like a matrix, let the user use a single subscript if they desire
@@ -12651,7 +12660,7 @@ or integer indices.
         ii <- (row(itemp))[i]    # this is now the strata id
         
         if (dtype[1]!=1 || dd[1]==1) # no strata or only 1
-            irow <- rep(seq(along= x$time), length(ii))
+            irow <- rep(seq(along.with= x$time), length(ii))
         else {
             itemp2 <- split(1:sum(x$strata), rep(1:length(x$strata), x$strata))
             irow <- unlist(itemp2[ii])  # rows of the pstate object
@@ -12674,7 +12683,7 @@ or integer indices.
             if (!is.null(x[[z]])) newx[[z]] <- (x[[z]])[indx]
         
         newx$strata <- x$strata[ii]
-        names(newx$strata) <- seq(along=ii)
+        names(newx$strata) <- seq(along.with=ii)
         
         return(newx)
     }
@@ -12694,7 +12703,7 @@ or integer indices.
 
     # create irow, which selects for the time dimension of x
     if (dtype[1]!=1 || is.null(i)) {
-        irow <- seq(along= x$time)
+        irow <- seq(along.with= x$time)
     }
     else {
         i <- nmatch(i, names(x$strata))
@@ -12713,7 +12722,7 @@ or integer indices.
         dtype <- c(1, dtype)
     }
     else { # there are strata
-        if (is.null(i)) i <-seq(along=x$strata)
+        if (is.null(i)) i <-seq(along.with=x$strata)
         if ((drop && length(i)>1) || !drop) newx$strata <- x$strata[i]
         newx$n <- x$n[i]
     }
@@ -12729,12 +12738,14 @@ or integer indices.
         else j <- nmatch(j, x$states)
 
         # keep these as start points for plotting, even though they won't make
-        #  true sense is states are subset, since rows won't sum to 1
+        #  true sense if states are subset, since rows won't sum to 1
         if (!is.null(x$p0)) {
-            if (is.matrix(x$p0)) newx$p0 <- x$p0[i,j] else newx$p0 <- x$p0[j]
+            if (is.matrix(x$p0)) newx$p0 <- x$p0[i,j, drop=FALSE] 
+            else newx$p0 <- x$p0[j]
         }
         if (!is.null(x$sp0)) {
-            if (is.matrix(x$sp0)) newx$sp0 <- x$p0[i,j] else newx$sp0 <- x$sp0[j]
+            if (is.matrix(x$sp0)) newx$sp0 <- x$sp0[i,j, drop=FALSE] 
+            else newx$sp0 <- x$sp0[j]
         }   
         
         # in the rare case of a single strata with 1 obs, don't drop dims
@@ -13608,12 +13619,10 @@ SEXP cdecomp(SEXP R2, SEXP time2) {
     for (i=0; i<nc; i++) { /* computations for column i */
 	dd[i] = R[i +ii];    /* the i,i diagonal element = eigenvalue*/
 	A[i +ii] = 1.0;
-        if (dd[i] !=0) {
-            for (j=(i-1); j >=0; j--) {  /* fill in the rest */
-                temp =0;
-                for (k=j; k<=i; k++) temp += R[j + k*nc]* A[k +ii];
-                A[j +ii] = temp/(dd[i]- R[j + j*nc]);
-            }
+        for (j=(i-1); j >=0; j--) {  /* fill in the rest */
+            temp =0;
+            for (k=j; k<=i; k++) temp += R[j + k*nc]* A[k +ii];
+            A[j +ii] = temp/(dd[i]- R[j + j*nc]);
         }
 	ii += nc;
     }
@@ -13851,7 +13860,7 @@ lines.survfit <- function(x, type='s',
 points.survfit <- function(x, fun, censor=FALSE,
                            col=1, pch, noplot="(s0)", cumhaz=FALSE, ...) {
 
-    conf.int <- FALSE  # never draw these with 'points'
+    conf.int <- conf.times <- FALSE  # never draw these with 'points'
     x <- survfit0(x, x$start.time)
 
     <<plot-data>>
@@ -14336,12 +14345,22 @@ for (j in 1:ncol(ssurv)) {
         else censor <- ifelse(x$n.censor[who]==0, 0, 1 + (x$n.event[who] > 0))
         xx <- stime[who]
         yy <- ssurv[who,j]
+        if (conf.int) {
+            ylower <- (slower[who,j])
+            yupper <- (supper[who,j])
+        }
         if (!is.null(xmax) && max(xx) > xmax) {  # truncate on the right
             xn <- min(which(xx > xmax))
             xx <- xx[1:xn]
             yy <- yy[1:xn]
             xx[xn] <- xmax
             yy[xn] <- yy[xn-1]
+            if (conf.int) {
+                ylower <- ylower[1:xn]
+                yupper <- yupper[1:xn]
+                ylower[xn] <- ylower[xn-1]
+                yupper[xn] <- yupper[xn-1]
+            }
         }
             
 
@@ -14359,9 +14378,9 @@ for (j in 1:ncol(ssurv)) {
         if (conf.int && !is.null(conf.times)) {
             # add vertical bars at the specified times
             x2 <- conf.times + temp.offset[c1]
-            templow <- approx(xx, slower[who,j], x2,
+            templow <- approx(xx, ylower, x2,
                               method='constant', f=1)$y
-            temphigh<- approx(xx, supper[who,j], x2,
+            temphigh<- approx(xx, yupper, x2,
                               method='constant', f=1)$y
             segments(x2, templow, x2, temphigh,
                       lty=lty[c2], col=col[c2], lwd=lwd[c2])
@@ -14378,18 +14397,18 @@ for (j in 1:ncol(ssurv)) {
 
         if (conf.int && is.null(conf.times)) {
             if (type == 's') {
-                lines(dostep(xx, slower[who,j]), lty=lty[c2], 
+                lines(dostep(xx, ylower), lty=lty[c2], 
                       col=col[c2],lwd=lwd[c2])
                 c2 <- c2 +1
-                lines(dostep(xx, supper[who,j]), lty=lty[c2], 
+                lines(dostep(xx, yupper), lty=lty[c2], 
                       col=col[c2], lwd= lwd[c2])
                 c2 <- c2 + 1
             }
             else {
-                lines(xx, slower[who,j], lty=lty[c2], 
+                lines(xx, ylower, lty=lty[c2], 
                       col=col[c2],lwd=lwd[c2], type=type) 
                 c2 <- c2 +1
-                lines(xx, supper[who,j], lty=lty[c2], 
+                lines(xx, yupper, lty=lty[c2], 
                       col=col[c2], lwd= lwd[c2], type= type)
                 c2 <- c2 + 1
             }
@@ -15675,6 +15694,7 @@ else {
             k <- k+1
         }
     }
+    names(cmat) <- cname
 }
 @ 
 
