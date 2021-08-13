@@ -175,6 +175,8 @@ coxph <- function(formula, data, weights, subset, na.action,
     if (control$timefix) Y <- aeqSurv(Y)
     if (length(attr(Terms, 'variables')) > 2) { # a ~1 formula has length 2
         ytemp <- terms.inner(formula[1:2])
+        suppressWarnings(z <- as.numeric(ytemp)) # are any of the elements numeric?
+        ytemp <- ytemp[is.na(z)]  # toss numerics, e.g. Surv(t, 1-s)
         xtemp <- terms.inner(formula[-2])
         if (any(!is.na(match(xtemp, ytemp))))
             warning("a variable appears on both the left and right sides of the formula")
@@ -635,16 +637,16 @@ coxph <- function(formula, data, weights, subset, na.action,
         #  is all we need, but more for backward compatability with survConcordance.fit
         if (length(cluster))
             temp <- concordancefit(Y, fit$linear.predictors, istrat, weights,
-                                              cluster=cluster, reverse=TRUE,
-                                    timefix= FALSE)
+                                   cluster=cluster, reverse=TRUE,
+                                   timefix= FALSE)
         else temp <- concordancefit(Y, fit$linear.predictors, istrat, weights,
-                                      reverse=TRUE, timefix= FALSE)
+                                        reverse=TRUE, timefix= FALSE)
         if (is.matrix(temp$count))
-             fit$concordance <- c(colSums(temp$count), concordance=temp$concordance,
-                                  std=sqrt(temp$var))
+            fit$concordance <- c(colSums(temp$count), concordance=temp$concordance,
+                                     std=sqrt(temp$var))
         else fit$concordance <- c(temp$count, concordance=temp$concordance, 
-                                  std=sqrt(temp$var))
-     
+                                      std=sqrt(temp$var))
+
         na.action <- attr(mf, "na.action")
         if (length(na.action)) fit$na.action <- na.action
         if (model) {

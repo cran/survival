@@ -1,5 +1,28 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.2-12}{
+  \itemize{
+    \item Avoid a downstream error from infinte coefficients in
+    coxph.  In special case it would fail by passing an NA to C code.
+    \item The df column from cox.zph could be incorrect for a coxme
+    model.
+    \item cox.zph would crash for a coxme model whose random effect
+    contained a factor (odd issue with model.frame).
+    \item yates error for a coxph model with a strata * covariate
+    interaction
+    \item Clarify documentation for the royston command.
+    \item Add error for survexp applied to a multistate model.
+    \item Make the labeling of restricted mean consistent in print and
+    summary, for single state and multistate survfit.
+    \item With just the right data the coxexact.c routine would do a
+    very inefficient calculation: so slow it appeared to be an infinite
+    loop.
+    \item Bug in pspline.R: I had neglected to include 'degree' in the
+    retained arguments for makepredictcall.
+    \item Fix scale factor error in cholesky3.c, which could cause it to
+    incorrectly mark a column as singular.  Found via a survreg example
+    from Nathan Adams, where y had large values.
+}}
 \section{Changes in version 3.2-11}{
   \itemize{
     \item Missing labels for the "pairwise" option in yates(), fixed.
@@ -12,8 +35,11 @@
     \item In pyears(...,data.frame=TRUE), if the levels of a tcut are
     numeric return a numeric rather than a factor.  (Version 2.4 feature
     that had been inadvertently removed.)
-    \item Fix mistake in survfit.coxphms(..., stype=1): pmin when I
-    meant pmax.  (Resulting curves were not even close.)  Add a test case.   
+    \item Fix mistake in survfit.coxphms(..., stype=1): had pmin when I
+    meant pmax.  (Resulting curves were not even close.)  Add a test
+    case.
+    \item update anova.survreg to have class("anova", "data.table").
+    Error pointed out by Daniel Sjoberg.
 }}
 
 \section{Changes in version 3.2-10}{
