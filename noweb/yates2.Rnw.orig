@@ -86,7 +86,8 @@ yates <- function(fit, term, population=c("data", "factorial", "sas"),
         }
     }       
 
-    if (method=="sgtt" && (population !="sas" || predict != "linear"))
+    if (method=="sgtt" && (popframe || population !="sas" || 
+                           predict != "linear"))
         stop("sgtt method only applies if population = sas and predict = linear")
 
     beta <-  coef(fit, complete=TRUE)
@@ -110,7 +111,7 @@ yates <- function(fit, term, population=c("data", "factorial", "sas"),
     # Make the list of X matrices that drive everything: xmatlist
     #  (Over 1/2 the work of the whole routine)
     xmatlist <- yates_xmat(Terms, Tatt, contr, population, mframe, fit,
-                                iscat)
+                                iscat, coxph= inherits(fit, "coxph"))
  
     # check rows of xmat for estimability
     <<yates-estim-setup>>
@@ -159,7 +160,7 @@ if (any(is.na(beta)) && (popframe || population != "none")) {
 
 When the prediction target is $X\beta$ there is a four step
 process: build the reference population, create the list of X matrices
-(one prediction matrix for each for x1 value), 
+(one prediction matrix for each x1 value), 
 column means of each X form each row of the
 contrast matrix Cmat, and then use Cmat to get the pmm values and
 tests of the pmm values.
@@ -172,15 +173,29 @@ tests of the pmm values.
 meanfun <- if (is.null(weight)) colMeans else function(x) {
     colSums(x*weight)/ sum(weight)}
 Cmat <- t(sapply(xmatlist, meanfun))[,!nabeta]
-          
+@
+
+In a coxph model the X matrix is built as though an intercept were there (the
+baseline hazard plays that role), but that column is dropped from X before
+estimating the coefficients themselves.  
+If someone were to add 10, say, to one of the adjusting covariates, one will
+get the exact same model fit and the same absolute risks (survival curves).
+The Cmat matrix will be 10 units large in that column, however, giving a
+different estimate and standard error, which is not the desired behavior.
+A solution is to recenter Cmat around the mean linear predictor for the
+entire reference population.
+
+<<yates-linear>>=           
 # coxph model: the X matrix is built as though an intercept were there (the
 #  baseline hazard plays that role), but then drop it from the coefficients
 #  before computing estimates and tests.  If there was a strata * covariate
 #  interaction there will be many more colums to drop.
+# The primary contrasts are also centered wrt the population
 if (inherits(fit, "coxph")) {
     nkeep <- length(fit$means)  # number of non-intercept columns
     col.to.keep <- seq(to=ncol(Cmat), length= nkeep)
     Cmat <- Cmat[,col.to.keep, drop=FALSE]
+    browser()
     offset <- -sum(fit$means[!nabeta] * beta)  # recenter the predictions too
     }
 else offset <- 0
@@ -351,13 +366,12 @@ extra space before the 4 compared to what was typed.
 
 <<yates>>=
 yates_xmat <- function(Terms, Tatt, contr, population, mframe, fit, 
-                       iscat, weight) {
+                       iscat, weight, coxph) {
     # which variables(s) are in x1 (variables of interest)
     # First a special case of strata(grp):x, which causes strata(grp) not to
     #  appear as a column
     if (any(is.na(match(contr$termname, colnames(Tatt$factors))))) {
-        #tis rare
-        if (length(contr$termname) > 1) stop("incomplete code 1")
+        if (length(contr$termname) >1) stop("incomplete code 1")
         x1indx <- (contr$termname== rownames(Tatt$factors))
         names(x1indx) <- rownames(Tatt$factors)
         if (!any(x1indx)) stop(paste("variable", contr$termname, "not found"))
@@ -389,10 +403,17 @@ yates_xmat <- function(Terms, Tatt, contr, population, mframe, fit,
         }
     }
     else stop("unknown population")  # this should have been caught earlier
-
+    if (coxph) {
+        browser()
+        pX <- model.matrix(Terms, pdata, xlev=fit$xlevels,
+                                      contrast.arg= fit$contrasts)
+        pmean <- colMeans(pX)
+    }
     # Now create the x1 data set, the unique rows we want to test
     <<yates-x1mat>>
-    
+    if (coxph) {
+        attr(xmatlist, "pmean") <- colMeans(pmean)  
+    }
     xmatlist
 }
 @ 

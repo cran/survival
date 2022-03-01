@@ -43,7 +43,6 @@ plot.cox.zph <- function(x, resid=TRUE, se=TRUE, df=4, nsmo=40,
 	xaxislab <- rep("",8)
 	for (i in 1:8) xaxislab[i] <- format(temp[i])
 	}
-
     col <- rep(col, length=2)
     lwd <- rep(lwd, length=2)
     lty <- rep(lty, length=2)
@@ -80,6 +79,10 @@ plot.cox.zph <- function(x, resid=TRUE, se=TRUE, df=4, nsmo=40,
 	    yr <- range(yr, yup, ylow)
 	    }
 
+        plotpar <- list(...)
+        doxaxis <- TRUE
+        if (!is.null(plotpar$xaxt)) doxaxis <- FALSE
+
         if (!hr) {
             if (x$transform=='identity')
                 plot(range(xx), yr, type='n', xlab=xlab, ylab=ylab[i], ...)
@@ -87,12 +90,14 @@ plot.cox.zph <- function(x, resid=TRUE, se=TRUE, df=4, nsmo=40,
                 plot(range(xx[keep]), yr, type='n', xlab=xlab, ylab=ylab[i], 
                      log='x', ...)
             else {
-                plot(range(xx[keep]), yr, type='n', xlab=xlab, ylab=ylab[i], 
-                     axes=FALSE,...)
-                axis(1, xaxisval, xaxislab)
-                axis(2)
-                box()
-	    }
+                if (doxaxis) {
+                    plot(range(xx[keep]), yr, type='n', xlab=xlab, 
+                         ylab=ylab[i], xaxt = 'n', ...)
+                    axis(1, xaxisval, xaxislab)
+                }
+                else plot(range(xx[keep]), yr, type='n', xlab=xlab,
+                          ylab=ylab[i], ...)
+            }
             if (resid) points(xx[keep], y)
 
             lines(pred.x, yhat, lty=lty[1], col=col[1], lwd=lwd[1])
@@ -108,9 +113,13 @@ plot.cox.zph <- function(x, resid=TRUE, se=TRUE, df=4, nsmo=40,
                 plot(range(xx[keep]), exp(yr), type='n', xlab=xlab, 
                      ylab=ylab[i], log='xy', ...)
             else {
-                plot(range(xx[keep]), exp(yr), type='n', xlab=xlab, 
-                     ylab=ylab[i], log='y', xaxt= 'n',...)
-                axis(1, xaxisval, xaxislab)
+                if (doxaxis) {
+                    plot(range(xx[keep]), exp(yr), type='n', xlab=xlab, 
+                         ylab=ylab[i], log='y', xaxt= 'n',...)
+                    axis(1, xaxisval, xaxislab)
+                }
+                else  plot(range(xx[keep]), exp(yr), type='n', xlab=xlab, 
+                         ylab=ylab[i], log='y', ...)
 	    }
             if (resid) points(xx[keep], exp(y))
 

@@ -696,7 +696,7 @@ ssurv <- survfit(sfit, newdata=dummy)
 plot(ssurv[3:4], col=1:2, lty=2, xscale=12, xmax=12*20, lwd=2, fun="event",
      xlab="Years from diagnosis", ylab= "Pr(has entered PCM state)")
 lines(csurv[3:4, 2], col=1:2, lty=1, lwd=2)
-legend(20, .22, outer(c("80 year old male,", "80 year old female,"),
+legend(20, .22, outer(c("80 year old female,", "80 year old male,"),
                       c("incorrect", "correct"), paste),
                   col=1:2, lty=c(2,2,1,1), lwd=2, bty='n')
 
@@ -727,12 +727,11 @@ ndata <- tmerge(ndata, subset(nafld3, event=="dyslipidemia"), id=id,
 ndata <- tmerge(ndata, subset(nafld3, event %in% c("diabetes", "htn", 
                                                    "dyslipidemia")), 
                 id=id, comorbid= cumevent(days))
-attr(ndata, "tcount")
-# summary(ndata) gives the same information
+summary(ndata)
 
 
 ###################################################
-### code chunk number 54: survival.Rnw:2042-2045
+### code chunk number 54: survival.Rnw:2032-2035
 ###################################################
 tc <- attr(ndata, 'tcount')   # shorter name for use in Sexpr below
 icount <- table(table(nafld3$id)) #number with 1, 2, ... intervals
@@ -794,7 +793,7 @@ print(nfit1)
 
 
 ###################################################
-### code chunk number 59: survival.Rnw:2240-2242
+### code chunk number 59: survival.Rnw:2230-2232
 ###################################################
 options(show.signif.stars = FALSE) # display statistical maturity
 summary(nfit1, digits=3)
@@ -913,7 +912,7 @@ round(coef(nfit2), 3)
 
 
 ###################################################
-### code chunk number 65: survival.Rnw:2448-2450 (eval = FALSE)
+### code chunk number 65: survival.Rnw:2438-2440 (eval = FALSE)
 ###################################################
 ## fit2 <- coxph(Surv(time, status) ~ trt + trt*time + celltype + karno,
 ##                 data = veteran)
@@ -961,7 +960,7 @@ par(oldpar)
 
 
 ###################################################
-### code chunk number 69: survival.Rnw:3351-3352
+### code chunk number 69: survival.Rnw:3341-3342
 ###################################################
 with(subset(aml, x=="Nonmaintained"), Surv(time, status))
 

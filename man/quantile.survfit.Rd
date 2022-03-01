@@ -1,15 +1,17 @@
 \name{quantile.survfit}
 \alias{quantile.survfit}
 \alias{quantile.survfitms}
+\alias{median.survfit}
 \title{Quantiles from a survfit object}
 \description{Retrieve quantiles and confidence intervals for them from
-  a survfit object.
+  a survfit or Surv object.
 }
 \usage{
 \method{quantile}{survfit}(x, probs = c(0.25, 0.5, 0.75), conf.int = TRUE,
   scale, tolerance= sqrt(.Machine$double.eps), ...)
 \method{quantile}{survfitms}(x, probs = c(0.25, 0.5, 0.75), conf.int = TRUE,
   scale, tolerance= sqrt(.Machine$double.eps), ...)
+\method{median}{survfit}(x, ...)
 }
 \arguments{
   \item{x}{a result of the survfit function}

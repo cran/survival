@@ -1961,7 +1961,7 @@ ssurv <- survfit(sfit, newdata=dummy)
 plot(ssurv[3:4], col=1:2, lty=2, xscale=12, xmax=12*20, lwd=2, fun="event",
      xlab="Years from diagnosis", ylab= "Pr(has entered PCM state)")
 lines(csurv[3:4, 2], col=1:2, lty=1, lwd=2)
-legend(20, .22, outer(c("80 year old male,", "80 year old female,"),
+legend(20, .22, outer(c("80 year old female,", "80 year old male,"),
                       c("incorrect", "correct"), paste),
                   col=1:2, lty=c(2,2,1,1), lwd=2, bty='n')
 @ 
@@ -1999,15 +1999,6 @@ The NAFLD data is represented as 3 data sets, \code{nafld1} has one observation
 per subject containing basline information (age, sex, etc.),
 nafld2 has information on repeated laboratory tests, e.g. blood pressure,
 and nafld3 has information on yes/no endpoints.
-Because NAFLD is often a disease of exclusion, a NAFLD diagnosis followed
-shortly by the diagnosis of another liver disease is considered a false
-positive.  For this study we only consider ``confirmed'' NAFLD, i.e., if
-someone were diagnosed on 2001-06-20, the index date for confirmed NAFLD 
-would be 2002-06-20, assuming that another liver diagnosis, death, or
-incomplete follow-up did not intervene.  Control subjects are matched on
-age and sex, and for each their follow-up also commences on the 
-``confirmed NAFLD'' date.
-
 After the case-control set was assembled, we removed any subjects with less
 than 7 days of follow-up.  These subjects add little information, and it
 prevents a particular confusion that can occur with a multi-day medical visit
@@ -2020,7 +2011,7 @@ As a final protection, a 10\% random sample of subjects was excluded.
 As a consequence analyses results will not exactly match the
 original paper.
 
-Start by building an analysis data set using \code{nafld1} and \code{nafld3}
+Start by building an analysis data set using \code{nafld1} and \code{nafld3}.
 
 <<nafld1>>=
 ndata <- tmerge(nafld1[,1:8], nafld1, id=id, death= event(futime, status))
@@ -2035,8 +2026,7 @@ ndata <- tmerge(ndata, subset(nafld3, event=="dyslipidemia"), id=id,
 ndata <- tmerge(ndata, subset(nafld3, event %in% c("diabetes", "htn", 
                                                    "dyslipidemia")), 
                 id=id, comorbid= cumevent(days))
-attr(ndata, "tcount")
-# summary(ndata) gives the same information
+summary(ndata)
 @ 
 
 <<echo=FALSE>>=
@@ -2045,7 +2035,7 @@ icount <- table(table(nafld3$id)) #number with 1, 2, ... intervals
 ncount <- sum(nafld3$event=="nafld")
 @ 
 
-The \code{tcount} attribute tells us a lot about the creation process.
+The summary function tells us a lot about the creation process.
 Each addition of a new endpoint or covariate to the data generates one 
 row in the table.  Column labels are explained by figure \ref{fig:timeline}.
 \begin{itemize}

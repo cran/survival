@@ -1,11 +1,57 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.3-0}{
+  \itemize{
+    \item Change any calls to Calloc or Free in the C code to R_Calloc
+    and R_Free, at the request of R core.
+    \item Fix an oversight in aareg: when coxph and survreg were
+    converted from using +cluster() in a formula to cluster as an
+    argument, that same change needed to be made in aareg.  Pointed out
+    by zdgager.
+    \item The std of the cumulative hazard is now present, for select
+    cases of a coxph model curve.  More work remains to be done to
+    return the std for all cases.
+    \item Add a paragraph to the help page for survfit.Rd, pointing out
+    that robust variance is now the default for interval censored data,
+    and why.
+    \item Add the median.survfit method
+    \item Improve the examples in pseudo.Rd
+    \item Fix error in survreg.distributions$gaussian$deviance. The
+    deviance of an interval censored observation was NA due to a sign
+    that was backwards, leading to log of a negative value.  (Simple
+    typo.)
+    \item Error in predict.coxph: it would fail for a model that had two
+    strata terms. Reported by Hanna Frick.
+    \item Fix github issue 130. If newdata contained the strata
+    information, and there was only one curve requested, survfit.coxph
+    would return too many curves.
+}}
+
+\section{Changes in version 3.2-15}{
+  \itemize{
+    \item Fix an inconsistency with the start.time argument.  One of
+    the survfit paths would include an event at start.time (curve starts
+    with an immediate drop) others did not.  All paths now do so. This
+    makes start.time=0 behave the same as ordinary survfit, without the
+    argument, when there is a death at time 0.
+}}
+
+\section{Changes in version 3.2-14}{
+  \itemize{
+    \item Update the royston function to report the scaled Cox-Snell
+    R-squared as the Nagelkirke estimate, and clarify the documentation.
+    \item Update for coxph with ties=exact, for the case of an infinite
+    coefficient where the information matrix becomes singular.  Code for
+    this case had been developed for coxfit6.c (Breslow/Efron) but not
+    replicated in coxexact.c
+}}
+ 
 \section{Changes in version 3.2-13}{
   \itemize{
     \item Clarify some sentences in tmerge help file.
     \item Fix a memory access error in concordance3.c, found by CRAN.
     \item Add the drop.special function (internal) to work around offset
-      problems in [.terms.
+    problems in [.terms.
 }}
 \section{Changes in version 3.2-12}{
   \itemize{
