@@ -960,7 +960,7 @@ par(oldpar)
 
 
 ###################################################
-### code chunk number 69: survival.Rnw:3341-3342
+### code chunk number 69: survival.Rnw:3426-3427
 ###################################################
 with(subset(aml, x=="Nonmaintained"), Surv(time, status))
 

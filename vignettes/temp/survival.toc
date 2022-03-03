@@ -1,0 +1,62 @@
+\contentsline {chapter}{\numberline {1}Introduction}{3}%
+\contentsline {section}{\numberline {1.1}History}{3}%
+\contentsline {section}{\numberline {1.2}Survival data}{4}%
+\contentsline {section}{\numberline {1.3}Overview}{6}%
+\contentsline {section}{\numberline {1.4}Mathematical Notation}{7}%
+\contentsline {chapter}{\numberline {2}Survival curves}{9}%
+\contentsline {section}{\numberline {2.1}One event type, one event per subject}{9}%
+\contentsline {paragraph}{Mean and median}{13}%
+\contentsline {section}{\numberline {2.2}Repeated events}{14}%
+\contentsline {section}{\numberline {2.3}Competing risks}{17}%
+\contentsline {subsection}{\numberline {2.3.1}Simple example}{17}%
+\contentsline {subsection}{\numberline {2.3.2}Monoclonal gammopathy}{20}%
+\contentsline {section}{\numberline {2.4}Multi-state data}{23}%
+\contentsline {subsection}{\numberline {2.4.1}Myeloid data}{24}%
+\contentsline {section}{\numberline {2.5}Influence matrix}{37}%
+\contentsline {section}{\numberline {2.6}Differences in survival}{39}%
+\contentsline {section}{\numberline {2.7}Robust variance}{39}%
+\contentsline {section}{\numberline {2.8}State space figures}{40}%
+\contentsline {subsection}{\numberline {2.8.1}Further notes}{41}%
+\contentsline {chapter}{\numberline {3}Cox model}{43}%
+\contentsline {section}{\numberline {3.1}One event type, one event per subject}{43}%
+\contentsline {section}{\numberline {3.2}Repeating Events}{49}%
+\contentsline {section}{\numberline {3.3}Competing risks}{52}%
+\contentsline {subsection}{\numberline {3.3.1}MGUS}{52}%
+\contentsline {section}{\numberline {3.4}Multiple event types and multiple events per subject}{57}%
+\contentsline {subsection}{\numberline {3.4.1}Data}{58}%
+\contentsline {subsection}{\numberline {3.4.2}Fits}{59}%
+\contentsline {subsection}{\numberline {3.4.3}Timeline data}{66}%
+\contentsline {section}{\numberline {3.5}Testing proportional hazards}{69}%
+\contentsline {subsection}{\numberline {3.5.1}Constructed variables}{69}%
+\contentsline {subsection}{\numberline {3.5.2}Score tests}{71}%
+\contentsline {chapter}{\numberline {4}Accelerated Failure Time models}{74}%
+\contentsline {section}{\numberline {4.1}Usage}{74}%
+\contentsline {section}{\numberline {4.2}Strata}{75}%
+\contentsline {section}{\numberline {4.3}Penalized models}{75}%
+\contentsline {section}{\numberline {4.4}Specifying a distribution}{76}%
+\contentsline {section}{\numberline {4.5}Residuals}{78}%
+\contentsline {subsection}{\numberline {4.5.1}Response}{78}%
+\contentsline {subsection}{\numberline {4.5.2}Deviance}{78}%
+\contentsline {subsection}{\numberline {4.5.3}Dfbeta}{78}%
+\contentsline {subsection}{\numberline {4.5.4}Working}{79}%
+\contentsline {subsection}{\numberline {4.5.5}Likelihood displacement residuals}{79}%
+\contentsline {section}{\numberline {4.6}Predicted values}{79}%
+\contentsline {subsection}{\numberline {4.6.1}Linear predictor and response}{79}%
+\contentsline {subsection}{\numberline {4.6.2}Terms}{79}%
+\contentsline {subsection}{\numberline {4.6.3}Quantiles}{80}%
+\contentsline {section}{\numberline {4.7}Fitting the model}{81}%
+\contentsline {section}{\numberline {4.8}Derivatives}{83}%
+\contentsline {section}{\numberline {4.9}Distributions}{84}%
+\contentsline {subsection}{\numberline {4.9.1}Gaussian}{84}%
+\contentsline {subsection}{\numberline {4.9.2}Extreme value}{84}%
+\contentsline {subsection}{\numberline {4.9.3}Logistic}{85}%
+\contentsline {subsection}{\numberline {4.9.4}Other distributions}{85}%
+\contentsline {chapter}{\numberline {5}Tied event times}{87}%
+\contentsline {section}{\numberline {5.1}Cox model estimates}{87}%
+\contentsline {section}{\numberline {5.2}Cumulative hazard and survival}{90}%
+\contentsline {section}{\numberline {5.3}Predicted cumulative hazard and surival from a Cox model}{90}%
+\contentsline {chapter}{\numberline {6}Multi-state models}{92}%
+\contentsline {chapter}{\numberline {A}Changes from version 2.44 to 3.1}{93}%
+\contentsline {section}{\numberline {A.1}Changes in version 3}{93}%
+\contentsline {section}{\numberline {A.2}Survfit}{94}%
+\contentsline {section}{\numberline {A.3}Coxph}{95}%
