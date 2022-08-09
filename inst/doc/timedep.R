@@ -259,7 +259,7 @@ abline(coef(vfit3)[3:4], lwd=2, lty=3, col=2)
 vfit4 <-  coxph(Surv(time, status) ~ trt + prior + karno + tt(karno),
                 data=veteran,
                 tt = function(x, t, ...) x* nsk(t, knots=c(5, 100, 200, 400),
-                                                Boundary = FALSE))
+                                                Boundary.knots = FALSE))
 vfit4
 
 
@@ -355,7 +355,7 @@ matplot(seq(1,13, length=50), yy, type='l', lty=c(1,2,2), col=1, lwd=c(1,2,2),
 
 
 ###################################################
-### code chunk number 31: timedep.Rnw:1268-1275
+### code chunk number 31: timedep.Rnw:1270-1277
 ###################################################
 function(x, t, riskset, weights){ 
     obrien <- function(x) {
@@ -367,7 +367,7 @@ function(x, t, riskset, weights){
 
 
 ###################################################
-### code chunk number 32: timedep.Rnw:1285-1287
+### code chunk number 32: timedep.Rnw:1287-1289
 ###################################################
 function(x, t, riskset, weights) 
     unlist(tapply(x, riskset, rank))

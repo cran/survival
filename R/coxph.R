@@ -264,7 +264,9 @@ coxph <- function(formula, data, weights, subset, na.action,
         istrat <- rep(1:length(counts$nrisk), counts$nrisk)
         weights <- model.weights(mf)
         if (!is.null(weights) && any(!is.finite(weights)))
-            stop("weights must be finite")  
+            stop("weights must be finite") 
+        id <- model.extract(mf, "id")   # update the id and/or cluster, if present
+        cluster <- model.extract(mf, "cluster")
 
         tcall <- attr(Terms, 'variables')[timetrans$terms+2]
         pvars <- attr(Terms, 'predvars')
@@ -465,11 +467,11 @@ coxph <- function(formula, data, weights, subset, na.action,
             # tmap starts with a "(Baseline)" row, which we want
             # strats is indexed off the data frame, which includes the response, so
             #  turns out to be correct for the remaining rows of tmap
-            stratum_map <- tmap[c(1L, strats),] 
-            stratum_map[-1,] <- ifelse(stratum_map[-1,] >0, 1L, 0L)
-            if (nrow(stratum_map) > 2) {
+            smap <- tmap[c(1L, strats),] 
+            smap[-1,] <- ifelse(smap[-1,] >0, 1L, 0L)
+            if (nrow(smap) > 2) {
                 # multi state with more than 1 strata statement -- really unusual
-                temp <- stratum_map[-1,]
+                temp <- smap[-1,]
                 if (!all(apply(temp, 2, function(x) all(x==0) || all(x==1)))) {
                     # the hard case: some transitions use one strata variable, some
                     #  transitions use another.  We need to keep them separate
@@ -478,14 +480,16 @@ coxph <- function(formula, data, weights, subset, na.action,
                 }
             }
         }
-        else stratum_map <- tmap[1,,drop=FALSE]
+        else smap <- tmap[1,,drop=FALSE]
         cmap <- parsecovar3(tmap, colnames(X), attr(X, "assign"), covlist2$phbaseline)
-        xstack <- stacker(cmap, stratum_map, as.integer(istate), X, Y, strata=istrat,
+        xstack <- stacker(cmap, smap, as.integer(istate), X, Y, strata=istrat,
                           states=states)
 
         rkeep <- unique(xstack$rindex)
         transitions <- survcheck2(Y[rkeep,], id[rkeep], istate[rkeep])$transitions
 
+        Xsave <- X  # the originals may be needed later
+        Ysave <- Y
         X <- xstack$X
         Y <- xstack$Y
         istrat <- xstack$strata
@@ -643,11 +647,13 @@ coxph <- function(formula, data, weights, subset, na.action,
             fit$model <- mf
         }
         if (x)  {
-            fit$x <- X
+            if (multi) fit$x <- Xsave else fit$x <- X
             if (length(timetrans)) fit$strata <- istrat
             else if (length(strats)) fit$strata <- strata.keep
         }
-        if (y)  fit$y <- Y
+        if (y)  {
+            if (multi) fit$y <- Ysave else fit$y <- Y
+        }
         fit$timefix <- control$timefix  # remember this option
     }
     if (!is.null(weights) && any(weights!=1)) fit$weights <- weights
@@ -655,16 +661,48 @@ coxph <- function(formula, data, weights, subset, na.action,
         fit$transitions <- transitions
         fit$states <- states
         fit$cmap <- cmap
-        fit$stratum_map <- stratum_map   # why not 'stratamap'?  Confusion with fit$strata
-        fit$resid <- rowsum(fit$resid, xstack$rindex)
+        fit$smap <- smap   # why not 'stratamap'?  Confusion with fit$strata
+        nonzero <- which(colSums(cmap)!=0)
+        fit$rmap <- cbind(row=xstack$rindex, transition= nonzero[xstack$transition])
+        
         # add a suffix to each coefficent name.  Those that map to multiple transitions
         #  get the first transition they map to
         single <- apply(cmap, 1, function(x) all(x %in% c(0, max(x)))) #only 1 coef
         cindx <- col(cmap)[match(1:length(fit$coefficients), cmap)]
         rindx <- row(cmap)[match(1:length(fit$coefficients), cmap)]
         suffix <- ifelse(single[rindx], "", paste0("_", colnames(cmap)[cindx]))
-        names(fit$coefficients) <- paste0(names(fit$coefficients), suffix)
-        if (x) fit$strata <- istrat  # save the expanded strata
+        newname <- paste0(names(fit$coefficients), suffix)
+        if (any(covlist2$phbaseline > 0)) {
+            # for proportional baselines, use a better name
+            base  <- colnames(tmap)[covlist2$phbaseline]
+            child <- colnames(tmap)[which(covlist2$phbaseline >0)]
+            indx <- 1 + length(newname) - length(base):1 # coefs are the last ones
+            newname[indx] <-  paste0("ph(", child, "/", base, ")")
+            phrow <- apply(cmap, 1, function(x) all(x[x>0] %in% indx))
+            matcoef <- cmap[!phrow,,drop=FALSE ] # ph() terms exluded 
+            }
+        else matcoef <- cmap   
+        names(fit$coefficients) <- newname
+        
+        if (FALSE) { 
+            # an idea that was tried, then paused: make the linear predictors
+            # and residuals into matrices with one column per transition
+            matcoef[matcoef>0] <- fit$coefficients[matcoef]
+            temp <- Xsave %*% matcoef
+            colnames(temp) <- colnames(cmap)
+            fit$linear.predictors <- temp
+
+            temp <- matrix(0., nrow=nrow(Xsave), ncol=ncol(fit$cmap))
+            temp[cbind(xstack$rindex, xstack$transition)] <- fit$residuals
+            # if there are any transitions with no covariates, residuals have not
+            #  yet been calculated for those.
+            if (any(colSums(cmap) ==0)) {
+                from.state <- as.numeric(sub(":.*$", "", colnames(cmap)))
+                to.state   <- as.numeric(sub("^.*:", "", colnames(cmap)))
+               # warning("no covariate residuals not filled in")
+            }
+            fit$residuals <- temp
+        }
         class(fit) <- c("coxphms", class(fit))
     }
     names(fit$means) <- names(fit$coefficients)

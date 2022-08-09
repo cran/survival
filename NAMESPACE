@@ -5,8 +5,8 @@ importFrom(stats, aggregate, anova, approx, as.formula, coef, coefficients,
            contr.treatment, cor, density, delete.response, extractAIC, formula, 
            family, fitted, lm, logLik, makepredictcall, median, model.extract,
            model.frame, model.matrix, model.offset, model.response, make.link,
-           model.weights, na.fail, na.pass, napredict, naprint, naresid, nobs,
-           pchisq, pnorm, printCoefmat, predict, qnorm, quantile, qgamma,
+           model.weights, na.fail, na.pass, na.omit, napredict, naprint, naresid,
+           nobs, pchisq, pnorm, printCoefmat, predict, qnorm, quantile, qgamma,
            reformulate, setNames, terms.formula, 
            resid, residuals, rnorm, runif, stat.anova, terms, weights, var, vcov,
            .checkMFClasses, .getXlevels, update, update.formula)
@@ -155,6 +155,7 @@ S3method(print, coxph.null)
 S3method(print, coxph.penal)
 S3method(print, pyears)
 S3method(print, ratetable)
+S3method(print, summary.aareg)
 S3method(print, summary.cch)
 S3method(print, summary.coxph)
 S3method(print, summary.coxph.penal)

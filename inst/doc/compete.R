@@ -105,10 +105,10 @@ par(oldpar)
 ### code chunk number 5: mgus2
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
-etime <- with(mgus2, ifelse(pstat==0, futime, ptime))
+mgus2$etime <- with(mgus2, ifelse(pstat==0, futime, ptime))
 event <- with(mgus2, ifelse(pstat==0, 2*death, 1))
-event <- factor(event, 0:2, labels=c("censor", "pcm", "death"))
-table(event)
+mgus2$event <- factor(event, 0:2, labels=c("censor", "pcm", "death"))
+table(mgus2$event)
 
 mfit2 <- survfit(Surv(etime, event) ~ sex, data=mgus2)
 print(mfit2, rmean=240, scale=12)

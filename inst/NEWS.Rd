@@ -1,5 +1,27 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.4-0}{
+  \itemize{
+    \item Replace .[terms call in predict.coxph with drop.term();
+    due to an error in [.term discovered by Jorge Menezes.  Add
+    dropterm.R to the test suite.
+    \item Fix all errors in R CMD check, and submit to CRAN
+}}
+\section{Changes in version 3.3-2}{
+  \itemize{
+    \item Error in concordance(fit, newdata) if newdata had missing
+    values: the derived x and y could be different lengths.
+    \item Add test cases for the (rather difficult) case of predicted
+    survival for multi-state coxph model that has shared hazards
+    \item nsk(..., Boundary.knots=FALSE) was not being handled properly.
+    \item Fix error in terms.inner; it failed for a function with no
+    arguments. Pointed out by Daniel Sjberg and Duncan Murdoch.
+    \item Remove Sint from C code.
+    \item The package sometimes used P(>Chi) and somtimes Pr(>Chi) as a
+    printout label; the base packages all use "Pr".  Changed this to be
+    consistent.
+    }}
+
 \section{Changes in version 3.3-1}{
   \itemize{
     \item Update the saved tests/Examples/survival-Ex.Rout.save file so

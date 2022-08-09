@@ -65,18 +65,18 @@ curve, and markdown is thus attractive.)
 
 \section{Cox Models}
 \subsection{Coxph}
-The [[coxph]] routine is the underlying basis for all the models.
+The \code{coxph} routine is the underlying basis for all the models.
 The source was converted to noweb when adding time-transform terms.
 
 The call starts out with the basic building of a model frame
 and proceeds from there.
-The aeqSurv function is used to adjucate near ties in the time
-variable, numerical precision issues that occur when users base
-caculations on days/365.25 instead of days.
-
 A cluster term in the model is an exception.  The variable mentioned is
 never part of the formal model, and so it is not kept as part of the saved
 terms structure.
+
+The aeqSurv function is used to adjucate near ties in the time
+variable, numerical precision issues that occur when users base
+caculations on days/365.25 instead of days.
 
 The analysis for multi-state data is a bit more complex.
 \begin{itemize}
@@ -488,11 +488,11 @@ if (length(strats) >0) {
     # tmap starts with a "(Baseline)" row, which we want
     # strats is indexed off the data frame, which includes the response, so
     #  turns out to be correct for the remaining rows of tmap
-    stratum_map <- tmap[c(1L, strats),] 
-    stratum_map[-1,] <- ifelse(stratum_map[-1,] >0, 1L, 0L)
-    if (nrow(stratum_map) > 2) {
+    smap <- tmap[c(1L, strats),] 
+    smap[-1,] <- ifelse(smap[-1,] >0, 1L, 0L)
+    if (nrow(smap) > 2) {
         # multi state with more than 1 strata statement -- really unusual
-        temp <- stratum_map[-1,]
+        temp <- smap[-1,]
         if (!all(apply(temp, 2, function(x) all(x==0) || all(x==1)))) {
             # the hard case: some transitions use one strata variable, some
             #  transitions use another.  We need to keep them separate
@@ -501,13 +501,13 @@ if (length(strats) >0) {
         }
     }
 }
-else stratum_map <- tmap[1,,drop=FALSE]
+else smap <- tmap[1,,drop=FALSE]
 @ 
 
 Also create the initial values vector.
 
 The stacker function will create a separate block of observations for every
-unique value in \code{stratum\_map}.
+unique value in \code{smap}.
 Now say that two transitions A:B and A:C share the same baseline hazard. 
 Then either a B or a C outcome will be an ``event'' in that stratum; they 
 would only be distinguished by perhaps having different covariates.
@@ -518,12 +518,14 @@ Then set up the data.
 
 <<coxph-multi-X>>=
 cmap <- parsecovar3(tmap, colnames(X), attr(X, "assign"), covlist2$phbaseline)
-xstack <- stacker(cmap, stratum_map, as.integer(istate), X, Y, strata=istrat,
+xstack <- stacker(cmap, smap, as.integer(istate), X, Y, strata=istrat,
                   states=states)
 
 rkeep <- unique(xstack$rindex)
 transitions <- survcheck2(Y[rkeep,], id[rkeep], istate[rkeep])$transitions
 
+Xsave <- X  # the originals may be needed later
+Ysave <- Y
 X <- xstack$X
 Y <- xstack$Y
 istrat <- xstack$strata
@@ -687,7 +689,9 @@ mf <- mf[tindex,]
 istrat <- rep(1:length(counts$nrisk), counts$nrisk)
 weights <- model.weights(mf)
 if (!is.null(weights) && any(!is.finite(weights)))
-    stop("weights must be finite")  
+    stop("weights must be finite") 
+id <- model.extract(mf, "id")   # update the id and/or cluster, if present
+cluster <- model.extract(mf, "cluster")
 
 tcall <- attr(Terms, 'variables')[timetrans$terms+2]
 pvars <- attr(Terms, 'predvars')
@@ -1176,11 +1180,13 @@ else {
         fit$model <- mf
     }
     if (x)  {
-        fit$x <- X
+        if (multi) fit$x <- Xsave else fit$x <- X
         if (length(timetrans)) fit$strata <- istrat
         else if (length(strats)) fit$strata <- strata.keep
     }
-    if (y)  fit$y <- Y
+    if (y)  {
+        if (multi) fit$y <- Ysave else fit$y <- Y
+    }
     fit$timefix <- control$timefix  # remember this option
 }
 @ 
@@ -1190,22 +1196,71 @@ useful to survfit.coxph.
 Other objects below are used when we need to recreate a 
 model frame.
 
+A multi-state model will have a matrix of linear predictors and of residuals.
+Each has a column for each transition and a row for each subject.
+The rows are with respect to the starting X and Y, not the expanded ones which
+were used to compute the coefficients.  
+The expanded linear predictor is easy: Xbeta where beta is the matrix form of
+the coefficients.
+Residuals are a bit more nuisance: if an observation was a risk for an a:b
+transition, it will appear in the a:b strata of the expanded X matrix, and that
+residual fills in the appropriate row/col.  If it was not at risk for said
+transition, the residual is zero. 
+There is, however, a further problem. Any transitions for which there are no
+covariates were not sent across as a strata to the fitting routine --- they 
+would create a stratum where all covariates = 0, which cause computation for
+no cause.
+But that also means that the martingale residuals are not computed for those
+rows of the data.
+
 <<coxph-finish>>=
 if (!is.null(weights) && any(weights!=1)) fit$weights <- weights
 if (multi) {
     fit$transitions <- transitions
     fit$states <- states
     fit$cmap <- cmap
-    fit$stratum_map <- stratum_map   # why not 'stratamap'?  Confusion with fit$strata
-    fit$resid <- rowsum(fit$resid, xstack$rindex)
+    fit$smap <- smap   # why not 'stratamap'?  Confusion with fit$strata
+    nonzero <- which(colSums(cmap)!=0)
+    fit$rmap <- cbind(row=xstack$rindex, transition= nonzero[xstack$transition])
+    
     # add a suffix to each coefficent name.  Those that map to multiple transitions
     #  get the first transition they map to
     single <- apply(cmap, 1, function(x) all(x %in% c(0, max(x)))) #only 1 coef
     cindx <- col(cmap)[match(1:length(fit$coefficients), cmap)]
     rindx <- row(cmap)[match(1:length(fit$coefficients), cmap)]
     suffix <- ifelse(single[rindx], "", paste0("_", colnames(cmap)[cindx]))
-    names(fit$coefficients) <- paste0(names(fit$coefficients), suffix)
-    if (x) fit$strata <- istrat  # save the expanded strata
+    newname <- paste0(names(fit$coefficients), suffix)
+    if (any(covlist2$phbaseline > 0)) {
+        # for proportional baselines, use a better name
+        base  <- colnames(tmap)[covlist2$phbaseline]
+        child <- colnames(tmap)[which(covlist2$phbaseline >0)]
+        indx <- 1 + length(newname) - length(base):1 # coefs are the last ones
+        newname[indx] <-  paste0("ph(", child, "/", base, ")")
+        phrow <- apply(cmap, 1, function(x) all(x[x>0] %in% indx))
+        matcoef <- cmap[!phrow,,drop=FALSE ] # ph() terms exluded 
+        }
+    else matcoef <- cmap   
+    names(fit$coefficients) <- newname
+    
+    if (FALSE) { 
+        # an idea that was tried, then paused: make the linear predictors
+        # and residuals into matrices with one column per transition
+        matcoef[matcoef>0] <- fit$coefficients[matcoef]
+        temp <- Xsave %*% matcoef
+        colnames(temp) <- colnames(cmap)
+        fit$linear.predictors <- temp
+
+        temp <- matrix(0., nrow=nrow(Xsave), ncol=ncol(fit$cmap))
+        temp[cbind(xstack$rindex, xstack$transition)] <- fit$residuals
+        # if there are any transitions with no covariates, residuals have not
+        #  yet been calculated for those.
+        if (any(colSums(cmap) ==0)) {
+            from.state <- as.numeric(sub(":.*$", "", colnames(cmap)))
+            to.state   <- as.numeric(sub("^.*:", "", colnames(cmap)))
+           # warning("no covariate residuals not filled in")
+        }
+        fit$residuals <- temp
+    }
     class(fit) <- c("coxphms", class(fit))
 }
 names(fit$means) <- names(fit$coefficients)
@@ -3974,8 +4029,8 @@ the subjects with an event.  Their length will be equal to sum(ndeath).
 #include "survS.h"
 #include "survproto.h"
 
-void agsurv4(Sint   *ndeath,   double *risk,    double *wt,
-             Sint   *sn,        double *denom,   double *km) 
+void agsurv4(int   *ndeath,   double *risk,    double *wt,
+             int   *sn,        double *denom,   double *km) 
 {
     int i,j,k, l;
     int n;  /* number of unique death times */
@@ -4048,7 +4103,7 @@ the mean of $x$ at this point.
 
 <<agsurv5>>=
 #include "survS.h"
-void agsurv5(Sint *n2,     Sint *nvar2,  Sint *dd, double *x1,  
+void agsurv5(int *n2,      int *nvar2,   int *dd,  double *x1,  
              double *x2,   double *xsum, double *xsum2, 
              double *sum1, double *sum2, double *xbar) {
     double temp;
@@ -4104,25 +4159,30 @@ function(formula, newdata, se.fit=FALSE, conf.int=.95, individual=FALSE,
         stop("multi-state survival requires a newdata argument")
     if (!missing(id)) 
         stop("using a covariate path is not supported for multi-state")
-    temp <- object$stratum_map["(Baseline)",] 
+    temp <- object$smap["(Baseline)",] 
     baselinecoef <- rbind(temp, coef= 1.0)
     if (any(duplicated(temp))) {
-        # We have shared hazards
-        # Find rows of cmap with "ph(a:b)" type labels to find out which
-        #  ones have proportionality
-        rname <- rownames(object$cmap)
-        phbase <- grepl("ph(", rname, fixed=TRUE)
-        for (i in which(phbase)) {
-            ctemp <- object$cmap[i,]
-            index <- which(ctemp >0)
-            baselinecoef[2, index] <- exp(object$coef[ctemp[index]])
-        }
-    } else phbase <- rep(FALSE, nrow(object$cmap))
+        # We have shared hazards 
+        # If there are k duplicates, then the last k coefficient in beta are
+        #  the coefs that match them
+        idup <- duplicated(temp)
+        ncoef <- length(object$coefficients)
+        ndup <- sum(idup)
+        # shared baseline coefficients are last in the coefficient vector
+        i <- seq(to = ncoef, length=ndup)
+        baselinecoef[2, idup] <- exp(object$coefficients[i])
+
+        # which rows of cmap point to scale coefs?
+        phbase <- apply(object$cmap, 1, function(i) any(i > ncoef-ndup))
+    }
+    else phbase <- rep(FALSE, nrow(object$cmap))
       
-    # process options, set up Y and the model frame, deal with start.time
+    # process options, set up Y and the model frame for the original data
     <<survfit.coxph-setup1>>
     <<survfit.coxph-setup2>>
     istate <- model.extract(mf, "istate")
+
+    #deal with start time, by throwing out observations that end before then
     if (!missing(start.time)) {
         if (!is.numeric(start.time) || length(start.time) !=1
             || !is.finite(start.time))
@@ -4138,7 +4198,7 @@ function(formula, newdata, se.fit=FALSE, conf.int=.95, individual=FALSE,
             istate <- istate[-toss]
         }
     }
-
+    
     # expansion of the X matrix with stacker, set up shared hazards
     <<survfit.coxphms-setupa>>
 
@@ -4164,45 +4224,40 @@ while for the computation proper it is easier to make use of the same
 expanded data set that coxph used for a multi-state fit.
 
 <<survfit.coxphms-setupa>>=
-# Rebuild istate using the survcheck routine
+# Rebuild istate using the survcheck routine, as a double check
+# that the data set hasn't been modified
 mcheck <- survcheck2(Y, oldid, istate)
 transitions <- mcheck$transitions
-if (is.null(istate)) istate <- mcheck$istate
 if (!identical(object$states, mcheck$states))
     stop("failed to rebuild the data set")
+if (is.null(istate)) istate <- mcheck$istate
+else if (any(as.character(istate) != as.character(mcheck$istate))) 
+    stop("survival curve cannot be created due to survcheck warnings")
 
 # Let the survfitCI routine do the work of creating the
 #  overall counts (n.risk, etc).  The rest of this code then
 #  replaces the surv and hazard components.
 if (missing(start.time)) start.time <- min(Y[,2], 0)
-# If the data has absorbing states (ones with no transitions out), then
-#  remove those rows first since they won't be in the final output.
-t2 <- transitions[, is.na(match(colnames(transitions), "(censored)")), drop=FALSE]
-absorb <- row.names(t2)[rowSums(t2)==0]
 
 if (is.null(weights)) weights <- rep(1.0, nrow(Y))
 if (is.null(strata))  tempstrat <- rep(1L, nrow(Y))
 else                  tempstrat <- strata
 
-if (length(absorb)) droprow <- istate %in% absorb  else droprow <- FALSE
-
-# Let survfitCI fill in the n, number at risk, number of events, etc. portions
-# We will replace the pstate and cumhaz estimate with correct ones.
-if (any(droprow)) {
-    j <- which(!droprow)
-    cifit <- survfitCI(as.factor(tempstrat[j]), Y[j,], weights[j], 
-                       id =oldid[j], istate= istate[j],
-                       se.fit=FALSE, start.time=start.time, p0=p0)
-    }
-else cifit <- survfitCI(as.factor(tempstrat), Y, weights, 
+cifit <- survfitCI(as.factor(tempstrat), Y, weights, 
                         id= oldid, istate = istate, se.fit=FALSE, 
                         start.time=start.time, p0=p0)
 
 # For computing the  actual estimates it is easier to work with an
 #  expanded data set.
-# Replicate actions found in the coxph-multi-X chunk,
+# Replicate actions found in the coxph-multi-X chunk
+# Note the dropzero=FALSE argument: if there is a transition with no 
+#  covariates we still need it expanded; this differs from coxph.
+# A second differnence is tstrata: force stacker to think that every
+#  transition is a unique hazard, so that it does proper expansion.
 cluster <- model.extract(mf, "cluster")
-xstack <- stacker(object$cmap, object$stratum_map, as.integer(istate), X, Y,
+tstrata <- object$smap
+tstrata[1,] <- 1:ncol(tstrata)
+xstack <- stacker(object$cmap, tstrata, as.integer(istate), X, Y,
                   as.integer(strata),
                   states= object$states, dropzero=FALSE)
 if (length(position) >0)
@@ -4223,7 +4278,10 @@ Fix up the X matrix to avoid huge values.  In the single state case this
 is fairly straightforward: use $(X-1m')\beta = X\beta - m'\beta$ where
 $m$ is the vector of centering constants found in the 
 \code{object\$means} component.
-However, 
+However, in multi-state there will often be covariates that are part of one
+transition but not another, and if one of them is wild we will want different
+centering for each transition.
+(Not yet implemented).
 <<survfit.coxph-setup2d>>=
 if (length(object$means) ==0) { # a model with only an offset term
     # Give it a dummy X so the rest of the code goes through
@@ -4265,7 +4323,11 @@ if (has.strata && !is.null(mf2[[stangle$vars]])){
     x2 <- unique(x2)
 }
 temp <- coef(object, matrix=TRUE)[!phbase,,drop=FALSE] # ignore missing coefs
+# temp will be a matrix of coefficients, with ncol = number of transtions
+#  and nrow = the covariate set of a "normal" Cox model.
+# x2 will have one row per desired curve and one col per 'normal' covariate.
 risk2 <- exp(x2 %*% ifelse(is.na(temp), 0, temp) - xcenter)
+# risk2 has a risk score with rows= curve and cols= transition
 @ 
 
 At this point we have several parts to keep straight.  The data set has been
@@ -4278,9 +4340,9 @@ expanded into a new X and Y.
   \item \code{transtion} contains the transition to which each observation
     applies
   \item \code{istrat} comes from the xstack routine, and marks each
-    strata * basline hazard combination.
+    strata * baseline hazard combination.
   \item \code{baselinecoef} maps from baseline hazards to transitions.  It
-    has one column per transition, which hazard it points to, and a
+    has one column per transition, which baseline hazard it points to, and a
     multiplier. Most multipliers will be 1.
   \item \code{hfill} is constructed below. It contains the row/column to which
     each column of baselinecoef is mapped, within the H matrix used to compute
@@ -4295,12 +4357,8 @@ a sum over strata.  This routine does each stratum separately.
 # elements that are non-zero only for observed transtions.
 states <- object$states
 nstate <- length(states)
-notcens <- (colnames(object$transitions) != "(censored)")
-trmat <- object$transitions[, notcens, drop=FALSE]
-from <- row(trmat)[trmat>0]  
-from <- match(rownames(trmat), states)[from]  # actual row of H
-to   <- col(trmat)[trmat>0]
-to   <- match(colnames(trmat), states)[to]    # actual col of H
+from <- as.numeric(sub(":.*$", "", colnames(object$smap)))
+to   <- as.numeric(sub("^.*:", "", colnames(object$smap)))
 hfill <- cbind(from, to)
 
 if (individual) {
@@ -4351,16 +4409,25 @@ Finally, a routine that does all the actual work.
     Position is a flag for each obs. Is it the first of a connected string
     such as (10, 12) (12,19) (19,21), the last of such a string, both, 
     or neither.  1*first + 2*last.   This affects whether an obs is labeled
-    as censored or not, nothing else.
+    as censored or not in user printout, nothing else.  (That part has actually
+    already been done via the survfitCI call.)
   \item x2 and risk2 are the covariates and risk scores for the predicted 
     values.  These do not involve any ph(a:b) coefficients.
-  \item baselinecoef and hfill control mapping from fittes hazards to 
+  \item baselinecoef encodes shared hazards
+   \item hfill control mapping from fitted hazards to 
     transitions and probabilities
   \item p0 will be NULL if the user did not specifiy it.  
   \item vmat is only needed for standard errors
   \item utime is the set of time points desired
 \end{itemize}
 
+The cn matrix below contains all the subtotals we need.
+Say that transitions 4, 5, and 6 have a shared hazard, with bcoef[2,] values
+of 1, 1.3, .4 (the first coef is always 1).
+Then the underlying hazard will base = (events[3] + events[4] + events[5])/
+(nrisk[3] + 1.3* nrisk[4] + .4*nrisk[5]),
+and the 3 individual hazards are 1*base, 1.3*base and .4*base.
+If there are no shared hazards this can be computed more simply of course.
 
 <<survfit.coxphms>>=
 # Compute the hazard  and survival functions 
@@ -4382,66 +4449,92 @@ multihaz <- function(y, x, position, weight, risk, istrat, ctype, stype,
 
     fit <- .Call(Ccoxsurv2, utime, y, weight, sort1, sort2, position, 
                         istrat, x, risk)
-    cn <- fit$count  # 1-3 = at risk, 4-6 = events, 7-8 = censored events
-                     # 9-10 = censored, 11-12 = Efron, 13-15 = entry
+    cn <- fit$count  
+    dim(cn) <- c(length(utime), fit$ntrans, 12) 
+    # cn is returned as a matrix since there is an allocMatrix C macro, but
+    #  no allocArray macro.  So we first reset the dimensions.
+    # The first dimension is time
+    # Second is the transition, same order as columns of bcoef
+    # Third is the count type: 1-3 = at risk (unweighted, with case weights,
+    #  with casewt * risk wt), 4-6 = events (unweighted, case, risk), 
+    #  7-8 = censored events, 9-10 = censored, 11-12 = Efron
 
+    # We will use events/(at risk) = cn[,,5]/cn[,,3] a few lines below; avoid 0/0
+    # If there is no one at risk there are no events, obviously.
+    # cn[,,1] is the safer check since it is an integer, but if there are weights
+    #  and a subject with weight=0 were the only one at risk, we need cn[,,2]
+    # (Users should never use weights of 0, but someone, somewhere, will do it.)
+    none.atrisk <- (cn[,,1]==0 | cn[,,2]==0)
     if (ctype ==1) {
-        denom1 <- ifelse(cn[,4]==0, 1, cn[,3])
-        denom2 <- ifelse(cn[,4]==0, 1, cn[,3]^2)
+        denom1 <- ifelse(none.atrisk, 1, cn[,,3])   # avoid a later 0/0
+        denom2 <- ifelse(none.atrisk, 1, cn[,,3]^2)
     } else {
-        denom1 <- ifelse(cn[,4]==0, 1, cn[,11])
-        denom2 <- ifelse(cn[,4]==0, 1, cn[,12])
+        denom1 <- ifelse(none.atrisk, 1, cn[,,11])
+        denom2 <- ifelse(none.atrisk, 1, cn[,,12])
     }
 
-    temp <- matrix(cn[,5] / denom1, ncol = fit$ntrans)
-    hazard <- temp[,bcoef[1,]] * rep(bcoef[2,], each=nrow(temp))
-    if (se.fit) {
-        temp <- matrix(cn[,5] / denom2, ncol = fit$ntrans)
-        varhaz <- temp[,bcoef[1,]] * rep(bcoef[2,]^2, each=nrow(temp))
+    # We want to avoid 0/0. If there is no one at risk (denominator) then
+    # by definition there will be no events (numerator), and that element of
+    # the hazard is by definintion also 0.
+    if (any(duplicated(bcoef[1,]))) {
+        # there are shared hazards: we have to collapse and then expand
+        if (all(bcoef[1,] == bcoef[1,1])) design <- matrix(1, nrow=ncol(bcoef))
+        else design <- model.matrix(~factor(zed) -1, data.frame(zed=bcoef[1,]))
+        colnames(design) <- 1:ncol(design)  # easier to read when debuggin
+        events <- cn[,,5] %*% design
+        if (ctype==1) atrisk <- cn[,,3]  %*% design
+        else          atrisk <- cn[,,11] %*% design
+        basehaz <- events/ifelse(atrisk<=0, 1, atrisk)
+        hazard <- basehaz[,bcoef[1,]] * rep(bcoef[2,], each=nrow(basehaz))
+    }                                  
+    else {
+        if (ctype==1) hazard <- cn[,,5]/ifelse(cn[,,3]<=0, 1, cn[,,3])
+        else          hazard <- cn[,,5]/ifelse(cn[,,11] <=0, 1, cn[,,11])
     }
-    
+
     # Expand the result, one "hazard set" for each row of x2
     nx2 <- nrow(x2)
     h2 <- array(0, dim=c(nrow(hazard), nx2, ncol(hazard)))
-    if (se.fit) v2 <- h2
     S <- double(nstate)  # survival at the current time
     S2 <- array(0, dim=c(nrow(hazard), nx2, nstate))
  
     H <- matrix(0, nstate, nstate)
     if (stype==2) {
-        H[hfill] <- colMeans(hazard)
+        H[hfill] <- colMeans(hazard)    # dummy H to drive esetup
         diag(H) <- diag(H) -rowSums(H)
         esetup <- survexpmsetup(H)
     }
 
     for (i in 1:nx2) {
-        h2[,i,] <- apply(hazard %*% diag(risk2[i,]), 2, cumsum)
-        if (se.fit) {
+        h2[,i,] <- apply(hazard * rep(risk2[i,], each=ntime), 2, cumsum)
+        if (FALSE) {  # if (se.fit) eventually
             d1 <- fit$xbar - rep(x[i,], each=nrow(fit$xbar))
             d2 <- apply(d1*hazard, 2, cumsum)
             d3 <- rowSums((d2%*% vmat) * d2)
-#            v2[jj,] <- (apply(varhaz[jj,],2, cumsum) + d3) * (risk2[i])^2
+            v2[jj,] <- (apply(varhaz[jj,],2, cumsum) + d3) * (risk2[i])^2
         }
 
         S <- p0
         for (j in 1:ntime) {
-            H[,] <- 0.0
-            H[hfill] <- hazard[j,] *risk2[i,]
-            if (stype==1) {
-                diag(H) <- pmax(0, 1.0 - rowSums(H))
-                S <- as.vector(S %*% H)  # don't keep any names
-            }
-            else {
-                diag(H) <- 0.0 - rowSums(H)
-                #S <- as.vector(S %*% expm(H))  # dgeMatrix issue
-                S <- as.vector(S %*% survexpm(H, 1, esetup))
+            if (any(hazard[j,] > 0)) { # hazard =0 for censoring times
+                H[,] <- 0.0
+                H[hfill] <- hazard[j,] *risk2[i,]
+                if (stype==1) {
+                    diag(H) <- pmax(0, 1.0 - rowSums(H))
+                    S <- as.vector(S %*% H)  # don't keep any names
+                }
+                else {
+                    diag(H) <- 0.0 - rowSums(H)
+                    #S <- as.vector(S %*% expm(H))  # dgeMatrix issue
+                    S <- as.vector(S %*% survexpm(H, 1, esetup))
+                }
             }
             S2[j,i,] <- S
         }
     }
     rval <- list(time=utime, xgrp=rep(1:nx2, each=nrow(hazard)),
                  pstate=S2, cumhaz=h2)
-    if (se.fit) rval$varhaz <- v2
+    #if (se.fit) rval$varhaz <- v2
     rval
 }
 @
@@ -4754,12 +4847,12 @@ The arguments are
     no use of it however.
 \end{description}
 
-%\subsection{Setup}
+\paragraph{Setup}
 The first task of the routine is to reconsruct necessary data elements
 that were not saved as a part of the \code{coxph} fit.  
 We will need the following components: 
 \begin{itemize}
-  \item for type=`expected' residuals we need the orignal survival y.  This %'`
+  \item for type=`expected' residuals we need the orignal survival y.  This
     is saved in coxph objects by default so will only need to be fetched in
     the highly unusual case that a user specfied 
     \code{y=FALSE} in the orignal call.
@@ -4828,9 +4921,8 @@ if (!missing(terms)) {
 #  needed there if type == 'expected'
 if (length(attr(Terms, 'specials')$cluster)) {
     temp <- untangle.specials(Terms, 'cluster', 1)
-    Terms  <- object$terms[-temp$terms]
+    Terms  <- drop.special(Terms, attr(Terms, "specials")$cluster)
     }
-else Terms <- object$terms
 
 if (type != 'expected') Terms2 <- delete.response(Terms)
 else Terms2 <- Terms
@@ -4925,8 +5017,7 @@ if (se.fit || type=='terms' || (!missing(newdata) && type=="expected") ||
 else {
     # I won't need strata in this case either
     if (has.strata) {
-        stemp <- untangle.specials(Terms, 'strata', 1)
-        Terms2  <- Terms2[-stemp$terms]
+        Terms2  <- drop.special(Terms2, attr(Terms2, "specials")$strata)
         has.strata <- FALSE  #remaining routine never needs to look
     }
     oldstrat <- rep(0L, n)
@@ -5715,16 +5806,36 @@ cord.getdata <- function(object, newdata=NULL, cluster=NULL, need.wt, timefix=TR
         stop("cannot yet handle models with tt terms")
  
     if (!is.null(newdata)) {
-        mf <- model.frame(object, data=newdata)
+        mf <- model.frame(Terms, data=newdata)
+        y <- model.response(mf)
+        # why not model.frame(object, newdata)?  Because model.frame.coxph
+        #  uses the Call to fill in names for subset, if present, which of
+        #  course is not relevant to the new data. model.frame.lm does the
+        #  same, btw.
         y <- model.response(mf)
         if (!is.Surv(y)) {
             if (is.numeric(y) && is.vector(y))  y <- Surv(y)
             else stop("left hand side of the formula  must be a numeric vector or a survival object")
         }
         if (timefix) y <- aeqSurv(y)
-        rval <- list(y= y, x= predict(object, newdata))
-        # the type of prediction does not matter, as long as it is a 
-        #  monotone transform of the linear predictor
+
+        # special handling for coxph objects: object to tt()
+        specials <- attr(Terms, "specials")
+        if (!is.null(specials$tt)) stop("newdata not allowed for tt() terms")
+
+            
+        yhat <- predict(object, newdata=newdata, na.action = na.omit) 
+        # yes, the above will construct mf again, but all the special processing
+        #  we get for lm, glm, coxph  is worth it.
+        rval <- list(y= y, x= as.vector(yhat))
+
+        # recreate the strata, if needed
+        if (length(attr(Terms, "specials")$strata) > 0) {
+            stemp <- untangle.specials(Terms, 'strata', 1)
+            if (length(stemp$vars)==1) strata.keep <- mf[[stemp$vars]]
+            else strata.keep <- strata(mf[,stemp$vars], shortlabel=TRUE)
+            rval$strata <- as.integer(strata.keep)
+        }
     } 
     else {
         mf <- object$model
@@ -5733,15 +5844,17 @@ cord.getdata <- function(object, newdata=NULL, cluster=NULL, need.wt, timefix=TR
             if (is.null(mf)) mf <- model.frame(object)
             y <- model.response(mf)
         }
-        if (!is.Surv(y)) {
-            y <- Surv(y)
-            if (timefix) y <- aeqSurv(y)
-        }  # survival models will have already called timefix
-
         x <- object$linear.predictors    # used by most
         if (is.null(x)) x <- object$fitted.values # used by lm
         if (is.null(x)) {object$na.action <- NULL; x <- predict(object)}
         rval <- list(y = y, x= x)
+
+        if (!is.null(specials$strata)) {
+            if (is.null(mf)) mf <- model.frame(object)
+            stemp <- untangle.specials(Terms, 'strata', 1)
+            if (length(stemp$vars)==1) rval$strata <- mf[[stemp$vars]]
+            else rval$strata <- strata(mf[,stemp$vars], shortlabel=TRUE)
+        } 
     }
         
     if (need.wt) {
@@ -5749,13 +5862,6 @@ cord.getdata <- function(object, newdata=NULL, cluster=NULL, need.wt, timefix=TR
         rval$weights <- model.weights(mf)
     }
 
-    if (!is.null(specials$strata)) {
-        if (is.null(mf)) mf <- model.frame(object)
-        stemp <- untangle.specials(Terms, 'strata', 1)
-        if (length(stemp$vars)==1) rval$strata <- mf[[stemp$vars]]
-        else rval$strata <- strata(mf[,stemp$vars], shortlabel=TRUE)
-    } 
- 
     if (is.null(cluster)) {
         if (!is.null(specials$cluster)) {
             if (is.null(mf)) mf <- model.frame(object)
@@ -5845,7 +5951,7 @@ concordance.lm <- function(object, ..., newdata, cluster, ymin, ymax,
 
 concordance.survreg <- function(object, ..., newdata, cluster, ymin, ymax,
                                 timewt=c("n", "S", "S/G", "n/G", "n/G2", "I"),
-                                influence=0, ranks=FALSE, timefix=FALSE,
+                                influence=0, ranks=FALSE, timefix= TRUE,
                                 keepstrata=10) {
     Call <- match.call()
     fits <- list(object, ...)
@@ -5882,7 +5988,7 @@ concordance.survreg <- function(object, ..., newdata, cluster, ymin, ymax,
     
 concordance.coxph <- function(object, ..., newdata, cluster, ymin, ymax, 
                                timewt=c("n", "S", "S/G", "n/G", "n/G2", "I"),
-                               influence=0, ranks=FALSE, timefix=FALSE,
+                               influence=0, ranks=FALSE, timefix=TRUE,
                                keepstrata=10) {
     Call <- match.call()
     fits <- list(object, ...)
@@ -7010,7 +7116,7 @@ if (!missing(se.fit) && se.fit)
 
 weights <- model.extract(mf, 'weights')
 if (length(weights) ==0) weights <- rep(1.0, n)
-if (class(ratetable)=='ratetable' && any(weights !=1))
+if (inherits(ratetable, 'ratetable') && any(weights !=1))
     warning("weights ignored")
 
 if (any(attr(Terms, 'order') >1))
@@ -7289,7 +7395,7 @@ The formula recurrs on the left and right side of +*: and \%in\%, and on
 binary - (but not on unary -).
 <<parsecovar>>=
 rightslash <- function(x) {
-    if (class(x) != 'call') return(x)
+    if (!inherits(x, 'call')) return(x)
     else {
         if (x[[1]] == as.name('/')) return(list(x[[2]], x[[3]]))
         else if (x[[1]]==as.name('+') || (x[[1]]==as.name('-') && length(x)==3)||
@@ -7508,7 +7614,7 @@ parsecovar2 <- function(covar1, statedata, dformula, Terms, transitions,states) 
     # It has an extra first row for intercept (baseline)
     # Fill it in with the default formula
     nstate <- length(states)
-    tmap <- array(0, dim=c(nterm+1, nstate, nstate))
+    tmap <- array(0L, dim=c(nterm+1, nstate, nstate))
     dmap <- array(seq_len(length(tmap)), dim=c(nterm+1, nstate, nstate)) #unique values
     dterm <- termmatch(attr(terms(dformula), "factors"), allterm)
     dterm <- c(1L, 1L+ dterm)  # add intercept
@@ -7733,27 +7839,31 @@ parsecovar3 <- function(tmap, Xcol, Xassign, phbaseline=NULL) {
     # sometime X will have an intercept, sometimes not; cmap never does
     hasintercept <- (Xassign[1] ==0)
     ph.coef <- (phbaseline !=0)  # any proportional baselines?
-    ph.rows <- sum(ph.coef)  # extra rows in cmap
+    ph.rows <- length(unique(phbaseline[ph.coef])) #extra rows to add to cmap
     cmap <- matrix(0L, length(Xcol) + ph.rows -hasintercept, ncol(tmap))
-    uterm <- unique(Xassign[Xassign != 0])   # terms that will have coefficients
+    uterm <- unique(Xassign[Xassign != 0L])  # terms that will have coefficients
     
     xcount <- table(factor(Xassign, levels=1:max(Xassign)))
-    mult <- 1+ max(xcount)  # temporary scaling
+    mult <- 1L+ max(xcount)  # temporary scaling
 
     ii <- 0
     for (i in uterm) {
         k <- seq_len(xcount[i])
         for (j in 1:ncol(tmap)) 
-            cmap[ii+k, j] <- if(tmap[i+1,j]==0) 0 else tmap[i+1,j]*mult +k
+            cmap[ii+k, j] <- if(tmap[i+1,j]==0) 0L else tmap[i+1,j]*mult +k
         ii <- ii + max(k)
     }
 
     if (ph.rows > 0) {
         temp <- phbaseline[ph.coef] # where each points
-        newname <- paste0("ph(", colnames(tmap)[temp], ")")
-        
-        j <- cbind(ii + 1:ph.rows, which(ph.coef)) 
-        cmap[j] <- max(cmap) + seq(along=temp)
+        for (i in unique(temp)) {
+            # for each baseline that forms a reference
+            j <- which(phbaseline ==i)  # the others that are proportional to it
+            k <- seq_len(length(j))
+            ii <- ii +1   # row of cmat for this baseline
+            cmap[ii, j] <- max(cmap) + k  # fill in elements
+        }
+        newname <- paste0("ph(", colnames(tmap)[unique(temp)], ")")
     } else newname <- NULL
 
     # renumber coefs as 1, 2, 3, ...
@@ -8630,34 +8740,6 @@ pytot <- function(x, na=FALSE) {
     }
 }
 @ 
-\section{Residuals for survival curves}
-\subsection{R-code}
-For all the more complex cases, the variance of a survival curve is based on 
-the infinitesimal jackknife:
-$$
-D_i(t) = \frac{\partial S(t)}{\partial w_i}
-$$
-evaluated at the the observed vector of weights.  The variance at a given 
-time is then  $D'WD'$ where $D$ is a diagonal matrix of the case weights.
-When there are multiple states $S$ is replaced by the vector $p(t)$, with
-one element per state, and the formula gets a bit more complex.
-The predicted curve from a Cox model is the most complex case.
-
-Realizing that we need to return the matrix $D$ to the user, in order to compute
-the variance of derived quantities like the restricted mean time in state, 
-the code has been changed from a primarily internal focus (compute within the
-survfit routine) to an external one. 
-
-The underlying C code is very similar to that in survfitkm.c
-One major difference in the routines is that this code is designed to return
-values at a fixed set of time points; it is an error if the user does not
-provide them.  This allows the result to be presented as a matrix or array.
-Computational differences will be discussed later.
-
-The method argument is for debugging.  For multi-state it uses either C code
-or the optimized R method.
-The double call below is because we want residuals to return a simple matrix,
-but the pseudo function needs to get back a little bit more.
 
 \section{Residuals for survival curves}
 \subsection{R-code}
@@ -8883,7 +8965,7 @@ derivative at time $z$ is the sum of
 The Fleming-Harrington estimate of survival is 
 \begin{align*}
   S(t) &= e^{-H(t)} \\
-  \partial{S(t)}{\partial w_i} &=  -S(t)\partial{H(t)}{\partial w_i} 
+  \frac{\partial S(t)}{\partial w_i} &=  -S(t)\frac{\partial H(t)}{\partial w_i} 
 \end{align*}
 So has exactly the same computation, with a multiplication at the end.
 
@@ -8999,7 +9081,7 @@ else if (type == "auc") {
 
 The sojourn time is the area under the survival curve. Let $x_j$ be the
 widths of the rectangles under the curve from event time $d_j$ to
-$min(d_{j+1}, t)$, zero if $t \le d_j$, or $t-d_m$ if $t$ is after the last
+$\min(d_{j+1}, t)$, zero if $t \le d_j$, or $t-d_m$ if $t$ is after the last
 event time.
 \begin{align*}
   A(0,t) &= \sum_{j=1}^m x_j S(d_j) \\
@@ -9130,7 +9212,7 @@ algoritm with a slight of hand.
 \begin{align*}
   S(t) &= \prod_{d_j\le t} (1- h(d_j)) \\
        &= \exp \left(\sum_{d_j\le t} \log(1- h(d_j)) \right) \\
-       &= \exp \left(\sum_{d_j\le t} \log(r(d_j) - dN(d_j)) - log(r(d_j)) \right) \\
+       &= \exp \left(\sum_{d_j\le t} \log(r(d_j) - dN(d_j)) - \log(r(d_j)) \right) \\
   \frac{\partial S(t)}{\partial w_i} &= 
                S(t) \sum_{d_j\le t} \frac{Y_i(d_j) - dN_i(d_j)}{r(d_j) - dN(d_j)} -
                            \frac{Y_i(d_j)}{ r(d_j)}   
@@ -9167,7 +9249,7 @@ else if (type == "auc") {
 \subsection{Multi-state Aalen-Johansen estimate}
 For multi-state models a correction for ties of similar spirit to the 
 Efron approximation in a Cox model (the ctype=2 argument for \code{survfit})
-is difficult: the 'right' answer depends on the study.
+is difficult: the `right' answer depends on the study.
 Thus the ctype argument is not present.  
 Both stype 1 and 2 are feasible, but currently only \code{stype=1} is
 supported.
@@ -9382,15 +9464,15 @@ The multi-state AJ estimate is more complex.  Let $p(t)$ be the vector
 of probability in state at time $t$.
 Then
 \begin{align}
-  p(t) &= p(t-) [I+ A(t)]\nonumber\\
+  p(t) &= p(t-) [I+ A(t)] \nonumber \\
   \frac{\partial p(t)}{\partial w_i} &= \frac{\partial p(t-)}{\partial w_i} 
                                         [I+ A(t)]
      +  p(t-) \frac{\partial A(t)}{\partial w_i} \nonumber\\
    &= U_i(t-) [I+ A(t)] + p(t-) \frac{\partial A(t)}{\partial w_i} 
-       \label{ajresidx}\\
+       \label{ajresidx2}
 \end{align}
 
-When we expand the left hand portion of \eqref{ajresidx} to include all 
+When we expand the left hand portion of \eqref{ajresidx2} to include all 
 observations it becomes simple matrix multiplication, not so with
 the right hand portion.
 Each individual subject $i$ has a subject-specific
@@ -9506,7 +9588,7 @@ Now, here is the trick.  The product $B^{(j)}(t)[I + A(t)]$ also is
 zero for all but the $jth$ row, and is in fact equal to the $j$th
 row of $B(t)[I + A(t)]$.
 Further, $p(t-)B^{(j)}(t)[I + A(t)]$ is the $j$th row of
-${rm diag}(p(t-))B(t)[I + A(t)]$.
+${\rm diag}(p(t-))B(t)[I + A(t)]$.
 
 The key computation is based on a matrix of matrices.  Start with the following
 definitions.  $T_{jk}$ is the $j$th term in the expansion, at
@@ -10901,9 +10983,9 @@ if (length(n.used) == 1) {
                  n.event= cfit$n[,5],
                  n.censor=cfit$n[,6],
                  surv = cfit$estimate[,1],
-                 std.err = cfit$std[,1],
+                 std.err = cfit$std.err[,1],
                  cumhaz  = cfit$estimate[,2],
-                 std.chaz = cfit$std[,2])
+                 std.chaz = cfit$std.err[,2])
  } else {
      strata <- sapply(cfit, function(x) if (is.null(x$n)) 0L else nrow(x$n))
      names(strata) <- xlev
@@ -10914,9 +10996,9 @@ if (length(n.used) == 1) {
                   n.event= unlist(lapply(cfit, function(x) x$n[,5])),
                   n.censor=unlist(lapply(cfit, function(x) x$n[,6])),
                   surv =   unlist(lapply(cfit, function(x) x$estimate[,1])),
-                  std.err =unlist(lapply(cfit, function(x) x$std[,1])),
+                  std.err =unlist(lapply(cfit, function(x) x$std.err[,1])),
                   cumhaz  =unlist(lapply(cfit, function(x) x$estimate[,2])),
-                  std.chaz=unlist(lapply(cfit, function(x) x$std[,2])),
+                  std.chaz=unlist(lapply(cfit, function(x) x$std.err[,2])),
                   strata=strata)
       if (ny==3) rval$n.enter <- unlist(lapply(cfit, function(x) x$n[,8]))
 }
@@ -12223,22 +12305,21 @@ docurve2 <- function(entry, etime, status, istate, wt, states, id,
     }
     storage.mode(wt) <- "double" # just in case someone had integer weights
 
-    # Compute p0 (unless given by the user)
+    # Compute p0 (unless given by the user), and initial leverage matrix
+    nid <- length(uid)
+    i0  <- matrix(0., nid, nstate)
+    if (all(status==0))  t0 <- max(etime)  #failsafe
+    else t0 <- min(etime[status!=0])  # first transition event
+    at.zero <- (entry < t0 & etime >= t0) 
     if (is.null(p0)) {
-        if (all(status==0))  t0 <- max(etime)  #failsafe
-        else t0 <- min(etime[status!=0])  # first transition event
-        at.zero <- (entry < t0 & etime >= t0) 
         wtsum <- sum(wt[at.zero])  # weights for a subject may change
         p0 <- tapply(wt[at.zero], istate[at.zero], sum) / wtsum
         p0 <- ifelse(is.na(p0), 0, p0)  #for a state not in at.zero, tapply =NA
-    }
-    # initial leverage matrix
-    nid <- length(uid)
-    i0  <- matrix(0., nid, nstate)
-    if (all(p0 <1)) {  #actually have to compute it
-        who <- index[at.zero]  # this will have no duplicates
-        for (j in 1:nstate) 
-            i0[who,j] <- (ifelse(istate[at.zero]==states[j], 1, 0) - p0[j])/wtsum
+        if (influence & all(p0 <1)) {  # compute intitial leverage
+            who <- index[at.zero]  # this will have no duplicates
+            for (j in 1:nstate) 
+               i0[who,j] <- (ifelse(istate[at.zero]==states[j], 1, 0) - p0[j])/wtsum
+        }
     }
      
     storage.mode(cstate) <- "integer"
@@ -16871,7 +16952,10 @@ else   asgn <- fit$assign
     
 if (!is.list(asgn)) stop ("unexpected assign component")
 
-frail <- grepl("frailty(", names(asgn), fixed=TRUE)
+frail <- grepl("frailty(", names(asgn), fixed=TRUE) |
+         grepl("frailty.gamma(", names(asgn), fixed = TRUE) |
+         grepl("frailty.gaussian(", names(asgn), fixed = TRUE)
+                                                  
 if (any(frail)) {
     dcol <- unlist(asgn[frail])    # remove these columns from X
     X <- X[, -dcol, drop=FALSE]
