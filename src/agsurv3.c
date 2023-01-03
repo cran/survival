@@ -63,7 +63,7 @@ static int      death,
 		se,
 		nvar,
 		n;
-static void    addup();
+static void addup(int itime, double haz, double var);
 
 void agsurv3(int    *sn,    int    *snvar,    int    *sncurve, 
 	     int    *snpt,  int    *sse,      double *score, 
@@ -257,9 +257,7 @@ void agsurv3(int    *sn,    int    *snvar,    int    *sncurve,
     }
 
 
-static void addup(itime, haz, var)
-int itime;
-double haz, var;
+static void addup(int itime, double haz, double var)
     {
     int i, j, k, l;
     int     pstart,

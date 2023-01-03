@@ -64,7 +64,12 @@ SEXP survreg6(SEXP maxiter2,   SEXP nvarx,  SEXP y,
     double *offset;
     double **imat, **JJ;
     double *u, *wt, *usave;
-    double (*dolik)();   /* will be pointed to survregc1 or survregc2 */
+    double (*dolik)(int n,          int nvar,      int nstrat,     int whichcase,
+		 double *beta,   int dist,      int *strat,     double *offset,
+		 double *time1,  double *time2, double *status, double *wt,
+		 double **covar, double **imat, double **JJ,    double *u, 
+		 SEXP expr,      SEXP rho,      double *dummy,  int nf,
+		 int *frail,     double *fdiag, double *jdiag );   /* will be pointed to survregc1 or survregc2 */
     SEXP  z;
     double *zptr = NULL;
     SEXP  out_iter, out_loglik, out_imat, out_flag;
