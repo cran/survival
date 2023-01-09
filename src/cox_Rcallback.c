@@ -17,9 +17,9 @@
 *** the calling environment to find it.
 **/
 
-void cox_callback (int which, double *coef, double *first, double *second,
-		   double *penalty, int *flag, int p, SEXP fexpr, SEXP rho)
-{
+void cox_callback (int which,      double *coef,    double *first, 
+		   double *second, double *penalty, int *flag,
+		   int p,          SEXP fexpr,      SEXP rho) {
     SEXP coxlist, temp,data,index;
     int i;
 

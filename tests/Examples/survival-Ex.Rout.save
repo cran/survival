@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2022-06-20 r82505) -- "Unsuffered Consequences"
-Copyright (C) 2022 The R Foundation for Statistical Computing
+R Under development (unstable) (2023-01-09 r83585) -- "Unsuffered Consequences"
+Copyright (C) 2023 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -745,6 +745,22 @@ n= 394, number of events= 155
 > ## Not run: 
 > ##D plot(x, haz, log='xy', ylab="Hazard") #line with slope (1/scale -1)
 > ## End(Not run)
+> 
+> # Estimated CDF of a simple Weibull
+> fit <- survreg(Surv(time, status) ~ 1, data=lung)
+> pp <- 1:99/100  
+> q1 <- qsurvreg(pp, coef(fit), fit$scale)
+> q2 <- qweibull(pp, shape= 1/fit$scale, scale= exp(coef(fit)))
+> all.equal(q1, q2)
+[1] TRUE
+> ## Not run: 
+> ##D plot(q1, pp, type='l', xlab="Months", ylab="CDF")
+> ## End(Not run)
+> # per the help page for dweibull, the mean is scale * gamma(1 + 1/shape)
+> c(mean = exp(coef(fit))* gamma(1 + fit$scale))
+mean.(Intercept) 
+        384.8529 
+> 
 > 
 > 
 > 
@@ -2462,7 +2478,7 @@ n= 394, number of events= 155
 > ### ** Examples
 > 
 > # Build the start-stop data set for analysis, and
-> #  replicate line 2 of table 8.13
+> #  replicate line 2 of table 8.13 in the book
 > first <- subset(rhDNase, !duplicated(id)) #first row for each subject
 > dnase <- tmerge(first, first, id=id, tstop=as.numeric(end.dt -entry.dt))
 > 
@@ -2857,6 +2873,33 @@ Call: survfit(formula = Surv(futime, fustat) ~ rx, data = ovarian)
 +   t120   = sum(coef(fit2)[c(1,5)]))
 overall.karno   t0_60.karno       t60_120          t120 
  -0.034443897  -0.049176157  -0.011031558  -0.007629841 
+> 
+> 
+> 
+> cleanEx()
+> nameEx("survcondense")
+> ### * survcondense
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: survcondense
+> ### Title: Shorten a (time1, time2) survival dataset
+> ### Aliases: survcondense
+> ### Keywords: survival
+> 
+> ### ** Examples
+> 
+> dim(aml)
+[1] 23  3
+> test1 <- survSplit(Surv(time, status) ~ ., data=aml, 
++                    cut=c(10, 20, 30), id="newid")
+> dim(test1)
+[1] 62  5
+> 
+> # remove the added rows
+> test2 <- survcondense(Surv(tstart, time, status) ~ x, test1, id=newid)
+> dim(test2)
+[1] 23  5
 > 
 > 
 > 
@@ -3634,6 +3677,9 @@ $terms
 > ### * <FOOTER>
 > ###
 > cleanEx()
+> options(digits = 7L)
+> base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
+Time elapsed:  2.942 0.129 3.071 0 0 
 > grDevices::dev.off()
 null device 
           1 

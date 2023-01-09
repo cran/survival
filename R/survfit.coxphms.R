@@ -111,11 +111,17 @@ function(formula, newdata, se.fit=FALSE, conf.int=.95, individual=FALSE,
     if (is.null(mf)) {
         weights <- object$weights  # let offsets/weights be NULL until needed
         offset <- NULL
+        offset.mean <- 0
         X <- object[['x']]
     }
     else {
         weights <- model.weights(mf)
         offset <- model.offset(mf)
+        if (is.null(offset)) offset.mean <- 0
+        else {
+            if (is.null(weights)) offset.mean <- mean(offset)
+            else offset.mean <- sum(offset * (weights/sum(weights)))
+        }
         X <- model.matrix.coxph(object, data=mf)
         if (is.null(Y) || coxms) {
             Y <- model.response(mf)
@@ -161,8 +167,14 @@ function(formula, newdata, se.fit=FALSE, conf.int=.95, individual=FALSE,
     if (!identical(object$states, mcheck$states))
         stop("failed to rebuild the data set")
     if (is.null(istate)) istate <- mcheck$istate
-    else if (any(as.character(istate) != as.character(mcheck$istate))) 
-        stop("survival curve cannot be created due to survcheck warnings")
+    else {
+        # if istate has unused levels, mcheck$istate won't have them so they
+        #  need to be dropped.
+        istate <- factor(istate, object$states) 
+        # a new level in state should only happen if someone has mucked up the
+        #  data set used in the coxph fit
+        if (any(is.na(istate))) stop("unrecognized initial state, data changed?")
+    }
 
     # Let the survfitCI routine do the work of creating the
     #  overall counts (n.risk, etc).  The rest of this code then
@@ -210,16 +222,15 @@ function(formula, newdata, se.fit=FALSE, conf.int=.95, individual=FALSE,
         # se.fit <- FALSE
         X <- matrix(0., nrow=n, ncol=1)
         if (is.null(offset)) offset <- rep(0, n)
-        xcenter <- mean(offset)
+        xcenter <- offset.mean
         coef <- 0.0
         varmat <- matrix(0.0, 1, 1)
-        risk <- rep(exp(offset- mean(offset)), length=n)
+        risk <- rep(exp(offset- offset.mean), length=n)
     }
     else {
         varmat <- object$var
         beta <- ifelse(is.na(object$coefficients), 0, object$coefficients)
-        if (is.null(offset)) xcenter <- sum(object$means * beta)
-        else xcenter <- sum(object$means * beta)+ mean(offset)
+        xcenter <- sum(object$means * beta) + offset.mean
         if (!is.null(object$frail)) {
            keep <- !grepl("frailty(", dimnames(X)[[2]], fixed=TRUE)
            X <- X[,keep, drop=F]
@@ -255,7 +266,10 @@ function(formula, newdata, se.fit=FALSE, conf.int=.95, individual=FALSE,
             stop("Newdata cannot be used when a model has frailty terms")
 
         Terms2 <- Terms 
-        if (!individual)  Terms2 <- delete.response(Terms)
+        if (!individual)  {
+            Terms2 <- delete.response(Terms)
+            y2 <- NULL  # a dummy to carry along, for the call to coxsurv.fit
+        }
         if (is.vector(newdata, "numeric")) {
             if (individual) stop("newdata must be a data frame")
             if (is.null(names(newdata))) {
@@ -339,9 +353,10 @@ function(formula, newdata, se.fit=FALSE, conf.int=.95, individual=FALSE,
         }
     } else {
         offset2 <- model.offset(mf2)
-        if (length(offset2) >0) offset2 <- offset2 
-        else offset2 <- 0
-        x2 <- model.matrix(Terms2, mf2)[,-1, drop=FALSE]  #no intercept
+        if (length(offset2)==0 ) offset2 <- 0
+        # a model with only an offset, but newdata containing a value for it
+        if (length(object$means)==0) x2 <- 0
+        else x2 <- model.matrix(Terms2, mf2)[,-1, drop=FALSE]  #no intercept
     }
 
     if (has.strata && !is.null(mf2[[stangle$vars]])){
@@ -411,24 +426,24 @@ function(formula, newdata, se.fit=FALSE, conf.int=.95, individual=FALSE,
 # Compute the hazard  and survival functions 
 multihaz <- function(y, x, position, weight, risk, istrat, ctype, stype, 
                      bcoef, hfill, x2, risk2, vmat, nstate, se.fit, p0, utime) {
-    if (ncol(y) ==2) {
-       sort1 <- seq.int(0, nrow(y)-1L)   # sort order for a constant
-       y <- cbind(-1.0, y)               # add a start.time column, -1 in case
-                                         #  there is an event at time 0
-    }
-    else sort1 <- order(istrat, y[,1]) -1L
-    sort2 <- order(istrat, y[,2]) -1L
+    ny <- ncol(y)
+    sort2 <- order(istrat, y[,ny-1L]) -1L
     ntime <- length(utime)
+    storage.mode(weight) <- "double"  #failsafe
 
     # this returns all of the counts we might desire.
-    storage.mode(weight) <- "double"  #failsafe
-    # for Surv(time, status), position is 2 (last) for all obs
-    if (length(position)==0) position <- rep(2L, nrow(y))
-
-    fit <- .Call(Ccoxsurv2, utime, y, weight, sort1, sort2, position, 
+    if (ny ==2) {
+        fit <- .Call(Ccoxsurv1, utime, y, weight, sort2, istrat, x, risk)
+        cn <- fit$count  
+        dim(cn) <- c(length(utime), fit$ntrans, 10) 
+    }
+    else {    
+        sort1 <- order(istrat, y[,1]) -1L
+        fit <- .Call(Ccoxsurv2, utime, y, weight, sort1, sort2, position, 
                         istrat, x, risk)
-    cn <- fit$count  
-    dim(cn) <- c(length(utime), fit$ntrans, 12) 
+        cn <- fit$count  
+        dim(cn) <- c(length(utime), fit$ntrans, 12) 
+    }
     # cn is returned as a matrix since there is an allocMatrix C macro, but
     #  no allocArray macro.  So we first reset the dimensions.
     # The first dimension is time
@@ -447,8 +462,8 @@ multihaz <- function(y, x, position, weight, risk, istrat, ctype, stype,
         denom1 <- ifelse(none.atrisk, 1, cn[,,3])   # avoid a later 0/0
         denom2 <- ifelse(none.atrisk, 1, cn[,,3]^2)
     } else {
-        denom1 <- ifelse(none.atrisk, 1, cn[,,11])
-        denom2 <- ifelse(none.atrisk, 1, cn[,,12])
+        denom1 <- ifelse(none.atrisk, 1, cn[,,9])
+        denom2 <- ifelse(none.atrisk, 1, cn[,,10])
     }
 
     # We want to avoid 0/0. If there is no one at risk (denominator) then
@@ -461,13 +476,13 @@ multihaz <- function(y, x, position, weight, risk, istrat, ctype, stype,
         colnames(design) <- 1:ncol(design)  # easier to read when debuggin
         events <- cn[,,5] %*% design
         if (ctype==1) atrisk <- cn[,,3]  %*% design
-        else          atrisk <- cn[,,11] %*% design
+        else          atrisk <- cn[,,9] %*% design
         basehaz <- events/ifelse(atrisk<=0, 1, atrisk)
         hazard <- basehaz[,bcoef[1,]] * rep(bcoef[2,], each=nrow(basehaz))
     }                                  
     else {
         if (ctype==1) hazard <- cn[,,5]/ifelse(cn[,,3]<=0, 1, cn[,,3])
-        else          hazard <- cn[,,5]/ifelse(cn[,,11] <=0, 1, cn[,,11])
+        else          hazard <- cn[,,5]/ifelse(cn[,,9] <=0, 1, cn[,,9])
     }
 
     # Expand the result, one "hazard set" for each row of x2

@@ -99,6 +99,7 @@ coxph <- function(formula, data, weights, subset, na.action,
 	model=FALSE, x=FALSE, y=TRUE,  tt, method=ties, 
         id, cluster, istate, statedata, nocenter=c(-1, 0, 1), ...) {
 
+    missing.ties <- missing(ties) & missing(method) #see later multistate sect
     ties <- match.arg(ties)
     Call <- match.call()
     ## We want to pass any ... args to coxph.control, but not pass things
@@ -219,13 +220,16 @@ coxph <- function(formula, data, weights, subset, na.action,
 
     if (!multi && multiform)
         stop("formula is a list but the response is not multi-state")
-    if (multi && length(attr(Terms, "specials")$frailty) >0)
-        stop("multi-state models do not currently support frailty terms")
-    if (multi && length(attr(Terms, "specials")$pspline) >0)
-        stop("multi-state models do not currently support pspline terms")
-    if (multi && length(attr(Terms, "specials")$ridge) >0)
-        stop("multi-state models do not currently support ridge penalties")
-
+    if (multi) {
+        if (length(attr(Terms, "specials")$frailty) >0)
+            stop("multi-state models do not currently support frailty terms")
+        if (length(attr(Terms, "specials")$pspline) >0)
+            stop("multi-state models do not currently support pspline terms")
+        if (length(attr(Terms, "specials")$ridge) >0)
+            stop("multi-state models do not currently support ridge penalties")
+        if (!missing.ties) method <- ties <- "breslow"
+    }
+    
     if (control$timefix) Y <- aeqSurv(Y)
     <<coxph-bothsides>>
         
@@ -1092,7 +1096,7 @@ else {
                                 weights=weights, method=method, 
                                 rname, nocenter=nocenter)
     }
-    else stop(paste ("Unknown method", method))
+    else stop(paste ("Unknown method to ties", method))
 }
 @ 
 
@@ -3135,11 +3139,17 @@ Y <- object[['y']]
 if (is.null(mf)) {
     weights <- object$weights  # let offsets/weights be NULL until needed
     offset <- NULL
+    offset.mean <- 0
     X <- object[['x']]
 }
 else {
     weights <- model.weights(mf)
     offset <- model.offset(mf)
+    if (is.null(offset)) offset.mean <- 0
+    else {
+        if (is.null(weights)) offset.mean <- mean(offset)
+        else offset.mean <- sum(offset * (weights/sum(weights)))
+    }
     X <- model.matrix.coxph(object, data=mf)
     if (is.null(Y) || coxms) {
         Y <- model.response(mf)
@@ -3244,16 +3254,15 @@ if (length(object$means) ==0) { # a model with only an offset term
     # se.fit <- FALSE
     X <- matrix(0., nrow=n, ncol=1)
     if (is.null(offset)) offset <- rep(0, n)
-    xcenter <- mean(offset)
+    xcenter <- offset.mean
     coef <- 0.0
     varmat <- matrix(0.0, 1, 1)
-    risk <- rep(exp(offset- mean(offset)), length=n)
+    risk <- rep(exp(offset- offset.mean), length=n)
 }
 else {
     varmat <- object$var
     beta <- ifelse(is.na(object$coefficients), 0, object$coefficients)
-    if (is.null(offset)) xcenter <- sum(object$means * beta)
-    else xcenter <- sum(object$means * beta)+ mean(offset)
+    xcenter <- sum(object$means * beta) + offset.mean
     if (!is.null(object$frail)) {
        keep <- !grepl("frailty(", dimnames(X)[[2]], fixed=TRUE)
        X <- X[,keep, drop=F]
@@ -3346,7 +3355,10 @@ else {
         stop("Newdata cannot be used when a model has frailty terms")
 
     Terms2 <- Terms 
-    if (!individual)  Terms2 <- delete.response(Terms)
+    if (!individual)  {
+        Terms2 <- delete.response(Terms)
+        y2 <- NULL  # a dummy to carry along, for the call to coxsurv.fit
+    }
     <<survfit.coxph-newdata2>>
 }
 @ 
@@ -3477,9 +3489,10 @@ else if (missing(newdata)) {
     }
 } else {
     offset2 <- model.offset(mf2)
-    if (length(offset2) >0) offset2 <- offset2 
-    else offset2 <- 0
-    x2 <- model.matrix(Terms2, mf2)[,-1, drop=FALSE]  #no intercept
+    if (length(offset2)==0 ) offset2 <- 0
+    # a model with only an offset, but newdata containing a value for it
+    if (length(object$means)==0) x2 <- 0
+    else x2 <- model.matrix(Terms2, mf2)[,-1, drop=FALSE]  #no intercept
 }
 @ 
 
@@ -4231,8 +4244,14 @@ transitions <- mcheck$transitions
 if (!identical(object$states, mcheck$states))
     stop("failed to rebuild the data set")
 if (is.null(istate)) istate <- mcheck$istate
-else if (any(as.character(istate) != as.character(mcheck$istate))) 
-    stop("survival curve cannot be created due to survcheck warnings")
+else {
+    # if istate has unused levels, mcheck$istate won't have them so they
+    #  need to be dropped.
+    istate <- factor(istate, object$states) 
+    # a new level in state should only happen if someone has mucked up the
+    #  data set used in the coxph fit
+    if (any(is.na(istate))) stop("unrecognized initial state, data changed?")
+}
 
 # Let the survfitCI routine do the work of creating the
 #  overall counts (n.risk, etc).  The rest of this code then
@@ -4433,24 +4452,24 @@ If there are no shared hazards this can be computed more simply of course.
 # Compute the hazard  and survival functions 
 multihaz <- function(y, x, position, weight, risk, istrat, ctype, stype, 
                      bcoef, hfill, x2, risk2, vmat, nstate, se.fit, p0, utime) {
-    if (ncol(y) ==2) {
-       sort1 <- seq.int(0, nrow(y)-1L)   # sort order for a constant
-       y <- cbind(-1.0, y)               # add a start.time column, -1 in case
-                                         #  there is an event at time 0
-    }
-    else sort1 <- order(istrat, y[,1]) -1L
-    sort2 <- order(istrat, y[,2]) -1L
+    ny <- ncol(y)
+    sort2 <- order(istrat, y[,ny-1L]) -1L
     ntime <- length(utime)
+    storage.mode(weight) <- "double"  #failsafe
 
     # this returns all of the counts we might desire.
-    storage.mode(weight) <- "double"  #failsafe
-    # for Surv(time, status), position is 2 (last) for all obs
-    if (length(position)==0) position <- rep(2L, nrow(y))
-
-    fit <- .Call(Ccoxsurv2, utime, y, weight, sort1, sort2, position, 
+    if (ny ==2) {
+        fit <- .Call(Ccoxsurv1, utime, y, weight, sort2, istrat, x, risk)
+        cn <- fit$count  
+        dim(cn) <- c(length(utime), fit$ntrans, 10) 
+    }
+    else {    
+        sort1 <- order(istrat, y[,1]) -1L
+        fit <- .Call(Ccoxsurv2, utime, y, weight, sort1, sort2, position, 
                         istrat, x, risk)
-    cn <- fit$count  
-    dim(cn) <- c(length(utime), fit$ntrans, 12) 
+        cn <- fit$count  
+        dim(cn) <- c(length(utime), fit$ntrans, 12) 
+    }
     # cn is returned as a matrix since there is an allocMatrix C macro, but
     #  no allocArray macro.  So we first reset the dimensions.
     # The first dimension is time
@@ -4469,8 +4488,8 @@ multihaz <- function(y, x, position, weight, risk, istrat, ctype, stype,
         denom1 <- ifelse(none.atrisk, 1, cn[,,3])   # avoid a later 0/0
         denom2 <- ifelse(none.atrisk, 1, cn[,,3]^2)
     } else {
-        denom1 <- ifelse(none.atrisk, 1, cn[,,11])
-        denom2 <- ifelse(none.atrisk, 1, cn[,,12])
+        denom1 <- ifelse(none.atrisk, 1, cn[,,9])
+        denom2 <- ifelse(none.atrisk, 1, cn[,,10])
     }
 
     # We want to avoid 0/0. If there is no one at risk (denominator) then
@@ -4483,13 +4502,13 @@ multihaz <- function(y, x, position, weight, risk, istrat, ctype, stype,
         colnames(design) <- 1:ncol(design)  # easier to read when debuggin
         events <- cn[,,5] %*% design
         if (ctype==1) atrisk <- cn[,,3]  %*% design
-        else          atrisk <- cn[,,11] %*% design
+        else          atrisk <- cn[,,9] %*% design
         basehaz <- events/ifelse(atrisk<=0, 1, atrisk)
         hazard <- basehaz[,bcoef[1,]] * rep(bcoef[2,], each=nrow(basehaz))
     }                                  
     else {
         if (ctype==1) hazard <- cn[,,5]/ifelse(cn[,,3]<=0, 1, cn[,,3])
-        else          hazard <- cn[,,5]/ifelse(cn[,,11] <=0, 1, cn[,,11])
+        else          hazard <- cn[,,5]/ifelse(cn[,,9] <=0, 1, cn[,,9])
     }
 
     # Expand the result, one "hazard set" for each row of x2
@@ -4983,7 +5002,8 @@ if (type == "expected") {
 # This will be needed if there are strata, and is cheap to compute
 strat.term <- untangle.specials(Terms, "strata")
 if (se.fit || type=='terms' || (!missing(newdata) && type=="expected") ||
-    (has.strata && (reference=="strata") || type=="expected")) {
+    (has.strata && (reference=="strata") || type=="expected") ||
+    (reference=="zero" && any(object[["means"]] !=0))) {
     use.x <- TRUE
     if (is.null(object[['x']]) || has.weights || has.offset ||
          (has.strata && is.null(object$strata))) {
@@ -5059,7 +5079,7 @@ if (!missing(newdata)) {
     if (has.strata) {
         if (length(strat.term$vars)==1) newstrat <- mf2[[strat.term$vars]]
         else newstrat <- strata(mf2[,strat.term$vars], shortlabel=TRUE)
-        if (any(is.na(match(newstrat, oldstrat)))) 
+        if (any(is.na(match(levels(newstrat), levels(oldstrat))))) 
             stop("New data has a strata not found in the original model")
         else newstrat <- factor(newstrat, levels=levels(oldstrat)) #give it all
         if (length(strat.term$terms))
@@ -5270,6 +5290,7 @@ else {
 
 if (missing(newdata)) {
     offset <- offset - mean(offset)
+    if (has.strata && any(is.na(oldstrat))) is.na(newx) <- is.na(oldstrat)
     if (has.strata && reference=="strata") {
         # We can't use as.integer(oldstrat) as an index, if oldstrat is
         #   a factor variable with unrepresented levels as.integer could
@@ -5284,6 +5305,8 @@ if (missing(newdata)) {
 }
 else {
     offset <- newoffset - mean(offset)
+    browser()
+    if (has.strata && any(is.na(newstrat))) is.na(newx) <- is.na(newstrat)
     if (has.strata && reference=="strata") {
         xmeans <- rowsum(x*weights, oldstrat)/c(rowsum(weights, oldstrat))
         newx <- newx - xmeans[match(newstrat, row.names(xmeans)),]
@@ -5409,7 +5432,7 @@ can be ignored in the count (treated as incomparable), treated as discordant,
 or given a score of 1/2.
 \begin{itemize}
   \item Kendall's $\tau$-a scores ties as 0.
-  \item Kendall's $\tau$-b and the Goodman-Kruskal $\gamma$ ignore ties in 
+  \item The Goodman-Kruskal $\gamma$ ignore ties in 
     either $y$ or $x$.
   \item Somers' $d$ treats ties in $y$ as incomparable, pairs that are tied
     in $x$ (but not $y$) score as 1/2.  The AUC from logistic regression is
@@ -5431,6 +5454,7 @@ discordant, tied on time, and tied on $x$ but not on time.
 The default concordance is based on the Somers'/AUC definition,
 but all 4 values are reported back so that a user
 can recreate Kendall's or Goodmans values if desired.
+The timewt option has no effect for other than survival data.
 
 Here is the main routine.
 <<concordance>>=
@@ -5440,8 +5464,8 @@ concordance <- function(object, ...)
 concordance.formula <- function(object, data,
                                 weights, subset, na.action, cluster,
                                 ymin, ymax, 
-                                timewt=c("n", "S", "S/G", "n/G", "n/G2", "I"),
-                                influence=0, ranks=FALSE, reverse=FALSE,
+                                timewt=c("n", "S", "S/G", "n/G2", "I"),
+                               influence=0, ranks=FALSE, reverse=FALSE,
                                 timefix=TRUE, keepstrata=10, ...) {
     Call <- match.call()  # save a copy of of the call, as documentation
     timewt <- match.arg(timewt)
@@ -5463,12 +5487,16 @@ concordance.formula <- function(object, data,
     Y <- model.response(mf)
     if (inherits(Y, "Surv")) {
         if (timefix) Y <- aeqSurv(Y)
+        if (ncol(Y) == 3 && timewt %in% c("S/G", "n/G", "n/G2"))
+            stop(timewt, " timewt option not supported for (time1, time2) data")
     } else {
         if (is.factor(Y) && (is.ordered(Y) || length(levels(Y))==2))
             Y <- Surv(as.numeric(Y))
         else if (is.numeric(Y) && is.vector(Y))  Y <- Surv(Y)
+        else if (is.logical(Y)) Y <- as.numeric(Y)
         else stop("left hand side of the formula must be a numeric vector,
  survival object, or an orderable factor")
+        timewt <- "n"
         if (timefix) Y <- aeqSurv(Y)
     }
     n <- nrow(Y)
@@ -5529,19 +5557,23 @@ print.concordance <- function(x, digits= max(1L, getOption("digits") - 3L),
         cat("n=", x$n, " (", naprint(omit), ")\n", sep = "")
     else cat("n=", x$n, "\n")
     
-    if (length(x$concordance) > 1) {
-        # result of a call with multiple fits
-        tmat <- cbind(concordance= x$concordance, se=sqrt(diag(x$var)))
-        print(round(tmat, digits=digits), ...)
-        cat("\n")
+    if (is.null(x$var)) {
+        # Result of a call with std.err = FALSE
+        cat("Concordance= ", format(x$concordance, digits=digits), "\n")
+    } else {
+        if (length(x$concordance) > 1) {
+            # result of a call with multiple fits
+            tmat <- cbind(concordance= x$concordance, se=sqrt(diag(x$var)))
+            print(round(tmat, digits=digits), ...)
+            cat("\n")
+        }
+        else cat("Concordance= ", format(x$concordance, digits=digits), 
+                 " se= ", format(sqrt(x$var), digits=digits), '\n', sep='')
     }
-    else cat("Concordance= ", format(x$concordance, digits=digits), " se= ", 
-             format(sqrt(x$var), digits=digits), '\n', sep='')
-
     if (!is.matrix(x$count) || nrow(x$count < 11)) 
         print(round(x$count,2))
     invisible(x)
-    }
+}
 
 <<concordancefit>>
 
@@ -5554,40 +5586,71 @@ routine.
 If $y$ is not a survival quantity, then all of the options for the
 \code{timewt} parameter lead to the same result.
 
+It turns out that for moderate sized data sets, the computation of the
+survival curve S (or censoring G) takes as much or more compuational time
+as the routine proper. For this reason, make sure not to call survfit unless
+we have to.
+Since we are calling those routines for data with
+no grouping variable, no standard error, and none of the other options, speed
+could be gained by moving the computation of those quantities inside of the
+C code.
+
 <<concordancefit>>=
 concordancefit <- function(y, x, strata, weights, ymin=NULL, ymax=NULL, 
-                            timewt=c("n", "S", "S/G", "n/G", "n/G2", "I"),
+                            timewt=c("n", "S", "S/G", "n/G2", "I"),
                             cluster, influence=0, ranks=FALSE, reverse=FALSE,
-                            timefix=TRUE, keepstrata=10, robustse =TRUE) {
+                            timefix=TRUE, keepstrata=10, std.err =TRUE) {
     # The coxph program may occassionally fail, and this will kill the C
     #  routine further below.  So check for it.
     if (any(is.na(x)) || any(is.na(y))) return(NULL)
     timewt <- match.arg(timewt)
+    if (!is.null(ymin) && !is.numeric(ymin)) stop("ymin must be numeric")
+    if (!is.null(ymax) && !is.numeric(ymax))    stop("ymax must be numeric")
+    if (!std.err) {ranks <- FALSE; influence <- 0;}
 
-    if (!robustse) {ranks <- FALSE; influence =0;}
-
-    # these should only occur if something other package calls this routine
-    if (!is.Surv(y)) {
-        if (is.factor(y) && (is.ordered(y) || length(levels(y))==2))
-            y <- Surv(as.numeric(y))
-        else if (is.numeric(y) && is.vector(y))  y <- Surv(y)
-        else stop("left hand side of the formula must be a numeric vector,
- survival object, or an orderable factor")
-        if (timefix) y <- aeqSurv(y)
-    }
     n <- length(y)
     if (length(x) != n) stop("x and y are not the same length")
     if (missing(strata) || length(strata)==0) strata <- rep(1L, n)
     if (length(strata) != n)
         stop("y and strata are not the same length")
     if (missing(weights) || length(weights)==0) weights <- rep(1.0, n)
-    else if (length(weights) != n) stop("y and weights are not the same length")
+    else {
+        if (length(weights) != n) stop("y and weights are not the same length")
+        storage.mode(weights) <- "double" # for the .Call, in case of integers
+    }
+    if (is.Surv(y)) {
+        ny <- ncol(y)
+        if (ny == 3 && timewt %in% c("S/G", "n/G2"))
+            stop(timewt, " timewt option not supported for (time1, time2) data")
+        if (!is.null(attr(y, "states"))) 
+            stop("concordance not defined for a multi-state outcome")
+        if (timefix) y <- aeqSurv(y)
+        if (!is.null(ymin)) {
+            censored <- (y[,ny] ==0)
+            if (any(y[censored, ny-1] < ymin))
+                stop("data has a censored value less than ymin")
+            else y[,ny-1] <- pmax(y[,ny-1], ymin)
+        }
+    } else {
+        # should only occur if another package calls this routine
+        if (is.factor(y) && (is.ordered(y) || length(levels(y))==2))
+            y <- Surv(as.numeric(y))
+        else if (is.numeric(y) && is.vector(y))  y <- Surv(y)
+        else stop("left hand side of the formula must be a numeric vector,
+ survival object, or an orderable factor")
+    }
 
     type <- attr(y, "type")
     if (type %in% c("left", "interval"))
         stop("left or interval censored data is not supported")
     if (type %in% c("mright", "mcounting"))
         stop("multiple state survival is not supported")
+    storage.mode(y) <- "double"   # in case of integers, for the .Call
+
+    if (!is.null(ymin) && any(y[, ny-1] < ymin))
+        y[,ny-1] <- pmax(y[,ny-1], ymin)
+    # ymax is dealt with in the docount routine, as shifting end of a (t1, t2)
+    #  interval could generate invalid data
 
     nstrat <- length(unique(strata))
     if (!is.logical(keepstrata)) {
@@ -5617,63 +5680,62 @@ concordancefit <- function(y, x, strata, weights, ymin=NULL, ymax=NULL,
     }
 
     # This routine is called once per stratum
-    docount <- function(y, risk, wts, timeopt= 'n', timefix) {
+    docount <- function(y, risk, wts, timeopt= 'n') {
         n <- length(risk)
-        # this next line is mostly invoked in stratified logistic, where
-        #  only 1 event per stratum occurs.  All time weightings are the same
-        # don't waste time even if the user asked for something different
-        if (sum(y[,ncol(y)]) <2) timeopt <- 'n'
-        
-        sfit <- survfit(y~1, weights=wts, se.fit=FALSE, timefix=timefix)
-        etime <- sfit$time[sfit$n.event > 0]
-        esurv <- sfit$surv[sfit$n.event > 0]
-        
-        if (length(etime)==0) {
+        ny <- ncol(y)   # 2 or 3
+
+        if (sum(y[,ncol(y)]) ==0) {
             # the special case of a stratum with no events (it happens)
             # No need to do any more work
             return(list(count= rep(0.0, 6), influence=matrix(0.0, n, 5),
                         resid=NULL))
         }
-
-       if (timeopt %in% c("S/G", "n/G", "n/G2")) {
-            temp <- y
-            temp[,ncol(temp)] <- 1- temp[,ncol(temp)] # switch event/censor
-            gfit <- survfit(temp~1, weights=wts, se.fit=FALSE, timefix=timefix)
-            # G has the exact same time values as S
-            gsurv <- c(1, gfit$surv)  # We want G(t-)
-            gsurv <- gsurv[which(sfit$n.event > 0)]
-        }
-
-        npair <- (sfit$n.risk- sfit$n.event)[sfit$n.event>0]
-        temp  <- ifelse(esurv==0, 0, esurv/npair)  # avoid 0/0
-        timewt <- switch(timeopt,
-                         "S" =  sum(wts)*temp,
-                         "S/G" = sum(wts)* temp/ gsurv,
-                         "n" =   rep(1.0, length(npair)),
-                         "n/G" = 1/gsurv,
-                         "n/G2"= 1/gsurv^2,
-                         "I"  =  rep(1.0, length(esurv))
-                     )
-        if (!is.null(ymin)) timewt[etime < ymin] <- 0
-        if (!is.null(ymax)) timewt[etime > ymax] <- 0
-        timewt <- ifelse(is.finite(timewt), timewt, 0)  # 0 at risk case
-
+     
+        # this next line is mostly invoked in stratified logistic, where
+        #  only 1 event per stratum occurs.  All time weightings are the same
+        # don't waste time even if the user asked for something different
+        if (sum(y[,ny]) <2) timeopt <- 'n'
+        
         # order the data: reverse time, censors before deaths
-        if (ncol(y)==2) { 
+        if (ny ==2) { 
             sort.stop <- order(-y[,1], y[,2], risk) -1L 
         } else {
             sort.stop  <- order(-y[,2], y[,3], risk) -1L   #order by endpoint
             sort.start <- order(-y[,1]) -1L       
         }
+
+        if (timeopt == 'n') {
+            deaths <- y[,ny] > 0
+            etime  <- sort(unique(y[deaths, ny-1]))  # event times
+        }
+        else {
+            if (ny==2) {
+                sort.stop <- order(-y[,1], y[,2], risk) -1L 
+                gfit <- .Call(Cfastkm1, y, wts, sort.stop)
+            } else {
+                sort.stop  <- order(-y[,2], y[,3], risk) -1L   #order by endpoint
+                sort.start <- order(-y[,1]) -1L       
+                gfit <- .Call(Cfastkm2, y, wts, sort.stop, sort.start)
+            }
+            etime <- gfit$etime
+        }
+         
+        timewt <- switch(timeopt,
+                         "S"   = sum(wts)* gfit$S/gfit$nrisk,
+                         "S/G" = sum(wts)* gfit$S/ (gfit$G * gfit$nrisk),
+                         "n" =   rep(1.0, length(etime)),
+                         "n/G2"= 1/gfit$G^2,
+                         "I"  =  1/gfit$nrisk)
+        if (any(!is.finite(timewt))) stop("program error, notify author")
+                    
+        if (!is.null(ymax)) timewt[etime > ymax] <- 0
  
         # match each prediction score to the unique set of scores
         # (to deal with ties)
         utemp <- match(risk, sort(unique(risk)))
         bindex <- btree(max(utemp))[utemp]
         
-        storage.mode(y) <- "double"  # just in case y is integer
-        storage.mode(wts) <- "double"
-        if (robustse) {
+        if (std.err) {
             if (ncol(y) ==2)
                 fit <- .Call(Cconcordance3, y, bindex, wts, rev(timewt), 
                              sort.stop, ranks)
@@ -5689,7 +5751,7 @@ concordancefit <- function(y, x, strata, weights, ymin=NULL, ymax=NULL,
                 if (ncol(y)==2) dtime <- y[y[,2]==1, 1]
                 else dtime <- y[y[,3]==1, 2]
                 temp <- data.frame(time= sort(dtime), fit$resid)
-                names(temp) <- c("time", "rank", "timewt", "casewt", "variance")
+                names(temp) <- c("time", "rank", "timewt", "casewt")
                 fit$resid <- temp[temp[,3] > 0,]  # don't return zeros
             }
         }
@@ -5704,26 +5766,25 @@ concordancefit <- function(y, x, strata, weights, ymin=NULL, ymax=NULL,
     }
         
     if (nstrat < 2) {
-        fit <- docount(y, x, weights, timewt, timefix=timefix)
+        fit <- docount(y, x, weights, timewt)
         count2 <- fit$count[1:5]
         vcox <- fit$count[6]
         fit$count <- fit$count[1:5]
-        if (robustse) imat <- fit$influence
+        if (std.err) imat <- fit$influence
         if (ranks) resid <- fit$resid
     } else {
         strata <- as.factor(strata)
         ustrat <- levels(strata)[table(strata) >0]  #some strata may have 0 obs
         tfit <- lapply(ustrat, function(i) {
             keep <- which(strata== i)
-            docount(y[keep,,drop=F], x[keep], weights[keep], timewt,
-                    timefix=timefix)
+            docount(y[keep,,drop=F], x[keep], weights[keep], timewt)
         })
         temp <-  t(sapply(tfit, function(x) x$count))
         fit <- list(count = temp[,1:5])
         count2 <- colSums(fit$count)
         if (!keepstrata) fit$count <- count2
         vcox <- sum(temp[,6])
-        if (robustse) {
+        if (std.err) {
             imat <- do.call("rbind", lapply(tfit, function(x) x$influence))
             # put it back into data order
             index <- match(1:n, (1:n)[order(strata)])
@@ -5739,7 +5800,7 @@ concordancefit <- function(y, x, strata, weights, ymin=NULL, ymax=NULL,
     npair <- sum(count2[1:3])
     if (!keepstrata && is.matrix(fit$count)) fit$count <- colSums(fit$count)
     somer <- (count2[1] - count2[2])/npair
-    if (robustse) {
+    if (std.err) {
         dfbeta <- weights*((imat[,1]- imat[,2])/npair -
                            (somer/npair)* rowSums(imat[,1:3]))
         if (!missing(cluster) && length(cluster)>0) {
@@ -5750,8 +5811,8 @@ concordancefit <- function(y, x, strata, weights, ymin=NULL, ymax=NULL,
         rval <- list(concordance = (somer+1)/2, count=fit$count, n=n,
                      var = var.somer/4, cvar=vcox/(4*npair^2))
         }
-    else  rval <- list(concordance = (somer+1)/2, count=fit$count, n=n,
-                     cvar=vcox/(4*npair^2))
+    else  rval <- list(concordance = (somer+1)/2, count=fit$count, n=n)
+
     if (is.matrix(rval$count))
         colnames(rval$count) <- c("concordant", "discordant", "tied.x", 
                                    "tied.y", "tied.xy")
@@ -5950,7 +6011,7 @@ concordance.lm <- function(object, ..., newdata, cluster, ymin, ymax,
 }
 
 concordance.survreg <- function(object, ..., newdata, cluster, ymin, ymax,
-                                timewt=c("n", "S", "S/G", "n/G", "n/G2", "I"),
+                                timewt=c("n", "S", "S/G", "n/G2", "I"),
                                 influence=0, ranks=FALSE, timefix= TRUE,
                                 keepstrata=10) {
     Call <- match.call()
@@ -5987,7 +6048,7 @@ concordance.survreg <- function(object, ..., newdata, cluster, ymin, ymax,
 }
     
 concordance.coxph <- function(object, ..., newdata, cluster, ymin, ymax, 
-                               timewt=c("n", "S", "S/G", "n/G", "n/G2", "I"),
+                               timewt=c("n", "S", "S/G", "n/G2", "I"),
                                influence=0, ranks=FALSE, timefix=TRUE,
                                keepstrata=10) {
     Call <- match.call()
@@ -6288,7 +6349,7 @@ Dealing with tied deaths is  a bit subtle.
   \item Changes to the overall concordance/discordance counts need to be done
     for all the ties before adding them into the main tree, for the same reason.
   \item The Cox model variance just below has to be added up sequentially,
-    one terms after each addition to the main tree.
+    one term after each addition to the main tree.
 \end{itemize}
 Thus the inner loop must be repeated at least twice.
 
@@ -6364,10 +6425,11 @@ The routine will return list with three components:
     discordant, tied on $x$ but not $y$, and tied on y pairs.  
     The weight for a pair is $w_iw_j$.
   \item resid, a three column matrix with one row per event, containing the 
-    score residual at that event, its variance, and the sum of weights.
-    The score residual is
-    a rescaled $z_i$ so as to lie between 0 and 1: $(1+ z/\sum(w))/2$.
-    The concordance is then a weighted sum of the residuals.
+    score residual at that event, the time weight, and the case weight of the
+    event. The residual is $s_i - \overline s$: the percentile of the subject
+      with the event, among all those at risk, minus the mean.  
+      This is the "Cox model" way of looking at that data.
+    A weighted sum of the residuals will equal C-D = concordant - discordant.
   \item influence, a matrix with one row per observation and 4 columns, giving
     that observation's first derivative with respect to the count vector.
 \end{itemize}    
@@ -6396,10 +6458,10 @@ SEXP concordance3(SEXP y, SEXP x2, SEXP wt2, SEXP timewt2,
     int utime;    /* number of unique event times seen so far */
     double dwt, dwt2;   /* sum of weights for deaths and deaths tied on x */
     double wsum[3]; /* the sum of weights that are > current, <, or equal  */
-    double temp, adjtimewt;  /* the second accounts for npair and timewt*/
+    double adjtimewt;  /* accounts for npair and timewt*/
 
     SEXP rlist, count2, imat2, resid2;
-    double *count, *imat[5], *resid[4];
+    double *count, *imat[5], *resid[3];
     double *wt, *timewt;
     int    *x, *sort2;
     int doresid;
@@ -6440,8 +6502,8 @@ SEXP concordance3(SEXP y, SEXP x2, SEXP wt2, SEXP timewt2,
         for (j=0; j<n; j++) imat[i][j] =0;
     }
     if (doresid==1) {
-        resid2 = SET_VECTOR_ELT(rlist, 2, allocMatrix(REALSXP, nevent, 4));
-        for (i=0; i<4; i++) resid[i] = REAL(resid2) + i*nevent;
+        resid2 = SET_VECTOR_ELT(rlist, 2, allocMatrix(REALSXP, nevent, 3));
+        for (i=0; i<3; i++) resid[i] = REAL(resid2) + i*nevent;
         }
     
     <<concordance3-work>>
@@ -6482,7 +6544,6 @@ Starting at the largest time (which is sorted last), walk through the tree.
           \item Count concordant, discordant, tied.x counts, both total
             and for the observation's influence
           \item Add the subject to the event tree
-          \item Compute the first 3 columns of the residuals.
         \end{itemize}
       \item Finish up the tied.xy influence, for the last unique x in this set.
       \item Pass 2: 
@@ -6492,6 +6553,7 @@ Starting at the largest time (which is sorted last), walk through the tree.
           \item Increment the Cox variance
           \item Add the subject into the main tree
         \end{itemize}
+      \item Pass 3: compute the residuals.  
     \end{itemize}
 
     \item When all the subjects have been added to the tree, then add the final
@@ -6582,13 +6644,6 @@ for (i=0; i<n;) {
 	    /* add to the event tree */
 	    addin(dnwt, dtwt, x[jj], adjtimewt*wt[jj]);  /* weighted deaths */
 
-	    /* first part of residuals */
-	    if (doresid) {
-		nevent--;
-		resid[0][nevent] = (wsum[0] - wsum[1])/twt[0]; /* -1 to 1 */
-		resid[1][nevent] = twt[0] * adjtimewt;
-		resid[2][nevent] = wt[jj];
-	    }
 	}
 	/* finish the tied.xy influence */
 	if (wt[sort2[j2]] < dwt2) { /* more than 1 tied */
@@ -6619,13 +6674,22 @@ for (i=0; i<n;) {
 	    addin(nwt, twt, x[jj], wt[jj]); 
 	}
         count[5] += dwt * adjtimewt* z2/twt[0]; /* weighted var in risk set*/
-	i += ndeath;
 
-	if (doresid) { /*Add the last part of the residuals */
-	    temp = twt[0]*twt[0]*twt[0];
-	    for (j=0; j<ndeath; j++)
-		resid[3][nevent+j] = z2/temp;
+	/* 
+        ** Residuals are done after the deaths have been added to the tree
+	**   since they are based on the Cox model risk set
+	*/
+	if (doresid) {
+	    for (j=i; j< (i+ndeath); j++) {
+		jj = sort2[j];
+		walkup(nwt, twt, x[jj], wsum, ntree);
+		nevent--;
+		resid[0][nevent] = (wsum[0] - wsum[1])/twt[0]; /* -1 to 1 */
+		resid[1][nevent] = twt[0] * adjtimewt;
+		resid[2][nevent] = wt[jj];
+	    }
 	}
+	i += ndeath;
     }
 }
 
@@ -6644,6 +6708,14 @@ count[3] -= count[4];   /* the tied.xy were counted twice, once as tied.y */
 @ 
 
 <<walkup>>=
+/*
+** Given a tree described by 
+**   nwt = weight at each node
+**   twt = weight of node + children
+**   index = pointer to a location in the tree
+**   ntree = number of nodes in the tree
+** return the  count of those smaller, greater, tied
+*/
 void walkup(double *nwt, double* twt, int index, double sums[3], int ntree) {
     int i, j, parent;
 
@@ -6662,6 +6734,7 @@ void walkup(double *nwt, double* twt, int index, double sums[3], int ntree) {
     }
 }
 
+/* Add an observation into the tree (a negative weight takes them out) */
 void addin(double *nwt, double *twt, int index, double wt) {
     nwt[index] += wt;
     while (index >0) {
@@ -6697,10 +6770,10 @@ The [[y]] variable now has three columns.
     double dwt;   /* weighted number of deaths at this point */
     double dwt2;  /* tied on both x and y */
     double wsum[3]; /* the sum of weights that are > current, <, or equal  */
-    double temp, adjtimewt;  /* the second accounts for npair and timewt*/
+    double adjtimewt;  /* accounts for npair and timewt*/
 
     SEXP rlist, count2, imat2, resid2;
-    double *count, *imat[5], *resid[4];
+    double *count, *imat[5], *resid[3];
     double *wt, *timewt;
     int    *x, *sort2, *sort1;
     int doresid;
@@ -6748,8 +6821,8 @@ The [[y]] variable now has three columns.
         for (j=0; j<n; j++) imat[i][j] =0;
     }
     if (doresid==1) {
-        resid2 = SET_VECTOR_ELT(rlist, 2, allocMatrix(REALSXP, nevent, 4));
-        for (i=0; i<4; i++) resid[i] = REAL(resid2) + i*nevent;
+        resid2 = SET_VECTOR_ELT(rlist, 2, allocMatrix(REALSXP, nevent, 3));
+        for (i=0; i<3; i++) resid[i] = REAL(resid2) + i*nevent;
         }
     
     <<concordance4-work>>
@@ -6841,14 +6914,6 @@ for (i=0; i<n;) {
 
 	    /* add to the event tree */
 	    addin(dnwt, dtwt, x[jj], adjtimewt*wt[jj]);  /* weighted deaths */
-
-	    /* first part of residuals */
-	    if (doresid) {
-		nevent--;
-		resid[0][nevent] = (wsum[0] - wsum[1])/twt[0]; /* -1 to 1 */
-		resid[1][nevent] = twt[0] * adjtimewt;
-		resid[2][nevent] = wt[jj];
-	    }
 	}
 	/* finish the tied.xy influence */
 	if (wt[sort2[j2]] < dwt2) { /* more than 1 tied */
@@ -6879,13 +6944,19 @@ for (i=0; i<n;) {
 	    addin(nwt, twt, x[jj], wt[jj]); 
 	}
         count[5] += dwt * adjtimewt* z2/twt[0]; /* weighted var in risk set*/
+
+	if (doresid) {
+	    for (j=i; j< (i+ndeath); j++) {
+		jj = sort2[j];
+		walkup(nwt, twt, x[jj], wsum, ntree);
+		nevent--;
+		resid[0][nevent] = (wsum[0] - wsum[1])/twt[0]; /* -1 to 1 */
+		resid[1][nevent] = twt[0] * adjtimewt;
+		resid[2][nevent] = wt[jj];
+	    }
+	}
 	i += ndeath;
 
-	if (doresid) { /*Add the last part of the residuals */
-	    temp = twt[0]*twt[0]*twt[0];
-	    for (j=0; j<ndeath; j++)
-		resid[3][nevent+j] = z2/temp;
-	}
     }
 }
 
@@ -8778,6 +8849,18 @@ residuals.survfit <- function(object, times,
 
     if (!inherits(object, "survfit"))
         stop("argument must be a survfit object")
+    if (object$type=="interval") {
+        # trial code to support it
+        # reconstruct the data set
+        # create dummy time/status for all interval or left censored
+        #   over the span of jump points in S, non-censored obs with
+        #   weights proportional to the jumps
+        # combine dummy + (exact, right) from original, compute KM
+        # get pseudo for this new KM
+        # collapse dummy obs back to a single
+        stop("residuals for interval-censored data are not available")
+        }
+
     if (missing(times)) stop("the times argument is required")
     # allow a set of alias
     temp <- c("pstate", "cumhaz", "sojourn", "survival",
@@ -8798,7 +8881,7 @@ residuals.survfit <- function(object, times,
 survresid.fit <- function(object, times, 
                               type= "pstate",
                               collapse, weighted=FALSE, method=1) {
-    
+    if (object$type=="interval") stop("interval censored not yet supported")
     survfitms <- inherits(object, "survfitms")
     coxsurv <- inherits(object, "survfitcox")
     timefix <- (is.null(object$timefix) || object$timefix)
@@ -11140,7 +11223,7 @@ SEXP survfitkm(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22,
     double wt1, wt2, wt3, wt4;
 		      
     /* output variables */
-    double  *n[10],  *dtime,
+    double  *n[8],  *dtime,
 	    *kvec, *nvec, *std[2], *imat1=0, *imat2=0; /* =0 to silence -Wall*/
     double km, nelson;  /* current estimates */
 
@@ -11218,7 +11301,7 @@ for.
     PROTECT(rlist = mkNamed(VECSXP, outnames));
     
     dtime  = REAL(SET_VECTOR_ELT(rlist, 0, allocVector(REALSXP, ntime)));
-    if (ny==2) j=7;  else j=9;
+    if (ny==2) j=6;  else j=8;
     n[0]  = REAL(SET_VECTOR_ELT(rlist, 1, allocMatrix(REALSXP, ntime, j)));
     for (i=1; i<j; i++) n[i] = n[0] + i*ntime;
 
@@ -15483,7 +15566,7 @@ if (argclass[ii] == "tdc") {
     default <- argi$default   # default value
     if (is.null(default)) default <- topt$tdcstart
     else if (length(default) !=1)
-        stop("initial tdc value must be of length 1")
+        stop("default tdc value must be of length 1")
 
     # id can be any data type; feed integers to the C routine
     storage.mode(dstart) <- storage.mode(etime) <- "double"  #if time is integer
@@ -15491,9 +15574,7 @@ if (argclass[ii] == "tdc") {
     index <- .Call(Ctmerge2, match(baseid, uid), dstart, 
                                match(id, uid),  etime)
 
-    # Next line removed 11/2021, I can't recall why was added
-    #if (!is.null(yinc)) newvar <- NULL #a tdc can't be updated, other than 0/1
-    if (is.null(newvar)) {
+    if (is.null(newvar)) {  # create new variable 
         if (is.null(yinc)) newvar <- ifelse(index==0, 0L, 1L) #add a 0/1 variable
         else {
             newvar <- yinc[pmax(1L, index)]
@@ -15513,10 +15594,26 @@ if (argclass[ii] == "tdc") {
                 }
             }
         }
-    } else {
-        # update a 0/1 variable
-        if (is.integer(newvar) && all(newvar==0L | newvar==1L))
+    } else if (is.null(yinc)) {
+        # Existing variable, no yinc, so update will be 0 or 1
+        # Okay only if the current variable is 0/1
+        if (all(is.na(newvar) | newvar==0L | newvar==1L))
             newvar[index!=0L] <- 1L
+        else stop("tdc update does not match prior variable type: ", argname[ii])
+    } else {
+        # attempt to update an existing tdc with new values from a new variable
+        # We know how to handle a few special cases, but the basic strategy
+        #  is "don't try to be clever".  Remember that class() can return
+        #  a vector of length > 1
+        if (inherits(newvar, "factor") && (!inherits(yinc, "factor") ||
+                                    !identical(levels(newvar), levels(yinc))))
+            stop("tdc update does not match prior factor: ", argname[ii])
+        clnew <- class(yinc)
+        clold <- class(newvar)
+        if (identical(clnew, clold) || (length(clnew)==1 && length(clold)==1  &&
+                                 class(newvar) %in% c("integer", "numeric") && 
+                                 class(yinc)   %in% c("integer", "numeric")))
+            newvar[index != 0L] <- yinc[index]
         else stop("tdc update does not match prior variable type: ", argname[ii])
     }
     tdcvar <- unique(c(tdcvar, argname[[ii]]))
@@ -16929,7 +17026,7 @@ holding the random effect fixed.
 
 If there are any NA coefficients these are redundant variables.  It's
 easiest to simply get rid of them at the start by fixing up X, varnames,
-asgn, and nvar.
+asgn, nvar, and fcoef.  The variable matrix won't have the NA columns.
 <<zph-setup>>=
 eta <- fit$linear.predictors
 X <- cget$x
@@ -16965,10 +17062,12 @@ if (any(frail)) {
 nterm <- length(asgn)
 termname <- names(asgn)
 
-if (any(is.na(fit$coefficients))) {
-    keep <- !is.na(fit$coefficients)
+fcoef <- fit$coefficients
+if (any(is.na(fcoef))) {
+    keep <- !is.na(fcoef)
     varnames <- varnames[keep]
     X <- X[,keep]
+    fcoef <- fcoef[keep]
 
     # fix up assign 
     new <- unname(unlist(asgn))[keep] # the ones to keep
@@ -16979,7 +17078,7 @@ if (any(is.na(fit$coefficients))) {
     termname <- names(asgn)
     nterm <- length(asgn)   # asgn will be a list
     nvar <- length(new)
-}
+} 
 @ 
 
 The zph1 and zph2 functions do not consider penalties, so we need to add
@@ -17016,8 +17115,8 @@ for (ii in 1:nterm) {
     u <- c(u0, resid$u[jj+nvar])
     if (singledf && length(jj) >1) {
         vv <- solve(imat)[-(1:nvar), -(1:nvar)]
-        t1 <- sum(fit$coef[jj] * resid$u[jj+nvar])
-        test[ii] <- t1^2 * (fit$coef[jj] %*% vv %*% fit$coef[jj])
+        t1 <- sum(fcoef[jj] * resid$u[jj+nvar])
+        test[ii] <- t1^2 * (fcoef[jj] %*% vv %*% fcoef[jj])
         df[ii] <- 1
     }
     else {
@@ -17107,7 +17206,7 @@ if (terms && any(sapply(asgn, length) > 1)) { # collase multi-column terms
     for (i in 1:nterm) {
         j <- asgn[[i]]
         if (length(j) ==1) temp[j, i] <- 1
-        else temp[j, i] <- fit$coefficients[j]
+        else temp[j, i] <- fcoef[j]
     }
 
     sresid <- sresid %*% temp
@@ -17133,7 +17232,7 @@ for (i in 1:nrow(used)) {
 #  the linear predictor X\beta, which always has a coefficient of 1
 for (i in 1:nterm) {
     j <- asgn[[i]]
-    if (length(j) ==1) sresid[,i] <- sresid[,i] + fit$coefficients[j]
+    if (length(j) ==1) sresid[,i] <- sresid[,i] + fcoef[j]
     else sresid[,i] <- sresid[,i] +1
 }
 

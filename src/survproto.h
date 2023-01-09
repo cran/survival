@@ -46,13 +46,6 @@ void agmart(int    *n,     int    *method,  double *start,   double *stop,
 SEXP agscore2(SEXP y2,       SEXP covar2,   SEXP strata2, 
 	      SEXP score2,   SEXP weights2, SEXP method2);
 
-void agsurv3(int    *sn,    int    *snvar,    int    *sncurve, 
-	     int    *snpt,  int    *sse,      double *score, 
-	     double *sy,    int    *grpx,     double *r,        double *coef, 
-	     double *var,   double *xmean,    int    *scn, 
-	     double *cy,    double *cx,       double *ssurv,
-	     double *varh,  double *sused,    int    *smethod);
-
 void agsurv4(int    *ndeath,   double *risk,    double *wt,
              int    *sn,        double *denom,   double *km);
 
@@ -147,14 +140,17 @@ SEXP coxscore2(SEXP y2,       SEXP covar2,   SEXP strata2,
 
 double coxsafe(double x);
 
-SEXP coxsurv1(SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22, 
-              SEXP position2,   SEXP strata2, SEXP xmat2, SEXP risk2);
+SEXP coxsurv1(SEXP otime,   SEXP y2,     SEXP weight2, SEXP sort22, 
+              SEXP strata2, SEXP xmat2,  SEXP risk2);
 
 SEXP coxsurv2(SEXP otime2, SEXP y2, SEXP weight2,  SEXP sort12, SEXP sort22, 
               SEXP position2,  SEXP strata2, SEXP xmat2, SEXP risk2);
 
 double **dmatrix(double *array, int nrow, int ncol);
 int    **imatrix(int *array, int nrow, int ncol);
+
+SEXP fastkm1(SEXP y2, SEXP wt2, SEXP sort2);
+SEXP fastkm2(SEXP y2, SEXP wt2, SEXP sort12, SEXP sort22);
 
 SEXP finegray(SEXP tstart2, SEXP tstop2,   SEXP ctime2,   SEXP cprob2, 
 	      SEXP extend2, SEXP keep2);

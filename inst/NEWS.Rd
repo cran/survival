@@ -1,5 +1,40 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.4-2}{
+  \itemize{
+    \item For a multi-state coxph model, the default is now
+    ties='breslow'. When there is a tied transition of the same type, A:B
+    and A:B say, the Efron approx is justified and was correctly computed.
+    However, ties of different types such as an A:B and A:C (competing risks)
+    transition at the same time or A:B and C:D are effectively ignored
+    by the code; and this would be very hard to change. Using Breslow
+    rather than a partial Efron was felt to be more defensible.
+    \item Add the survcondense function.
+    \item Improve tmerge handling of a wide data set and add a test case
+    for it.  Add a caution to the vignette wrt using wide data sets.
+    \item Improve the speed of concordance (request of Frank H).  Update
+    the vignette and add more tests.
+    \item Fix bug in cox.zph: if there was any NA coefficient in the
+    coxph fit, the residuals used for the plot would also be NA.
+    \item Run all tests and submit to CRAN (2023-01-06)
+}}
+\section{Changes in version 3.4-1}{
+  \itemize{
+    \item Add newdata argument to basehaz, along with more documentation
+    \item survfit.coxph would fail for the combination of newdata and a
+    model with only an offset term, fixed
+    \item Add a check to pseudo. The algorithm was not designed for a
+    survfit curve from interval censored data, but still produced a
+    result (assuredly an incorrect one).  Interval censored curves now
+    have type='interval' to help support this.
+    \item Predict.coxph with reference='zero' and missing newdata
+    incorrectly assumed it could simply return fit$residuals.  Pointed
+    out by David Collett.
+    \item Change the prototype in a few .c routines, per a request from
+    CRAN. (chinv.c for instance was using the old K&R style declaration,
+    which shows how long ago it was written.)
+    \item Check and submit to CRAN
+}}
 \section{Changes in version 3.4-0}{
   \itemize{
     \item Replace .[terms call in predict.coxph with drop.term();
@@ -17,11 +52,10 @@
     \item Fix error in terms.inner; it failed for a function with no
     arguments. Pointed out by Daniel Sjberg and Duncan Murdoch.
     \item Remove Sint from C code.
-    \item The package sometimes used P(>Chi) and somtimes Pr(>Chi) as a
-    printout label; the base packages all use "Pr".  Changed this to be
-    consistent.
-    }}
-
+    \item anova.coxph sometimes used P(>Chi) and somtimes Pr(>Chi) as a
+    printout label, depending on the argument; the base packages all use
+    "Pr".  Changed this to be consistent.
+}}
 \section{Changes in version 3.3-1}{
   \itemize{
     \item Update the saved tests/Examples/survival-Ex.Rout.save file so

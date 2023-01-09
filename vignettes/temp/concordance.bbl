@@ -1,0 +1,53 @@
+\begin{thebibliography}{1}
+
+\bibitem{Anscombe56}
+F.~J. Anscombe.
+\newblock One estimating binomial response relations.
+\newblock {\em Biometrika}, 43:461--464, 1956.
+
+\bibitem{Goen05}
+M.~G\"{o}en and G.~Heller.
+\newblock Concordance probability and discriminatory power in proportional
+  hazards regression.
+\newblock {\em Biometrika}, 92:965--970, 2005.
+
+\bibitem{Korn90}
+E.~L. Korn and R.~Simon.
+\newblock Measures of explained variation for survival data.
+\newblock {\em Stat. in Medicine}, 9:487--503, 1990.
+
+\bibitem{Newcombe06}
+R.~G. Newcombe.
+\newblock Confidence intervals for an effect size measure based on the
+  mann–whitney statistic. part 2: asymptotic methods and evaluation.
+\newblock {\em Stat. in Medicine}, pages 559--73, 2006.
+
+\bibitem{Peto72}
+R.~Peto and J.~Peto.
+\newblock Asymptotically efficient rank invariant test procedures (with
+  discussion).
+\newblock {\em J. Royal Stat. Soc. A}, 135(2):185--206, 1972.
+
+\bibitem{Prentice79}
+Ross~L Prentice and P~Marek.
+\newblock A qualitative discrepancy between censored data rank tests.
+\newblock {\em Biometrics}, 35(4):861--867, 1979.
+
+\bibitem{Schemper09}
+M.~Schemper, S.~Wakounig, and G.~Heinze.
+\newblock The estimation of average hazard ratios by weighted {C}ox regression.
+\newblock {\em Stat. in Medicine}, 28(19):2473--2489, 2009.
+
+\bibitem{Watson15}
+T.~M. Therneau and D.~A. Watson.
+\newblock The concordance statistic and the {C}ox model.
+\newblock Technical Report~85, Department of Health Science Research, Mayo
+  Clinic, 2015.
+
+\bibitem{Uno11}
+H.~Uno, T.~Cai, M.~J. Pencina, R.~B D'Agnostino, and L.~J. Wei.
+\newblock On the {C}-statistics for evaluating overall adequacy of risk
+  prediction procedures with censored survival data.
+\newblock {\em Stat. in Medicine}, 30(10):1105--1117, 2011.
+
+\end{thebibliography}
