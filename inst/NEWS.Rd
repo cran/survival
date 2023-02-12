@@ -1,5 +1,32 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.5-3}{
+  \itemize{
+    \item Fix final compiler warnings that affect CRAN
+    \item Restore backwards compatability for ratetable() calls in a
+    formula. The feature is used by the relsurv package.
+    \item Add information on trust regions to the fail directory.
+}}
+\section{Changes in version 3.5-2}{
+  \itemize{
+    \item New release for CRAN; chase down some challenging (for me)
+    C-code memory issues
+    \item Clean up test case for drop.special
+}}
+\section{Changes in version 3.5-1}{
+  \itemize{
+    \item Minor edits to survreg (fit$coef to fit$coefficients) and
+    summary.coxph (a model with only an offset)
+    \item Fix error in fastkm.c (new routine, edge case, no one had
+    found it yet.)
+    \item Fix a few niggles in .c code, found by the new compiler chain
+    \item Remove backwards compatability for ratetable() calls in a
+    formula;  this was changed in the main code many years ago.
+}}
+\section{Changes in version 3.5-0}{
+  \itemize{
+    \item Final check and updates for CRAN submission
+}}
 \section{Changes in version 3.4-2}{
   \itemize{
     \item For a multi-state coxph model, the default is now
