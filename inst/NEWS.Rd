@@ -1,5 +1,19 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.5-4}{
+  \itemize{
+    \item Update the help file for the finegray command.  It was
+    incorrect with respect to time-dependent covariates.
+    \item Add model= as an option to survfit, and add a
+    model.frame.survfit method.  These are needed to call the
+    survfit/pseudo pair inside another function.
+    \item Small bug in survfit: if start.time was present, the 'type' element
+    could be missing from the output object.
+    \item Enhance the concordance command: one can now put multiple
+    predictions on the right hand side of the equation; this will give
+    the set of concordances and their variance-covariance matrix. 
+   \item Add a couple of overlooked S3 methods to the NAMESPACE
+}}
 \section{Changes in version 3.5-3}{
   \itemize{
     \item Fix final compiler warnings that affect CRAN
