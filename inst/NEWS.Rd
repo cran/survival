@@ -1,5 +1,39 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.5-7}{
+  \itemize{
+    \item Improve the algorithm for score residuals from O(ndp) to
+    O((n+d)p), where n= number of observations, d= number of events, p =
+    number of covariates.  For large data sets this can have a substantial
+    impact.  (Score residuals are used for robust variance.)
+    \item Add short vignette on how we compute mulitstate Cox model
+    curves.
+    \item 13Aug23, check dependent packages (10605 this time) and submit
+    to CRAN
+}}
+\section{Changes in version 3.5-6}{
+  \itemize{
+    \item Fix error in a (time1, time2) coxph model with both strata and
+    tt() terms; pointed out by Pierre Joly.  Add a new test case for
+    this to the tests directory.
+    \item Small update to coxph prompted by a user query: for a model
+    with an offset, the mean offset is no longer subtracted from the
+    linear.predictor component.  This make it agree with predict.coxph.
+    \item Add the brier function, along with tests and a new vignette.
+    Update rttright and strengthen the tests.
+    \item Update coxph.detail; the roder argument now applies to the x,
+    y, and riskmat components.  
+}}
+\section{Changes in version 3.5-5}{
+  \itemize{
+    \item Add the hoel data set, cancer in irradiated male mice, found
+    in Kalbfleisch and Prentice.  It is useful for illustrating
+    competing risks.
+    \item Update some S3 methods in NAMESPACE, and rename the
+    internal terms.inner function to innerterms.  Both were generating
+    warnings with the latest CRAN check suite.
+    \item Submit to CRAN
+}}
 \section{Changes in version 3.5-4}{
   \itemize{
     \item Update the help file for the finegray command.  It was

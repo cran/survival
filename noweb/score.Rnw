@@ -1,0 +1,31 @@
+/section{Computation of score residuals}
+This documentation is placed into the source code file until I find a better
+place for it.
+
+The score residual has the simple formula in line 1 below.  It is a vector
+for each observation $i$, of length $p$ = number of covariates.
+
+\begin{align*}
+u_i &= \int (x_i - \xbar(t)) dM_i(t)  \\
+M_i(t) &= dN_i(t) - exp(\eta_i) \lambda(t) \\
+\lambda(t) &= \frac{\sum_j w_j dN_j(t)}{\sum_j Y_j(t) w_j exp(\eta_j) \\
+\eta_i &= \sum_k \beta_i x_{ik}
+\end{align*}
+
+If we let $U$ be the matrix with $n$ rows and $p$ columns containg these
+residuals, then $1'U$ is the overall score statistic, $D= UV$ is the
+matrix of dfbeta residuals, where $V$ is the Cox model variance matrix,
+and $1'DV$ is the increment in the Newton-Raphson iteration.
+
+The integral has an increment at each of the $d$ unique death times.
+For efficiency we need to avoid the naive $O(ndp)$ algorithm that does
+all these updates individually.
+The basic idea is to keep running sums.
+
+Order the subjects from last to first, so that $t_1 \ge t_2 \ge t_3 \ldots$,
+and let 
+\begin{align*}
+  s1(t) &= \sum_{t_i \le t} w_i \exp(\eta_i) \\
+  s2_j(t) &= \sum_{t_i \le t} w_i \exp(\eta_i) x_{ij} \\
+  \xbar_j(t) &= s2_j(t)/s1(t) \\
+  \lamba(t) &= 

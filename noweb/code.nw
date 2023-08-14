@@ -1005,12 +1005,19 @@ attr(X, "contrasts") <- Xatt$contrasts
 
 Finish the setup.  If someone includes an init statement or offset, make sure
 that it does not lead to instant code failure due to overflow/underflow.
+The mean offset is added back to the linear predictors at the end, to maintain
+consistency with predict.coxph(fit, newdata= originaldata)
 <<coxph-setup>>=
 offset <- model.offset(mf)
-if (is.null(offset) || all(offset==0)) offset <- rep(0., nrow(mf))
-else if (any(!is.finite(offset) | !is.finite(exp(offset)))) 
+if (is.null(offset) || all(offset==0)) {
+    offset <- rep(0., nrow(mf))
+    meanoffset <- 0
+} else if (any(!is.finite(offset) | !is.finite(exp(offset)))) 
     stop("offsets must lead to a finite risk score")
-else offset <- offset - mean(offset)  # this can help stability of exp()
+else {
+    meanoffset <- mean(offset)
+    offset <- offset - meanoffset  # this can help stability of exp()
+}
     
 weights <- model.weights(mf)
 if (!is.null(weights) && any(!is.finite(weights)))
@@ -1273,7 +1280,8 @@ names(fit$means) <- names(fit$coefficients)
 fit$formula <- formula(Terms)
 if (length(xlevels) >0) fit$xlevels <- xlevels
 fit$contrasts <- contr.save
-if (any(offset !=0)) fit$offset <- offset
+if (meanoffset !=0) fit$linear.predictors <- fit$linear.predictors + meanoffset
+if (x & any(offset !=0)) fit$offset <- offset
 
 fit$call <- Call
 fit
@@ -1346,7 +1354,8 @@ Error: ndata not found
 The genesis of this problem is hard to unearth, but has to do with non standard
 evaluation rules used by model.frame.default.  In essence it pays attention to 
 the environment of the formula, but the enclos argument of eval appears to be
-ignored.  I've not yet found a solution.
+ignored.  I've not yet found a solution, other than to tell users to set x=TRUE
+when calling coxph inside a subroutine.
 
 <<model.matrix.coxph>>=
 model.frame.coxph <- function(formula, ...) {
@@ -3377,7 +3386,7 @@ if (is.vector(newdata, "numeric")) {
         stop("Newdata argument must be a data frame")
     }
     newdata <- data.frame(as.list(newdata), stringsAsFactors=FALSE)
-}
+}  else if (is.list(newdata)) newdata <- as.data.frame(newdata) 
 @ 
 
 Finally get my new model frame mf2.
@@ -3587,6 +3596,7 @@ if (se.fit && conf.type != "none") {
 
 if (!missing(start.time)) result$start.time <- start.time
 
+if (!missing(newdata)) result$newdata <- newdata
 result$call <- Call
 class(result) <- c('survfitcox', 'survfit')
 result
@@ -4224,7 +4234,7 @@ function(formula, newdata, se.fit=FALSE, conf.int=.95, individual=FALSE,
     <<survfit.coxphms-result>>
 
     cifit$call <- Call
-    class(cifit) <- c("survfitms", "survfit")
+    class(cifit) <- c("survfitcoxms", "survfitms", "survfit")
     cifit
 }
 @ 
@@ -4419,7 +4429,8 @@ else {
         cifit$cumhaz[rtemp[[i]],,] <- tfit[[i]]$cumhaz
     }
 }
-cifit$newdata <- mf2
+
+cifit$newdata <- newdata
 @
 
 Finally, a routine that does all the actual work.
@@ -5306,7 +5317,6 @@ if (missing(newdata)) {
 }
 else {
     offset <- newoffset - mean(offset)
-    browser()
     if (has.strata && any(is.na(newstrat))) is.na(newx) <- is.na(newstrat)
     if (has.strata && reference=="strata") {
         xmeans <- rowsum(x*weights, oldstrat)/c(rowsum(weights, oldstrat))
@@ -5634,9 +5644,11 @@ concordancefit <- function(y, x, strata, weights, ymin=NULL, ymax=NULL,
         if (timefix) y <- aeqSurv(y)
         if (!is.null(ymin)) {
             censored <- (y[,ny] ==0)
-            if (any(y[censored, ny-1] < ymin))
-                stop("data has a censored value less than ymin")
-            else y[,ny-1] <- pmax(y[,ny-1], ymin)
+            # relaxed this rule, 30 March 2023
+            #if (any(y[censored, ny-1] < ymin))
+            #    stop("data has a censored value less than ymin")
+            #else y[,ny-1] <- pmax(y[,ny-1], ymin)
+            y[,ny-1] <- pmax(y[,ny-1], ymin)
         }
     } else {
         # should only occur if another package calls this routine
@@ -5892,7 +5904,7 @@ concordancefit <- function(y, x, strata, weights, ymin=NULL, ymax=NULL,
         rval$var <- cvar
         rval$cvar <- coxvar
     }
-    if (influence == 1 || influence==3) rval$dfbeta <- dfbeta/2
+    if (influence == 1 || influence==3) rval$dfbeta <- dfbeta
     if (influence >=2) {
         rval$influence <- fit$influence
         if (nvar > 1) dimnames(rval$influence) <- list(NULL, cname, Xname)
@@ -5918,7 +5930,7 @@ concordancefit <- function(y, x, strata, weights, ymin=NULL, ymax=NULL,
         if (!is.null(rval$influence)) {
             if (nvar >1) {
                 rval$influence <- rval$influence[,c(2,1,3,4,5),]
-                dimnames(rval$influence) <- list(Null, cname, Xname)
+                dimnames(rval$influence) <- list(NULL, cname, Xname)
             } else {
                 rval$influence <- rval$influence[, c(2,1,3,4,5)]
                 dimnames(rval$influence) <- list(NULL, cname)
@@ -8931,7 +8943,8 @@ survresid.fit <- function(object, times,
                               collapse, weighted=FALSE, method=1) {
     if (object$type=="interval") stop("interval censored not yet supported")
     survfitms <- inherits(object, "survfitms")
-    coxsurv <- inherits(object, "survfitcox")
+    coxsurv <- inherits(object, "survfitcox")  # should never be true, as there
+                                               #  is a residuals.survfitcox
     timefix <- (is.null(object$timefix) || object$timefix)
     
     start.time <- object$start.time
@@ -8947,7 +8960,7 @@ survresid.fit <- function(object, times,
     }
 
     # get the data
-   <<rsurvfit-data>>
+    <<rsurvfit-data>>
 
     if (missing(collapse)) collapse <- (!(is.null(id)) && any(duplicated(id)))
     if (collapse && is.null(id)) stop("collapse argument requires an id or cluster argument in the survfit call")
@@ -8963,55 +8976,52 @@ survresid.fit <- function(object, times,
     
     timelab <- signif(times, 3)  # used for dimnames
     # What type of survival curve?
-    if (!coxsurv) {
-        stype <- Call$stype
-        if (is.null(stype)) stype <- 1
-        ctype <- Call$ctype
-        if (is.null(ctype)) ctype <- 1
-        if (!survfitms) {
-            resid <- rsurvpart1(newY, X, casewt, times,
-                                type, stype, ctype, object)
-            if (collapse) {
-                resid <- rowsum(resid, id, reorder=FALSE)
-                dimnames(resid) <- list(id= unique(id), times=timelab)
-                curve <- (as.integer(X))[!duplicated(id)] #which curve for each
-            } 
-            else {
-                if (length(id) >0) dimnames(resid) <- list(id=id, times=timelab)
-                curve <- as.integer(X)
-            }
-        }
-        else {  # multi-state
-            if (!collapse) {
-                if (length(id >0)) d1name <- id else d1name <- NULL
-                cluster <- d1name
-                curve <- as.integer(X)
-            }       
-            else {
-                d1name <- unique(id)
-                cluster <- match(id, d1name)
-                curve <- (as.integer(X))[!duplicated(id)]
-            }
-            resid <- rsurvpart2(newY, X, casewt, istate, times, cluster,
-                                type, object, method=method, collapse=collapse)
-
-            if (type == "cumhaz") {
-                ntemp <- colnames(object$cumhaz)
-                if (length(dim(resid)) ==3)
-                     dimnames(resid) <- list(id=d1name, times=timelab, 
-                                             cumhaz= ntemp)
-                else dimnames(resid) <- list(id=d1name, cumhaz=ntemp)
-            }
-            else {
-                ntemp <- object$states
-                if (length(dim(resid)) ==3) 
-                    dimnames(resid) <- list(id=d1name, times=timelab, 
-                                            state= ntemp)
-                else dimnames(resid) <- list(id=d1name, state= ntemp)
-            }
+    stype <- Call$stype
+    if (is.null(stype)) stype <- 1
+    ctype <- Call$ctype
+    if (is.null(ctype)) ctype <- 1
+    if (!survfitms) {
+        resid <- rsurvpart1(newY, X, casewt, times,
+                            type, stype, ctype, object)
+        if (collapse) {
+            resid <- rowsum(resid, id, reorder=FALSE)
+            dimnames(resid) <- list(id= unique(id), times=timelab)
+            curve <- (as.integer(X))[!duplicated(id)] #which curve for each
+        } 
+        else {
+            if (length(id) >0) dimnames(resid) <- list(id=id, times=timelab)
+            curve <- as.integer(X)
         }
     }
-    else stop("coxph survival curves not yet available")
+    else {  # multi-state
+        if (!collapse) {
+            if (length(id >0)) d1name <- id else d1name <- NULL
+            cluster <- d1name
+            curve <- as.integer(X)
+        }       
+        else {
+            d1name <- unique(id)
+            cluster <- match(id, d1name)
+            curve <- (as.integer(X))[!duplicated(id)]
+        }
+        resid <- rsurvpart2(newY, X, casewt, istate, times, cluster,
+                            type, object, method=method, collapse=collapse)
+
+        if (type == "cumhaz") {
+            ntemp <- colnames(object$cumhaz)
+            if (length(dim(resid)) ==3)
+                 dimnames(resid) <- list(id=d1name, times=timelab, 
+                                         cumhaz= ntemp)
+            else dimnames(resid) <- list(id=d1name, cumhaz=ntemp)
+        }
+        else {
+            ntemp <- object$states
+            if (length(dim(resid)) ==3) 
+                dimnames(resid) <- list(id=d1name, times=timelab, 
+                                        state= ntemp)
+            else dimnames(resid) <- list(id=d1name, state= ntemp)
+        }
+    }
 
     if (weighted && any(casewt !=1)) resid <- resid*casewt
 
@@ -9026,6 +9036,7 @@ easier of course.
 
 <<rsurvfit-data>>=
 Call <- object$call
+Terms <- object$terms
 
 # remember the name of the id variable, if present.
 #  but we don't try to parse it:  id= mydata$clinic becomes NULL
@@ -9033,21 +9044,17 @@ idname <- Call$id
 if (is.name(idname)) idname <- as.character(idname)
 else idname <- NULL   
 # I always need the model frame
-if (coxsurv) {
-    mf <- model.frame(object)
-    if (is.null(object$y)) Y <- model.response(mf)
-    else Y <- object$y
-}
-else {
-    formula <- formula(object)
+mf <- model.frame(object)
+if (is.null(object$y)) Y <- model.response(mf)
+else Y <- object$y
 
-    # the chunk below is shared with survfit.formula 
-    na.action <- getOption("na.action")
-    if (is.character(na.action))
-        na.action <- get(na.action)  # this is a temporary hack
-    <<survfit.formula-getdata>>
-    # end of shared code 
-}
+formula <- formula(object)
+# the chunk below is shared with survfit.formula 
+na.action <- getOption("na.action")
+if (is.character(na.action))
+    na.action <- get(na.action)  # a hack to allow the shared code
+<<survfit.formula-getdata>>
+# end of shared code 
 
 xlev <- levels(X)
 
@@ -9092,6 +9099,11 @@ derivative at time $z$ is the sum of
   \item term3(min($z$, $t_i$)) - term3(min($z$, $s_i$))
   \item term1($t_i$) if $t_i \le z$ and observation $i$ is an event
 \end{itemize}
+The computation of term1 and term3 are each $O(d)$, the number of events, and
+the residual is $O(2n)$, an addition is done when it enters the risk set and
+another when it leaves.  This accomplishes our goal to not update every member
+of the risk set at every event.
+
 
 The Fleming-Harrington estimate of survival is 
 \begin{align*}
@@ -9214,15 +9226,17 @@ The sojourn time is the area under the survival curve. Let $x_j$ be the
 widths of the rectangles under the curve from event time $d_j$ to
 $\min(d_{j+1}, t)$, zero if $t \le d_j$, or $t-d_m$ if $t$ is after the last
 event time.
-\begin{align*}
-  A(0,t) &= \sum_{j=1}^m x_j S(d_j) \\
+\begin{align}
+  A(0,t) &= \sum_{j=1}^m x_j S(d_j) \\nonumber \\
   \frac{\partial A(0,t)}{\partial w_i} &=
-   \sum_{j=1}^m -x_j S(d_j) \frac{\partial H(d_j)}{\partial w_i} \\
-  &= \sum_{j=1}^m -x_jS(d_j) \sum_{k \le j} \frac{\partial h(d_k)}{\partial w_i} \\
+   \sum_{j=1}^m -x_j S(d_j) \frac{\partial H(d_j)}{\partial w_i} \nonumber \\
+  &= \sum_{j=1}^m -x_jS(d_j) \sum_{k \le j} \frac{\partial h(d_k)}{\partial w_i} 
+   \nonumber \\
   &= \sum_{k=1}^m \frac{\partial h(d_k)}{\partial w_i} 
-          \left(\sum_{j\ge k} -x_j S(d_j) \right) \\
-  &= \sum_{k=1}^m -A(d_k, t) \frac{\partial h(d_k)}{\partial w_i}    
-\end{align*}
+          \left(\sum_{j\ge k} -x_j S(d_j) \right) \nonumber \\
+  &= \sum_{k=1}^m -A(d_k, t) \frac{\partial h(d_k)}{\partial w_i} 
+          \label{eq:auctrick}   
+\end{align}
 
 For an observation at risk over the interval $(a,b)$ we have exactly the same
 calculus as the cumulative hazard with respect to which $h(d_k)$ terms
@@ -9631,7 +9645,7 @@ row of $A$ is zero.
 Since the row sums are constant, the sum of the derivatives for each row
 must be zero.
 
-If we evaluate equation \label{ajresidx} directly there will be 
+If we evaluate equation \eqref{ajresidx} directly there will be 
 $O(nk^2)$ operations at each death time for the matrix product, and another
 $O(nk)$  to add in the new increment.  For a large data set $d$ is often
 of the same order as $n$, which makes this an expensive calculation.
@@ -9707,7 +9721,7 @@ An alternate is to look at the direct expansion.
             \prod_{j<k, d_k\le t}[I+ A(d_k)] \label{ajresidy}
 \end{align}
 We cannot insert an $(I+ A(d_j))/(I + A(d_j))$ term and rearrange the last
-equation so as to factor out $p(t)$, as was done in the KM case, however,
+equation so as to factor out $p(t)$, as was done in the KM case,
 since matrix products do not commute.
 Instead think of accumulating the terms sequentially.  
 Let $B^{(j)}(t)$ be the nstate by nstate matrix derivative matrix with
@@ -9930,6 +9944,317 @@ if (any(duplicated(split$row))) {
     }
 }
 @
+\subsection{Cox model case}
+The code for a simple Cox model has a lot of overlap with the simple 
+Nelson-Aalen case, leading to overlap between this section and
+the rsurvpart1 routine. 
+We only support the exponential form (Breslow estimate), however.
+
+At time $t$ the increment to the hazard function will be
+\begin{align*}
+ h(t;z) &= \frac{\sum w_i dN_i(t)}{\sum Y_i(t) w_i  \exp((X_i-z)\beta)}\\
+        &= \frac{\sum w_i dN_i(t)}{d(t;z)}
+ H(t;z) &= \int_0^t h(s;z) ds
+\end{align*}
+where $z$ is the covariate vector for the predicted curve.
+If $\beta=0$ then this reduces to the ordinary Nelson-Aalen.
+The increment to the IJ for some subject $k$ turns out to be
+\begin{align}
+ \frac{\partial h(t;z)}{\partial w_k}  &= A + B \\
+  A  &= \frac{dN_k(t) - \exp((X_k-z)\beta) h(t;z)}{d(t;z)}
+             {\sum Y_i(t) w_i  \exp((X_i-z)\beta)} \label{eq:residij1}\\
+     &= \frac{dM_k(t)}{d(t;z)} \\
+  B &= -D_{k.} (\overline{x}(t)- z)' h(t;z)\label{eq:residij2}
+\end{align}
+where $D_{k.}$ is row $k$ of the dfbeta matrix, which gives the influence
+of each subject (row) on the coefficients of $\hat\beta$.
+$D$ and $M$ do not involve $z$.
+Term A is a near clone of the Nelson-Aalen and can use nearly the
+same code, adding the risk weights $\exp((X_i-z)\beta$, while term B is new.
+
+The user may request curves for more than one covariate set $z$, in that case
+the survival curve found below within \code{object} will be a matrix,
+one column for each target, and the returned matrix from this routine will 
+be an array of dimensions (subject, time, z).
+
+The survival curves are
+\begin{align*} 
+  S(t; z) &= \exp(-H(t;z)) \\
+   \frac{\partial \log S(t;z)}{\partial w_k} &=
+        -S(t;z) \frac{\partial H(t;z)}{\partial w_k} \\
+\end{align*}
+thus the survival or pstate derivative is a simple multiple of the derivative 
+for the cumulative hazard.
+
+As shown in the earlier in equation \eqref{eq:auctrick}, if $A(s,t; z)$ is the
+area under the curve from $s$ to $t$, then
+$$
+\frac{\partial A(0,t;z)}{\partial w_i} =
+  \sum_{k=1}^m -A(d_k, t;z) \frac{\partial h(d_k;z)}{\partial w_i}
+$$
+where $d_k$ are the event times.  
+Note that \emph{all} the weights change for a new reporting time.
+However, since $A(0,t) = A(0,d_k) + A(d_k, t)$ the values can be obtained
+efficiently.
+
+<<residuals.survfitcox>>=
+residuals.survfitcoxms <- function(object, times, type="pstate", collapse= TRUE,
+                                 weighted= FALSE, ...) {
+    stop("residuals for survival curves from a multistate PH model are not yet available")
+}
+
+residuals.survfitcox <- function(object, times, type="pstate", collapse= TRUE,
+                                 weighted= FALSE, ...) {
+    # residuals for a single state Cox model survival curve
+    if (!inherits(object, "survfitcox"))
+        stop("argument must be a survfit object created from a coxph model")
+
+    if (missing(times)) stop("the times argument is required")
+    ntime <- length(times)
+    if (is.matrix(object$surv)) nz <- ncol(object$surv)
+    else nz <- 1  # number of z vectors that were used
+    fit <- object  # the fitted survival
+
+    # allow a set of alias
+    temp <- c("pstate", "cumhaz", "sojourn", "survival",
+                              "chaz", "rmst", "rmts", "auc")
+    type <- match.arg(casefold(type), temp)
+    itemp <-  c(1,2,3,1,2,3,3,3)[match(type, temp)]
+    type <- c("pstate", "cumhaz", "auc")[itemp]
+
+    # retrive the underlying Cox model, and then the data
+    Call <- object$call
+    coxfit <- eval(Call$formula)
+    cdata <- coxph.getdata(coxfit, id=collapse, cluster=collapse)
+    id <- cdata$id
+    Y <- cdata$y
+    X <- cdata$x
+    ny <- ncol(Y)
+    n <- nrow(Y)
+    strata <- cdata$strata
+    if (is.null(strata)) strata <- integer(n)
+    nstrat <- length(unique(strata))
+
+    wt <- cdata$weight
+    risk <- exp(coxfit$linear.predictors)
+    xcurve <- object$xcurve  # the predictors for each curve in the object
+    ncurve <- nrow(xcurve)
+
+    # Deal with the rare case of a redundant covariate
+    if (any(is.na(coxfit$coefficients))) {
+        keep <- which(!is.na(coxfit$coefficients))
+        X <- X[,keep, drop=FALSE]
+        vmat <- coxfit$var[keep,keep, drop=FALSE]
+        xcurve <- xcurve[,keep, drop=FALSE]
+        temp <- xcurve - rep(coxfit$means[keep], each=nrow(xcurve))
+        scale <- drop(exp(temp %*% coef(coxfit)[keep]))
+    } else {
+        vmat <- coxfit$var
+        temp <- xcurve - rep(coxfit$means, each=nrow(xcurve))
+        scale <- drop(exp(temp %*% coef(coxfit)))   # 1/exp((xbar -z)' beta)
+    }
+    
+# The coxsurv routines return all the pieces that we need
+    if (ny==2) {
+        sort2 <- order(strata, Y[,1])
+        cfit <- .Call(Ccoxsurv3, Y, X, strata, risk, wt, sort2- 1L, 
+                      as.integer(coxfit$method=="efron"))
+    } else {
+        sort2 <- order(strata, Y[,2])
+        sort1 <- order(strata, Y[,1])
+        cfit <- .Call(Ccoxsurv4, Y, wt, sort1, sort2, strata,
+                         X, fit$linear.predictor)
+    }
+    
+    if (is.null(object$start.time)) start.time <- min(0, Y[,1])
+    else start.time <- object$start.time
+    if (!is.null(object$start.time) && any(cfit$time < object$start.time)) {
+        # trim out information before the first time
+        keep <- which(cfit$time >= object$start.time)
+        cfit$time <- cfit$time[keep]
+        cfit$strata <- cfit$strata[keep]
+        cfit$count  <- cfit$count[keep,, drop=FALSE]
+        cfit$xbar   <- cfit$xbar[keep,, drop=FALSE]
+    }
+ 
+    <<residuals.survfitcox2>>
+}
+@
+
+The coxsurv routines has returned the score residuals $r$,
+the dfbeta resdiduals are $D= r V$ where
+$V$ is the variance matrix from the coxph fit.
+The product $r V (\xbar(t) - z)'$ is an $n,p$ matrix times $p,p$ matrix 
+times $p,d$, where $d$ is the number of unique event times.
+This is a big matrix multiplication, $O(np^2) + O(npd)$.
+
+To make this routine reasonably fast, we want to avoid anything that is
+$O(nd)$.  The key idea is that the final result will only be \emph{reported} at
+a small number of event times $m$ = length(times).
+Look for an algorithm whose dominating term is $O(nm) + O(d)$.
+
+For the cumulative hazard we have the cumulative sum of $dM_i(t)/d(t, z)$,
+the numerator does not depend on $z$.
+The hazard portion is the cumulative is exp(linear.predictor[i]) times the
+cumulative sum of the hazard $h(t; x_0)$ where $x_0$ is the means component of
+the coxph fit.
+
+\begin{itemize}
+  \item terma1 = $1/d(t;x_0)$ is the increment to the derivative for any
+    observation with an event at event time $t$
+  \item terma2 = $h(t;x_0)/d(t;x_0) = dN(t)/d^2(t;x_0)$ is the scaled increment 
+    to the hazard  at time $t$
+  \item terma3 = cumulative sum of term2
+\end{itemize}
+The \code{cfit\$counts} matrix has $dN$ in colum 4 and $d$ in columns 3 and 7,
+the latter has an Efron correction (identical to column 3 if ties= breslow).
+Scaling term a1 to a given $z$ involves division by $\exp((z- x_0)\beta)$, 
+there is no additional per-subject correction. Term a2 has an additional
+per-subject multiplier of exp(linear.predictor) to give the per subject
+margtingale $M_i$.
+
+Assume an observation over interval $(t_1, t_2)$ and a reporting time $s$. 
+For the $dM_i$ term in the IJ, our sum goes over the interval 
+$(\min(t_1,s), \min(t_2,s)]$, open on the left and closed on the right.
+Term 1 applies for any death which falls into the interval, add (term3 at
+$\min(t_2,s)$ - term 3 at $\min(t_1,s)$) times the risk score.  
+This gives the first ``$dM_i$'' term of the IJ residual for the observation.  
+If there are time-dependent covariates the risk score for a subject may differ
+from row to row, so defer the collapse on id until a final step.
+
+Think of term B as a long matrix product 
+   $J (R (\xbar(t)-z)' \rm{diag}(h(t;z))) K$.
+The per-subject risk scores do not appear here.
+The inner portion has the large $(n,p)$ by $(p,m)$ matrix multiplication that we
+wish to avoid, while $J$ and $K$ are design matrices.
+The first adds all rows for a subject, while $K$ gives cumulative sums up to
+each of the reporting times.  Simply changing the grouping to
+$(J R) [(\xbar(t)-z)' \rm{diag}(h(t;z) K)]$
+given an interior multiplication that is the size of the final report.
+
+Strata are a nuisance, since they are stacked end to end in the cfit object.
+They can't be packaged as an array since each stratum will usually have a
+different number of events.  The final result, however, will be an array with
+dimensions of subject, reporting times, and z.
+
+<<residuals.survfitcox2>>=
+# index1 = the index in cfit of the largest event time <= min(t,s), in the same
+#  strata.  The result might be 0 (someone censored before the first event)
+index1 <- sapply(times, function(x) 
+    neardate(strata, cfit$strata, pmin(Y[,ny-1], x), cfit$time, best="prior",
+            nomatch= 0))
+index1 <- matrix(index1, n)  # helps debug, but doesn't change computation
+
+# index0 = index1 or 0: 0 if the interval does not contain a death for subject
+#  i.  If nonzero it will be the interval (in cfit) in which that death falls.
+index0 <- ifelse(Y[,ny] & (Y[,ny-1] <= c(0, times)[1L + index1]), index1, 0)
+
+# The function below gets called twice in the AUC case, once for others,
+#  h will be a matrix
+s2addup <- function(h, scale) {
+    H2 <- residcsum(h/cfit$count[,7], cfit$strata)
+
+    # Terms for the cumhaz
+    term1a <- outer(c(0, 1/cfit$count[,7])[index0 +1L], scale, '*')
+
+    if (ny ==2) term1b <- risk * rbind(0, H2)[index1 + 1L,] 
+    else  {
+        index2 <- sapply(times, function(x) 
+            neardate(strata, cfit$strata, pmin(Y[,1], x), cfit$time, 
+                     best="prior", nomatch= 0))
+        term1b <- risk*( rbind(0,H2)[index1 + 1L,] - rbind(0,H2)[index2 + 1L,])
+    }
+
+    term1 <- term1a - term1b
+
+    # Now term 2, the effect of each obs on beta
+    # By definition we won't have any reporting times before
+
+    nvar <- ncol(cfit$xbar)
+    ustrat <- unique(strata)
+    indx3 <- neardate(rep(unique(cfit$strata), each=ntime), cfit$strata,
+                          times, cfit$time, best= "prior", nomatch=0)
+    term2 <- array(0., dim= c(n, ntime, ncurve))
+    for (k in 1:ncurve) {
+        # Can't do this part all at once (though it might be possible)
+        temp <- residcsum((cfit$xbar - rep(xcurve[k,], each= nrow(cfit$xbar)))*
+                          h[,k], cfit$strata)
+        term2[,,k] <- cfit$sresid %*% (vmat %*% t(rbind(0, temp)[indx3 + 1L,]))
+        }
+
+    if (ncurve >1) array(c(term1) - c(term2), dim=c(n, ntime, ncurve))
+    else matrix(c(term1) - c(term2), n)
+}
+
+haz <- outer(cfit$count[,4]/cfit$count[,7], scale)     # hazard for each curve
+IJ <- s2addup(haz, scale)  # IJ for the cumulative hazard
+
+if (type == "pstate") {
+    # Each residual has to be multiplied by the appropriate survival value from
+    #  the survival curve.
+    # First find the row in object$surv
+    if (nstrat == 1) {
+        srow <- findInterval(times, object$time, left.open=FALSE)
+        # IJ[,k,,,] is multiplied by srow[k], so replicate as needed
+        srow <- rep(srow, each= dim(IJ)[1]) 
+    } else {
+        srow <- neardate(rep(ustrat, each=length(times)),
+                          rep(ustrat, each=object$strata), times, object$time,
+                          prior=TRUE)
+        # srow has the indices for strata 1, then strata 2, ...
+        temp <- matrix(srow, ncol=ntime, byrow=TRUE)
+        srow <- c(temp[strata,])  # each row of IJ matched to the right strata
+    }
+    if (ncurve==1) surv = object$surv[srow]
+    else surv <- c(object$surv[srow,])
+
+    IJ <- -surv * IJ    # if an obs increases the hazard, it decreases survival
+}
+
+else if (type=="auc") {
+    events <- (object$n.event > 0)  # ignore censored rows in survival curv
+    # create the AUC weighted hazard, using the survival curve
+    if (nstrat ==1) delta <- diff(c(start.time, object$time[events])) 
+    else delta <- unlist(lapply(1:nstrat), function(i) {
+            temp <- object[i]
+            diff(c(start.time, temp$time[temp$n.event>0]))
+    })  
+    auc <- residcsum(delta*object$surv[events], strata)
+    browser
+    # weighted hazard
+    wthaz <- residcsum(auc* haz, strata)
+    IJ2 <- s2addup(wthaz, h2) 
+    browser()
+
+    # I need the AUC at each reporting time, which may not match any of the
+    #  event times
+}         
+
+# Now, collapse the rows to be one per subject per strata
+#   (the rowsum function is fast, so use it)
+if (collapse && !is.null(id) && any(duplicated(cbind(id, strata)))) {
+    temp <- matrix(IJ, nrow= dim(IJ)[1])  # make it appear to be a matrix
+    if (nstrat ==1) temp <- rowsum(temp, id, reorder=FALSE)
+    else {
+        uid <- unique(id)
+        dummy <- match(id, uid) + (1 + length(uid))* match(strata, ustrat)
+        temp < rowsum(temp, dummy, reorder= FALSE)
+    }
+    IJ <- array(temp, dim= c(nrow(temp), dim(IJ)[-1]))
+    if (nstrat >1)
+        attr(IJ, "strata") <- strata[!duplicated(cbind(id, strata))]
+    idx <- id[!duplicated(cbind(id, strata))]
+} else {
+    if (is.null(id)) idx <- seq.int(dim(IJ)[1]) else idx <- id
+}
+
+if (is.matrix(IJ)) dimnames(IJ) <- list(id= idx, time= times)
+else dimnames(IJ) <- list(id= idx, time=times, NULL)
+
+IJ
+@ 
+
+
 \section{Accelerated Failure Time models}
 The [[surveg]] function fits parametric failure time models.
 This includes accerated failure time models, the Weibull, log-normal,
@@ -10355,8 +10680,8 @@ A note on times:  one of the things that drove me nuts was the problem of
 As an example consider two values of 24173 = 23805 + 368. These are values from
 an actual study with times in days.
 However, the user chose to use age in years, and saved those values out
-in a CSV file, resulting in values for the above of 66.18206708000000 
-and 66.18206708000001.
+in a CSV file, the left hand side of the above equation becomes
+66.18206708000000 and the right hand side addition yeilds 66.18206708000001.
 The R phrase \code{unique(x)} sees these two values as distinct but 
 \code{table(x)} and \code{tapply} see it as a single value since they 
 first apply \code{factor} to the values, and that in turn uses 
@@ -10375,13 +10700,14 @@ for (i in 1:200) {
 table(test)
 @ 
 The number of FALSE entries in the table depends on machine, compiler,
-and a host of other issues.
+and a host of other issues. 
 There is discussion of this general issue in the R FAQ: ``why doesn't R
 think these numbers are equal''.
 The Kaplan-Meier and Cox model both pay careful attention to ties, and
 so both now use the \code{aeqSurv} routine to first preprocess
 the time data.  It uses the same rules as \code{all.equal} to
-adjudicate ties and near ties.
+adjudicate ties and near ties.  See the vignette on tied times for more
+detail.
 
 
 <<survfit>>=
@@ -10409,31 +10735,38 @@ The \code{surv} component contains the time points for the first stratum,
 the second, third, etc stacked one above the other.  
 As with R matrices, if only 1 subscript is given for an array or matrix of
 curves, we treat the collection of curves as a vector of curves.
-We need to make sure that the new object has the same order of elements as
-the old -- users count on this.
+We need to make sure that the new object has all the elements of the returned
+object in the same order as the original --- users count on this.
+
+The dimension of a survival curve is closely tied to the number of rows in
+newdata, but isn't exactly that.  The most common mismatch is when newdata has
+only 1 row: the curves omit that dimension.  
+A newdata with one row per stratum is another exception.
 
 <<survfit-subscript>>=
 dim.survfit <- function(x) {
     d1name <- "strata"
     d2name <- "data"
-    d3name <- "states"
+    d3name <- "states"    
     if (is.null(x$strata))  {d1 <- d1name <- NULL} else d1 <- length(x$strata)
-    if (is.null(x$newdata)) {d2 <- d2name <- NULL} else d2 <- nrow(x$newdata)
-    if (is.null(x$states))  {d3 <- d3name <- NULL} else d3 <- length(x$states)
-    
-    if (inherits(x, "survfitcox") && is.null(d2) && is.null(d3) &&
-        is.matrix(x$surv)) {
-        # older style survfit.coxph object, before I added newdata to the output
-        d2name <- "data"
-        d2 <- ncol(x$surv)
+    # d3 is present for a survfitms object, null otherwise
+    if (is.null(x$states))  {
+        d3 <- d3name <- NULL
+        if (is.matrix(x$surv)) d2 <- ncol(x$surv)
+        else {d2 <- d2name <- NULL}
+    } else {
+        d3 <- length(x$states) 
+        dp <- dim(x$pstate)
+        if (length(dp) ==3) d2 <- dp[2]
+        else {d2 <- d2name <- NULL}
     }
-
+    
     dd <- c(d1, d2, d3)
     names(dd) <- c(d1name, d2name, d3name)
     dd
 }
 
-# there is a separate function for survfitms objects
+# there is a separate subscript function for survfitms objects
 "[.survfit" <- function(x, ... , drop=TRUE) {
     nmatch <- function(indx, target) { 
         # This function lets R worry about character, negative, or 
@@ -10544,7 +10877,7 @@ dim.survfit <- function(x) {
         else    newx$strata <- x$strata[indx]
     }
 
-    if (length(dd)==1) {  # no j dimension
+    if (!is.matrix(x[["surv"]])) {  # no j dimension
         for (k in c("time", "n.risk", "n.event", "n.censor", "n.enter",
                "surv", "std.err", "cumhaz", "std.chaz", "upper", "lower",
                "influence.surv", "influence.chaz"))
@@ -10562,6 +10895,8 @@ dim.survfit <- function(x) {
         for (k in c("surv", "std.err", "cumhaz", "std.chaz", "upper", "lower",
                "influence.surv", "influence.chaz"))
             if (!is.null(x[[k]])) newx[[k]] <- (x[[k]])[irow, j, drop=drop]
+        # for a survfit.coxph object, newdata is a data frame whose rows match j
+        if (!is.null(x[["newdata"]])) newx[["newdata"]] <- x[["newdata"]][j,]
     }
     newx
 }
@@ -10581,7 +10916,7 @@ an error message if it is accidentally there.
 survfit.formula <- function(formula, data, weights, subset, 
 			    na.action, stype=1, ctype=1, 
                             id, cluster, robust, istate, 
-                            timefix=TRUE, etype, error, ...) {
+                            timefix=TRUE, etype, model=FALSE, error, ...) {
 
     Call <- match.call()
     Call[[1]] <- as.name('survfit')  #make nicer printout for the user
@@ -10618,7 +10953,7 @@ survfit.formula <- function(formula, data, weights, subset,
 
     if (!is.null(attr(mf, 'na.action')))
 	    temp$na.action <- attr(mf, 'na.action')
-
+    if (model) temp$model <- mf
     temp$call <- Call
     temp
     }
