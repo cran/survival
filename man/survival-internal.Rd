@@ -13,6 +13,9 @@
 \alias{survpenal.fit}
 \alias{survdiff.fit}
 \alias{[.coxph.penalty}
+\alias{coef.survfit}
+\alias{vcov.survfit}
+\alias{confint.survfit}
 \title{Internal survival functions}
 \description{Internal survival functions}
 \usage{

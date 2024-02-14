@@ -1752,7 +1752,7 @@ The first can be checked with the \code{cox.zph} function.
 zp1 <- cox.zph(cfit1)
 zp1
 plot(zp1[2], resid=FALSE)
-abline(coef(fit1)[2] ,0, lty=3)
+abline(coef(cfit1)[2] ,0, lty=3)
 @ 
 
 None of the test statistics for PH are remarkable. 
@@ -2671,7 +2671,7 @@ The example used here is taken from section 3.5 of \cite{Therneau00}.
 Below is a fit to the ovarian cancer data; age is the only significant
 coefficient.
 
-<<profile1>>=
+<<profile1, fig=TRUE>>=
 fit1 <- coxph(Surv(futime, fustat) ~ rx + age + resid.ds, ovarian)
 fit1
 

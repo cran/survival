@@ -182,7 +182,7 @@ Different transitions often have different coefficients, so there is a risk
 score vector per transition.
 
 <<survfit.coxphms-setup3b>>=
-if (has.strata && !is.null(mf2[[stangle$vars]])){
+if (has.strata && any(stangle$vars %in% names(mf2))) {
     mf2 <- mf2[is.na(match(names(mf2), stangle$vars))]
     mf2 <- unique(mf2)
     x2 <- unique(x2)

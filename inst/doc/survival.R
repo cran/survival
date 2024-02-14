@@ -577,7 +577,7 @@ getOption("SweaveHooks")[["fig"]]()
 zp1 <- cox.zph(cfit1)
 zp1
 plot(zp1[2], resid=FALSE)
-abline(coef(fit1)[2] ,0, lty=3)
+abline(coef(cfit1)[2] ,0, lty=3)
 
 
 ###################################################
@@ -962,6 +962,7 @@ par(oldpar)
 ###################################################
 ### code chunk number 69: profile1
 ###################################################
+getOption("SweaveHooks")[["fig"]]()
 fit1 <- coxph(Surv(futime, fustat) ~ rx + age + resid.ds, ovarian)
 fit1
 

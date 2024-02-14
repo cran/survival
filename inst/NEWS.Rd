@@ -1,5 +1,15 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.5-8}{
+  \itemize{
+    \item Add dummy methods for coef.survfit, vcov.survfit and
+    confint.survfit that print a sensible error message.
+    \item Add plot= option to plot.cox.zph.R (for those who want to
+    further examine the curve it generates).
+    \item Fix error in survcondense.
+    \item Multiple formatting errors in the help files
+}}
+
 \section{Changes in version 3.5-7}{
   \itemize{
     \item Improve the algorithm for score residuals from O(ndp) to
