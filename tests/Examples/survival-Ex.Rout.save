@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2024-02-07 r85873) -- "Unsuffered Consequences"
+R Under development (unstable) (2024-04-01 r86255) -- "Unsuffered Consequences"
 Copyright (C) 2024 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu
 
@@ -1074,13 +1074,13 @@ NULL
 Call: survfit(formula = Surv(start, stop, event) ~ sex, data = mgus1, 
     subset = (enum == 1), id = id)
 
-                    n nevent   rmean*
-sex=female, (s0)  104      0 5762.379
-sex=male, (s0)    137      0 4543.293
-sex=female, pcm   104     33 2881.500
-sex=male, pcm     137     31 2478.026
-sex=female, death 104     63 5681.121
-sex=male, death   137    100 7303.682
+                    n nevent    rmean se(rmean)*
+sex=female, (s0)  104      0 5762.379   372.6367
+sex=male, (s0)    137      0 4543.293   315.1668
+sex=female, pcm   104     33 2881.500   400.8899
+sex=male, pcm     137     31 2478.026   397.9675
+sex=female, death 104     63 5681.121   462.1850
+sex=male, death   137    100 7303.682   452.9533
    *restricted mean time in state (max time = 14325 )
 > 
 > plot(sfit, xscale=365.25, lty=c(2,2,1,1), col=c(1,2,1,2),
@@ -2433,6 +2433,23 @@ Loglik(model)= -244.2   Loglik(intercept only)= -254.5
 	Chisq= 20.57 on 2 degrees of freedom, p= 3.41e-05 
 n= 64 
 > 
+> # Replacement of valve seats.  In this case the cumulative hazard is the 
+> #  natural target, an estimate of the number of replacements by a given time
+> #  (known as the cumulative mean function = CMF in relability).
+> # When two valve seats failed at the same inspection, we need to jitter one
+> #  of the times, to avoid a (time1, time2) interval of length 0
+> ties <- which(with(valveSeat, diff(id)==0 & diff(time)==0))  #first of a tie
+> temp <- valveSeat$time
+> temp[ties] <- temp[ties] - .1 # jittered time
+> vdata <- valveSeat
+> vdata$time1 <- ifelse(!duplicated(vdata$id), 0, c(0, temp[-length(temp)]))
+> vdata$time2 <- temp
+> fit2 <- survfit(Surv(time1, time2, status) ~1, vdata, id=id)
+> ## Not run: 
+> ##D plot(fit2, cumhaz= TRUE, xscale= 365.25, 
+> ##D       xlab="Years in service", ylab = "Expected number of repairs")
+> ## End(Not run)
+> 
 > 
 > 
 > cleanEx()
@@ -2470,30 +2487,31 @@ n= 64
 > 
 > fit <- survfit(Surv(time, status) ~ x, aml)
 > resid(fit, times=c(24, 48), type="RMTS")
-            [,1]         [,2]
- [1,] -1.0836777 -2.076652893
- [2,] -0.7200413 -1.713016529
- [3,]  0.2004132  0.421074380
- [4,] -0.3237345 -1.468414256
- [5,]  0.1876291 -0.957050620
- [6,]  0.2899019  0.965676653
- [7,]  0.2899019 -0.359777893
- [8,]  0.2899019  0.008403926
- [9,]  0.2899019  1.726585744
-[10,]  0.2899019  1.726585744
-[11,]  0.2899019  1.726585744
-[12,] -1.0057870 -1.475694444
-[13,] -1.0057870 -1.475694444
-[14,] -0.7557870 -1.225694444
-[15,] -0.7557870 -1.225694444
-[16,] -0.4224537 -0.892361111
-[17,]  0.5636574  0.899305556
-[18,]  0.4826389 -0.121527778
-[19,]  0.5798611  0.267361111
-[20,]  0.5798611  0.559027778
-[21,]  0.5798611  0.850694444
-[22,]  0.5798611  1.822916667
-[23,]  0.5798611  2.017361111
+    times
+             24           48
+  1  -1.0836777 -2.076652893
+  2  -0.7200413 -1.713016529
+  3   0.2004132  0.421074380
+  4  -0.3237345 -1.468414256
+  5   0.1876291 -0.957050620
+  6   0.2899019  0.965676653
+  7   0.2899019 -0.359777893
+  8   0.2899019  0.008403926
+  9   0.2899019  1.726585744
+  10  0.2899019  1.726585744
+  11  0.2899019  1.726585744
+  12 -1.0057870 -1.475694444
+  13 -1.0057870 -1.475694444
+  14 -0.7557870 -1.225694444
+  15 -0.7557870 -1.225694444
+  16 -0.4224537 -0.892361111
+  17  0.5636574  0.899305556
+  18  0.4826389 -0.121527778
+  19  0.5798611  0.267361111
+  20  0.5798611  0.559027778
+  21  0.5798611  0.850694444
+  22  0.5798611  1.822916667
+  23  0.5798611  2.017361111
 > 
 > 
 > 
@@ -3101,7 +3119,7 @@ Call:
 survdiff(formula = Surv(futime, death) ~ offset(e2), data = flchain)
 
  Observed  Expected         Z         p 
-2169.0000 2073.9133   -2.0880    0.0368 
+2169.0000 2076.8776   -2.0214    0.0432 
 > 
 > 
 > 
@@ -3148,9 +3166,9 @@ survexp(formula = ~surgery, data = jasa, rmap = list(sex = "male",
     year = accept.dt, age = (accept.dt - birth.dt)), times = 1:10 * 
     182.5, method = "ederer")
 
-  age ranges from 8.8 to 64.4 years
-  male: 103  female: 0 
-  date of entry from 1967-09-13 to 1974-03-22 
+ age ranges from 8.8 to 64.4 years
+    male: 103  female: 0 
+    date of entry from 1967-09-13 to 1974-03-22 
 
  time nrisk1 nrisk2 surgery=0 surgery=1
   182     87     16     0.996     0.996
@@ -3656,11 +3674,11 @@ fgrp     <=60 60-70 70-80  >80
 > pfit[,2]  #time to liver transplant, by blood type
 Call: survfit(formula = Surv(futime, event) ~ abo, data = transplant)
 
-                n nevent   rmean*
-abo=A, death  325     21 164.9734
-abo=B, death  103     10 202.4902
-abo=AB, death  41      3 137.8293
-abo=O, death  346     32 182.1075
+                n nevent    rmean se(rmean)*
+abo=A, death  325     21 164.9734   17.49968
+abo=B, death  103     10 202.4902   59.61134
+abo=AB, death  41      3 137.8293   19.65319
+abo=O, death  346     32 182.1075   28.17050
    *restricted mean time in state (max time = 2055 )
 > plot(pfit[,2], mark.time=FALSE, col=1:4, lwd=2, xmax=735,
 +        xscale=30.5, xlab="Months", ylab="Fraction transplanted",
@@ -3821,7 +3839,7 @@ $terms
 > cleanEx()
 > options(digits = 7L)
 > base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
-Time elapsed:  4.665 0.351 5.018 0 0 
+Time elapsed:  4.664 0.292 4.956 0 0 
 > grDevices::dev.off()
 null device 
           1 
