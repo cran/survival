@@ -9,7 +9,7 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
                         conf.type=c('log',  'log-log',  'plain', 
                                   'logit', "arcsin"),
                         mark, noplot="(s0)", cumhaz=FALSE,
-                        firstx, ymin, ...) {
+                        firstx, ymin, cumprob=FALSE, ...) {
 
     dotnames <- names(list(...))
     if (any(dotnames =='type'))
@@ -42,6 +42,8 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
     }
     # The default for plot and lines is to add confidence limits
     #  if there is only one curve
+    if (!missing(conf.type) && conf.type=="none") conf.int <- FALSE
+
     if (missing(conf.int) && missing(conf.times))  
         conf.int <- (!is.null(x$std.err) && prod(dim(x) ==1))
 
@@ -50,7 +52,7 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
         if (!is.numeric(conf.times)) stop('conf.times must be numeric')
         if (missing(conf.int)) conf.int <- TRUE
     }
-
+    if (!missing(conf.type) && conf.type=="none") conf.int <- FALSE # this overrides
     if (!missing(conf.int)) {
         if (is.numeric(conf.int)) {
             conf.level <- conf.int
@@ -77,55 +79,73 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
         else matrix(x, nrow=dd[1])
     }
 
-    if (cumhaz) {  # plot the cumulative hazard instead
+    if (is.numeric(cumhaz)) { # plot the cumulative hazard
+        if (!inherits(x, "survfitms") && any(cumhaz != 1))
+            stop("numeric cumhaz argument only applies to multi-state")
+        dd <- dim(x$cumhaz)
+        if (is.null(dd)) nhazard <- 1
+        else nhazard <- prod(dd[-1])
+
+        if (!all(cumhaz == floor(cumhaz))) stop("cumhaz argument is not integer")
+        if (any(cumhaz < 1 | cumhaz > nhazard)) stop("subscript out of range")
+        ssurv <- smat(x$cumhaz)[,cumhaz, drop=FALSE]
+        if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)[,cumhaz, drop=FALSE]
+        cumhaz <- TRUE # for the rest of the code
+    } else if (cumhaz) {
         if (is.null(x$cumhaz)) 
             stop("survfit object does not contain a cumulative hazard")
-
-        if (is.numeric(cumhaz)) {
-            dd <- dim(x$cumhaz)
-            if (is.null(dd)) nhazard <- 1
-            else nhazard <- prod(dd[-1])
-
-            if (cumhaz != floor(cumhaz)) stop("cumhaz argument is not integer")
-            if (any(cumhaz < 1 | cumhaz > nhazard)) stop("subscript out of range")
-            ssurv <- smat(x$cumhaz)[,cumhaz, drop=FALSE]
-            if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)[,cumhaz, drop=FALSE]
-        }
-        else if (is.logical(cumhaz)) {
-            ssurv <- smat(x$cumhaz)
-            if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)
-        }
-        else stop("invalid cumhaz argument")
+        ssurv <- smat(x$cumhaz)
+        if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)
     }
     else if (inherits(x, "survfitms")) {
-        i <- !(x$states %in% noplot)
-        if (all(i) || !any(i)) {
-            # the !any is a failsafe, in case none are kept we ignore noplot
-            ssurv <- smat(x$pstate)
-            if (!is.null(x$std.err)) std <- smat(x$std.err)
-            if (!is.null(x$lower)) {
-                slower <- smat(x$lower)
-                supper <- smat(x$upper)
-            }
-        }
-        else {
-            i <- which(i)  # the states to keep
-            # we have to be careful about subscripting
-            if (length(dim(x$pstate)) ==3) {
-                ssurv <- smat(x$pstate[,,i, drop=FALSE])
-                if (!is.null(x$std.err))
-                    std <- smat(x$std.err[,,i, drop=FALSE])
+        if (!missing(cumprob) && !(is.logical(cumprob) && !cumprob)) {
+            if (conf.int) 
+                stop("confidence intervals not available when cumprob=TRUE")
+            dd <- dim(x)
+            j <- match("states", names(dd), nomatch=0)
+            if (j==0) stop("survfitms object with no states dimension")
+            
+            #  cumprob is T/F or a vector of integers
+            if (is.logical(cumprob)) cumprob <- 1:dd[j]
+            else if (!is.numeric(cumprob) || any(cumprob <1 | cumprob > dd[j])
+                     || any(cumprob != floor(cumprob)))
+                stop("cumprob contains an invalid numeric")
+                
+            # The pstate object will be of dimension 2 or 3
+            if (length(dd) ==1) 
+                ssurv <- smat(t(apply(x$pstate[,cumprob],1,cumsum)))
+            else stop("cumprob not available for multiple states + mulitple groups")
+            cumprob <- TRUE  # for the lastx line
+        } else {
+            i <- !(x$states %in% noplot)
+            if (all(i) || !any(i)) {
+                # the !any is a failsafe, in case none are kept we ignore noplot
+                ssurv <- smat(x$pstate)
+                if (!is.null(x$std.err)) std <- smat(x$std.err)
                 if (!is.null(x$lower)) {
-                    slower <- smat(x$lower[,,i, drop=FALSE])
-                    supper <- smat(x$upper[,,i, drop=FALSE])
+                    slower <- smat(x$lower)
+                    supper <- smat(x$upper)
                 }
             }
             else {
-                ssurv <- x$pstate[,i, drop=FALSE]
-                if (!is.null(x$std.err)) std <- x$std.err[,i, drop=FALSE]
-                if (!is.null(x$lower)) {
-                    slower <- smat(x$lower[,i, drop=FALSE])
-                    supper <- smat(x$upper[,i, drop=FALSE])
+                i <- which(i)  # the states to keep
+                # we have to be careful about subscripting
+                if (length(dim(x$pstate)) ==3) {
+                    ssurv <- smat(x$pstate[,,i, drop=FALSE])
+                    if (!is.null(x$std.err))
+                        std <- smat(x$std.err[,,i, drop=FALSE])
+                    if (!is.null(x$lower)) {
+                        slower <- smat(x$lower[,,i, drop=FALSE])
+                        supper <- smat(x$upper[,,i, drop=FALSE])
+                    }
+                }
+                else {
+                    ssurv <- x$pstate[,i, drop=FALSE]
+                    if (!is.null(x$std.err)) std <- x$std.err[,i, drop=FALSE]
+                    if (!is.null(x$lower)) {
+                        slower <- smat(x$lower[,i, drop=FALSE])
+                        supper <- smat(x$upper[,i, drop=FALSE])
+                    }
                 }
             }
         }
@@ -163,7 +183,10 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
         stemp <- rep(1:nstrat, x$strata) # same length as stime
     }
     ncurve <- nstrat * ncol(ssurv)
-    conf.type <- match.arg(conf.type)
+    if (missing(conf.type)) {
+        missingtype <- TRUE
+        conf.type <- match.arg(conf.type)
+    } else missingtype <- FALSE  # used below for cumhaz
     if (conf.type=="none") conf.int <- FALSE
     if (conf.int== "none") conf.int <- FALSE
     if (conf.int=="only") {
@@ -175,7 +198,7 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
     if (conf.int) {
         if (is.null(std)) stop("object does not have standard errors, CI not possible")
         if (cumhaz) {
-            if (missing(conf.type)) conf.type="plain"
+            if (missingtype) conf.type="plain"
             temp <- survfit_confint(ssurv, std, logse=FALSE,
                                     conf.type, conf.level, ulimit=FALSE)
             supper <- as.matrix(temp$upper)
@@ -492,7 +515,15 @@ plot.survfit<- function(x, conf.int,  mark.time=FALSE,
 
         }
     }
-    lastx <- list(x=xend, y=yend)
+
+    if (cumprob) {
+        if (!is.null(xmax) && max(stime) > xmax) {  # truncate on the right
+            keep <- (stime <= xmax)
+            lastx <- list(x = stime[keep], y= ssurv[,keep])
+        }
+        else lastx <- list(x=stime, y=ssurv)
+    }
+    else lastx <- list(x=xend, y=yend)
     invisible(lastx)
 }
 
@@ -504,12 +535,15 @@ lines.survfit <- function(x, type='s',
                           conf.times, conf.cap=.005, conf.offset=.012,
                           conf.type=c('log',  'log-log',  'plain', 
                                   'logit', "arcsin"),
-                          mark, noplot="(s0)", cumhaz=FALSE, ...) {
+                          mark, noplot="(s0)", cumhaz=FALSE, cumprob=FALSE, 
+                          ...) {
     x <- survfit0(x, x$start.time)
 
     xlog <- par("xlog")
     # The default for plot and lines is to add confidence limits
     #  if there is only one curve
+    if (!missing(conf.type) && conf.type=="none") conf.int <- FALSE
+
     if (missing(conf.int) && missing(conf.times))  
         conf.int <- (!is.null(x$std.err) && prod(dim(x) ==1))
 
@@ -518,7 +552,7 @@ lines.survfit <- function(x, type='s',
         if (!is.numeric(conf.times)) stop('conf.times must be numeric')
         if (missing(conf.int)) conf.int <- TRUE
     }
-
+    if (!missing(conf.type) && conf.type=="none") conf.int <- FALSE # this overrides
     if (!missing(conf.int)) {
         if (is.numeric(conf.int)) {
             conf.level <- conf.int
@@ -545,55 +579,73 @@ lines.survfit <- function(x, type='s',
         else matrix(x, nrow=dd[1])
     }
 
-    if (cumhaz) {  # plot the cumulative hazard instead
+    if (is.numeric(cumhaz)) { # plot the cumulative hazard
+        if (!inherits(x, "survfitms") && any(cumhaz != 1))
+            stop("numeric cumhaz argument only applies to multi-state")
+        dd <- dim(x$cumhaz)
+        if (is.null(dd)) nhazard <- 1
+        else nhazard <- prod(dd[-1])
+
+        if (!all(cumhaz == floor(cumhaz))) stop("cumhaz argument is not integer")
+        if (any(cumhaz < 1 | cumhaz > nhazard)) stop("subscript out of range")
+        ssurv <- smat(x$cumhaz)[,cumhaz, drop=FALSE]
+        if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)[,cumhaz, drop=FALSE]
+        cumhaz <- TRUE # for the rest of the code
+    } else if (cumhaz) {
         if (is.null(x$cumhaz)) 
             stop("survfit object does not contain a cumulative hazard")
-
-        if (is.numeric(cumhaz)) {
-            dd <- dim(x$cumhaz)
-            if (is.null(dd)) nhazard <- 1
-            else nhazard <- prod(dd[-1])
-
-            if (cumhaz != floor(cumhaz)) stop("cumhaz argument is not integer")
-            if (any(cumhaz < 1 | cumhaz > nhazard)) stop("subscript out of range")
-            ssurv <- smat(x$cumhaz)[,cumhaz, drop=FALSE]
-            if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)[,cumhaz, drop=FALSE]
-        }
-        else if (is.logical(cumhaz)) {
-            ssurv <- smat(x$cumhaz)
-            if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)
-        }
-        else stop("invalid cumhaz argument")
+        ssurv <- smat(x$cumhaz)
+        if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)
     }
     else if (inherits(x, "survfitms")) {
-        i <- !(x$states %in% noplot)
-        if (all(i) || !any(i)) {
-            # the !any is a failsafe, in case none are kept we ignore noplot
-            ssurv <- smat(x$pstate)
-            if (!is.null(x$std.err)) std <- smat(x$std.err)
-            if (!is.null(x$lower)) {
-                slower <- smat(x$lower)
-                supper <- smat(x$upper)
-            }
-        }
-        else {
-            i <- which(i)  # the states to keep
-            # we have to be careful about subscripting
-            if (length(dim(x$pstate)) ==3) {
-                ssurv <- smat(x$pstate[,,i, drop=FALSE])
-                if (!is.null(x$std.err))
-                    std <- smat(x$std.err[,,i, drop=FALSE])
+        if (!missing(cumprob) && !(is.logical(cumprob) && !cumprob)) {
+            if (conf.int) 
+                stop("confidence intervals not available when cumprob=TRUE")
+            dd <- dim(x)
+            j <- match("states", names(dd), nomatch=0)
+            if (j==0) stop("survfitms object with no states dimension")
+            
+            #  cumprob is T/F or a vector of integers
+            if (is.logical(cumprob)) cumprob <- 1:dd[j]
+            else if (!is.numeric(cumprob) || any(cumprob <1 | cumprob > dd[j])
+                     || any(cumprob != floor(cumprob)))
+                stop("cumprob contains an invalid numeric")
+                
+            # The pstate object will be of dimension 2 or 3
+            if (length(dd) ==1) 
+                ssurv <- smat(t(apply(x$pstate[,cumprob],1,cumsum)))
+            else stop("cumprob not available for multiple states + mulitple groups")
+            cumprob <- TRUE  # for the lastx line
+        } else {
+            i <- !(x$states %in% noplot)
+            if (all(i) || !any(i)) {
+                # the !any is a failsafe, in case none are kept we ignore noplot
+                ssurv <- smat(x$pstate)
+                if (!is.null(x$std.err)) std <- smat(x$std.err)
                 if (!is.null(x$lower)) {
-                    slower <- smat(x$lower[,,i, drop=FALSE])
-                    supper <- smat(x$upper[,,i, drop=FALSE])
+                    slower <- smat(x$lower)
+                    supper <- smat(x$upper)
                 }
             }
             else {
-                ssurv <- x$pstate[,i, drop=FALSE]
-                if (!is.null(x$std.err)) std <- x$std.err[,i, drop=FALSE]
-                if (!is.null(x$lower)) {
-                    slower <- smat(x$lower[,i, drop=FALSE])
-                    supper <- smat(x$upper[,i, drop=FALSE])
+                i <- which(i)  # the states to keep
+                # we have to be careful about subscripting
+                if (length(dim(x$pstate)) ==3) {
+                    ssurv <- smat(x$pstate[,,i, drop=FALSE])
+                    if (!is.null(x$std.err))
+                        std <- smat(x$std.err[,,i, drop=FALSE])
+                    if (!is.null(x$lower)) {
+                        slower <- smat(x$lower[,,i, drop=FALSE])
+                        supper <- smat(x$upper[,,i, drop=FALSE])
+                    }
+                }
+                else {
+                    ssurv <- x$pstate[,i, drop=FALSE]
+                    if (!is.null(x$std.err)) std <- x$std.err[,i, drop=FALSE]
+                    if (!is.null(x$lower)) {
+                        slower <- smat(x$lower[,i, drop=FALSE])
+                        supper <- smat(x$upper[,i, drop=FALSE])
+                    }
                 }
             }
         }
@@ -631,7 +683,10 @@ lines.survfit <- function(x, type='s',
         stemp <- rep(1:nstrat, x$strata) # same length as stime
     }
     ncurve <- nstrat * ncol(ssurv)
-    conf.type <- match.arg(conf.type)
+    if (missing(conf.type)) {
+        missingtype <- TRUE
+        conf.type <- match.arg(conf.type)
+    } else missingtype <- FALSE  # used below for cumhaz
     if (conf.type=="none") conf.int <- FALSE
     if (conf.int== "none") conf.int <- FALSE
     if (conf.int=="only") {
@@ -643,7 +698,7 @@ lines.survfit <- function(x, type='s',
     if (conf.int) {
         if (is.null(std)) stop("object does not have standard errors, CI not possible")
         if (cumhaz) {
-            if (missing(conf.type)) conf.type="plain"
+            if (missingtype) conf.type="plain"
             temp <- survfit_confint(ssurv, std, logse=FALSE,
                                     conf.type, conf.level, ulimit=FALSE)
             supper <- as.matrix(temp$upper)
@@ -887,7 +942,15 @@ lines.survfit <- function(x, type='s',
 
         }
     }
-    lastx <- list(x=xend, y=yend)
+
+    if (cumprob) {
+        if (!is.null(xmax) && max(stime) > xmax) {  # truncate on the right
+            keep <- (stime <= xmax)
+            lastx <- list(x = stime[keep], y= ssurv[,keep])
+        }
+        else lastx <- list(x=stime, y=ssurv)
+    }
+    else lastx <- list(x=xend, y=yend)
     invisible(lastx)
 }
 
@@ -895,10 +958,13 @@ points.survfit <- function(x, fun, censor=FALSE,
                            col=1, pch, noplot="(s0)", cumhaz=FALSE, ...) {
 
     conf.int <- conf.times <- FALSE  # never draw these with 'points'
+    cumprob <- FALSE; conf.type <- 'none' 
     x <- survfit0(x, x$start.time)
 
     # The default for plot and lines is to add confidence limits
     #  if there is only one curve
+    if (!missing(conf.type) && conf.type=="none") conf.int <- FALSE
+
     if (missing(conf.int) && missing(conf.times))  
         conf.int <- (!is.null(x$std.err) && prod(dim(x) ==1))
 
@@ -907,7 +973,7 @@ points.survfit <- function(x, fun, censor=FALSE,
         if (!is.numeric(conf.times)) stop('conf.times must be numeric')
         if (missing(conf.int)) conf.int <- TRUE
     }
-
+    if (!missing(conf.type) && conf.type=="none") conf.int <- FALSE # this overrides
     if (!missing(conf.int)) {
         if (is.numeric(conf.int)) {
             conf.level <- conf.int
@@ -934,55 +1000,73 @@ points.survfit <- function(x, fun, censor=FALSE,
         else matrix(x, nrow=dd[1])
     }
 
-    if (cumhaz) {  # plot the cumulative hazard instead
+    if (is.numeric(cumhaz)) { # plot the cumulative hazard
+        if (!inherits(x, "survfitms") && any(cumhaz != 1))
+            stop("numeric cumhaz argument only applies to multi-state")
+        dd <- dim(x$cumhaz)
+        if (is.null(dd)) nhazard <- 1
+        else nhazard <- prod(dd[-1])
+
+        if (!all(cumhaz == floor(cumhaz))) stop("cumhaz argument is not integer")
+        if (any(cumhaz < 1 | cumhaz > nhazard)) stop("subscript out of range")
+        ssurv <- smat(x$cumhaz)[,cumhaz, drop=FALSE]
+        if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)[,cumhaz, drop=FALSE]
+        cumhaz <- TRUE # for the rest of the code
+    } else if (cumhaz) {
         if (is.null(x$cumhaz)) 
             stop("survfit object does not contain a cumulative hazard")
-
-        if (is.numeric(cumhaz)) {
-            dd <- dim(x$cumhaz)
-            if (is.null(dd)) nhazard <- 1
-            else nhazard <- prod(dd[-1])
-
-            if (cumhaz != floor(cumhaz)) stop("cumhaz argument is not integer")
-            if (any(cumhaz < 1 | cumhaz > nhazard)) stop("subscript out of range")
-            ssurv <- smat(x$cumhaz)[,cumhaz, drop=FALSE]
-            if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)[,cumhaz, drop=FALSE]
-        }
-        else if (is.logical(cumhaz)) {
-            ssurv <- smat(x$cumhaz)
-            if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)
-        }
-        else stop("invalid cumhaz argument")
+        ssurv <- smat(x$cumhaz)
+        if (!is.null(x$std.chaz)) std <- smat(x$std.chaz)
     }
     else if (inherits(x, "survfitms")) {
-        i <- !(x$states %in% noplot)
-        if (all(i) || !any(i)) {
-            # the !any is a failsafe, in case none are kept we ignore noplot
-            ssurv <- smat(x$pstate)
-            if (!is.null(x$std.err)) std <- smat(x$std.err)
-            if (!is.null(x$lower)) {
-                slower <- smat(x$lower)
-                supper <- smat(x$upper)
-            }
-        }
-        else {
-            i <- which(i)  # the states to keep
-            # we have to be careful about subscripting
-            if (length(dim(x$pstate)) ==3) {
-                ssurv <- smat(x$pstate[,,i, drop=FALSE])
-                if (!is.null(x$std.err))
-                    std <- smat(x$std.err[,,i, drop=FALSE])
+        if (!missing(cumprob) && !(is.logical(cumprob) && !cumprob)) {
+            if (conf.int) 
+                stop("confidence intervals not available when cumprob=TRUE")
+            dd <- dim(x)
+            j <- match("states", names(dd), nomatch=0)
+            if (j==0) stop("survfitms object with no states dimension")
+            
+            #  cumprob is T/F or a vector of integers
+            if (is.logical(cumprob)) cumprob <- 1:dd[j]
+            else if (!is.numeric(cumprob) || any(cumprob <1 | cumprob > dd[j])
+                     || any(cumprob != floor(cumprob)))
+                stop("cumprob contains an invalid numeric")
+                
+            # The pstate object will be of dimension 2 or 3
+            if (length(dd) ==1) 
+                ssurv <- smat(t(apply(x$pstate[,cumprob],1,cumsum)))
+            else stop("cumprob not available for multiple states + mulitple groups")
+            cumprob <- TRUE  # for the lastx line
+        } else {
+            i <- !(x$states %in% noplot)
+            if (all(i) || !any(i)) {
+                # the !any is a failsafe, in case none are kept we ignore noplot
+                ssurv <- smat(x$pstate)
+                if (!is.null(x$std.err)) std <- smat(x$std.err)
                 if (!is.null(x$lower)) {
-                    slower <- smat(x$lower[,,i, drop=FALSE])
-                    supper <- smat(x$upper[,,i, drop=FALSE])
+                    slower <- smat(x$lower)
+                    supper <- smat(x$upper)
                 }
             }
             else {
-                ssurv <- x$pstate[,i, drop=FALSE]
-                if (!is.null(x$std.err)) std <- x$std.err[,i, drop=FALSE]
-                if (!is.null(x$lower)) {
-                    slower <- smat(x$lower[,i, drop=FALSE])
-                    supper <- smat(x$upper[,i, drop=FALSE])
+                i <- which(i)  # the states to keep
+                # we have to be careful about subscripting
+                if (length(dim(x$pstate)) ==3) {
+                    ssurv <- smat(x$pstate[,,i, drop=FALSE])
+                    if (!is.null(x$std.err))
+                        std <- smat(x$std.err[,,i, drop=FALSE])
+                    if (!is.null(x$lower)) {
+                        slower <- smat(x$lower[,,i, drop=FALSE])
+                        supper <- smat(x$upper[,,i, drop=FALSE])
+                    }
+                }
+                else {
+                    ssurv <- x$pstate[,i, drop=FALSE]
+                    if (!is.null(x$std.err)) std <- x$std.err[,i, drop=FALSE]
+                    if (!is.null(x$lower)) {
+                        slower <- smat(x$lower[,i, drop=FALSE])
+                        supper <- smat(x$upper[,i, drop=FALSE])
+                    }
                 }
             }
         }

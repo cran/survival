@@ -1,4 +1,5 @@
 \name{nafld}
+\alias{nafld}
 \alias{nafld1}
 \alias{nafld2}
 \alias{nafld3}

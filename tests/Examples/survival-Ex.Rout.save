@@ -1,7 +1,7 @@
 
-R Under development (unstable) (2024-04-29 r86493) -- "Unsuffered Consequences"
+R Under development (unstable) (2024-08-21 r87038) -- "Unsuffered Consequences"
 Copyright (C) 2024 The R Foundation for Statistical Computing
-Platform: aarch64-unknown-linux-gnu
+Platform: x86_64-pc-linux-gnu
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -2412,8 +2412,8 @@ ph.ecog=3  NA  NA  NA
 > 
 > ### Name: reliability
 > ### Title: Reliability data sets
-> ### Aliases: reliability capacitor cracks genfan ifluid imotor turbine
-> ###   valveSeat
+> ### Aliases: reliability braking capacitor cracks genfan ifluid imotor
+> ###   turbine valveSeat
 > ### Keywords: datasets
 > 
 > ### ** Examples
@@ -2432,6 +2432,12 @@ Scale= 0.3638092
 Loglik(model)= -244.2   Loglik(intercept only)= -254.5
 	Chisq= 20.57 on 2 degrees of freedom, p= 3.41e-05 
 n= 64 
+> 
+> # Figure 16.7 of Meeker, cumulative replacement of locomotive braking
+> #  grids
+> gfit <- survfit(Surv(day1, day2, status) ~ batch, braking, id= locomotive)
+> plot(gfit, cumhaz=TRUE, col=1:2, xscale=30.5, conf.time= c(6,12,18)*30.5, 
++      xlab="Locomotive Age in Months", ylab="Mean cumulative number replacements")
 > 
 > # Replacement of valve seats.  In this case the cumulative hazard is the 
 > #  natural target, an estimate of the number of replacements by a given time
@@ -2772,6 +2778,35 @@ FALSE  TRUE
 > 
 > ### ** Examples
 > 
+> fit1 <- glm(skips ~ Opening * Solder, poisson, solder,
++             subset= (Mask != "A6"))
+> anova(fit1)  # The interaction is important
+Analysis of Deviance Table
+
+Model: poisson, link: log
+
+Response: skips
+
+Terms added sequentially (first to last)
+
+
+               Df Deviance Resid. Df Resid. Dev  Pr(>Chi)    
+NULL                             809     7336.9              
+Opening         2  2638.44       807     4698.5 < 2.2e-16 ***
+Solder          1  1120.85       806     3577.7 < 2.2e-16 ***
+Opening:Solder  2    41.14       804     3536.5 1.166e-09 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+> dummy <- expand.grid(Opening= c("S", "M", "L"), Solder=c("Thin", "Thick"))
+> yhat <- matrix(predict(fit1, newdata=dummy), ncol=2,
++             dimnames=list(Opening= c("S", "M", "L"), Solder=c("Thin", "Thick")))
+> yhat <- cbind(yhat, difference= yhat[,1]- yhat[,2])
+> round(yhat, 1) # thin and thick have  different patterns
+  Thin Thick difference
+S  2.8   1.7        1.1
+M  1.1   0.2        1.0
+L  1.0  -0.9        1.9
+> 
 > # The balanced subset used by Chambers and Hastie
 > #   contains the first 180 of each mask and deletes mask A6. 
 > index <- 1 + (1:nrow(solder)) - match(solder$Mask, solder$Mask)
@@ -3074,9 +3109,12 @@ rx=1 13        7     5.23     0.596      1.06
 rx=2 13        5     6.77     0.461      1.06
 
  Chisq= 1.1  on 1 degrees of freedom, p= 0.3 
+> check <- coxph(Surv(futime, fustat) ~ rx, data=ovarian, ties="breslow")
+> round(summary(check)$sctest, 3)
+  test     df pvalue 
+ 1.063  1.000  0.303 
 > 
-> ## Stratified 7-sample test
-> 
+> ## Stratified 8-sample test (7 df)
 > survdiff(Surv(time, status) ~ pat.karno + strata(inst), data=lung)
 Call:
 survdiff(formula = Surv(time, status) ~ pat.karno + strata(inst), 
@@ -3095,6 +3133,10 @@ pat.karno=90  60       38   47.242   1.80800   3.23078
 pat.karno=100 35       21   26.207   1.03451   1.44067
 
  Chisq= 21.4  on 7 degrees of freedom, p= 0.003 
+> check <- coxph(Surv(time, status) ~ factor(pat.karno) + strata(inst), lung)
+> round(summary(check)$sctest, 3)
+  test     df pvalue 
+21.368  7.000  0.003 
 > 
 > ## Expected survival for heart transplant patients based on
 > ## US mortality tables
@@ -3839,7 +3881,7 @@ $terms
 > cleanEx()
 > options(digits = 7L)
 > base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
-Time elapsed:  2.718 0.085 2.802 0 0 
+Time elapsed:  6.683 0.484 7.167 0 0 
 > grDevices::dev.off()
 null device 
           1 

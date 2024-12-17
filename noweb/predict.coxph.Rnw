@@ -315,13 +315,16 @@ else {
     pred <- se <- double(nrow(mf2))
     newx <- newx - rep(object$means, each=nrow(newx))
     newrisk <- c(exp(newx %*% object$coef) + newoffset)
-    if (ncol(y) ==3 && survival) { # 
-        t0 <- unname(min(y[,1]))  # the start of the survival curve
+    # This was added in May 2024, and removed a few weeks later
+    #  For (time1, time2) type survival estimates P(dead at t2 | alive at t1),
+    # which I saw no use case for.  But a user did.  Added notes to .Rd file
+    #if (ncol(y) ==3 && survival) {  
+    #    t0 <- unname(min(y[,1]))  # the start of the survival curve
         # simpler is all(newy[,1] == t0), but
         # use of all.equal allows for roundoff error in newdata
-        if (!isTRUE(all.equal(as.vector(newy[,1]), rep(t0, nrow(newy)))))
-            stop("predicted survival must be from the start of the curve")
-    }
+    #   if (!isTRUE(all.equal(as.vector(newy[,1]), rep(t0, nrow(newy)))))
+    #        stop("predicted survival must be from the start of the curve")
+    #}
 }
 survtype<- ifelse(object$method=='efron', 3,2)
 for (i in ustrata) {
@@ -329,26 +332,27 @@ for (i in ustrata) {
     afit <- agsurv(y[indx,,drop=F], x[indx,,drop=F], 
                                   weights[indx], risk[indx],
                                   survtype, survtype)
+    xbar <- apply(afit$xbar, 2, cumsum) 
     afit.n <- length(afit$time)
     if (missing(newdata)) { 
         # In this case we need se.fit, nothing else
-        j1 <- findInterval(y[indx,1], afit$time)
+        j1 <- findInterval(y[indx,1], afit$time)  # time (ny=2) or time1 (ny=3)
         chaz <- c(0, afit$cumhaz)[j1 +1]
         varh <- c(0, cumsum(afit$varhaz))[j1 +1]
-        xbar <- rbind(0, afit$xbar)[j1+1,,drop=F]
+        xbar2 <- rbind(0, xbar)[j1+1,,drop=F]
         if (ncol(y)==2) {
-            dt <- (chaz * x[indx,]) - xbar
+            dt <- (chaz * x[indx,]) - xbar2
             se[indx] <- sqrt(varh + rowSums((dt %*% object$var) *dt)) *
                 risk[indx]
         }
         else {
-            j2 <- findInterval(y[indx,2], afit$time)
+            j2 <- findInterval(y[indx,2], afit$time) # time2
             chaz2 <- c(0, afit$cumhaz)[j2 +1L]
             varh2 <- c(0, cumsum(afit$varhaz))[j2 +1L]
-            xbar2 <- rbind(0, afit$xbar)[j2+ 1L,,drop=F]
-            dt <- (chaz * x[indx,]) - xbar
+            xbar3 <- rbind(0, xbar)[j2+ 1L,,drop=F]
+            dt <- (chaz * x[indx,]) - xbar2
             v1 <- varh +  rowSums((dt %*% object$var) *dt)
-            dt2 <- (chaz2 * x[indx,]) - xbar2
+            dt2 <- (chaz2 * x[indx,]) - xbar3
             v2 <- varh2 + rowSums((dt2 %*% object$var) *dt2)
             se[indx] <- sqrt(v2-v1)* risk[indx]
         }
@@ -363,11 +367,11 @@ for (i in ustrata) {
         pred[indx2] <- chaz * newrisk[indx2]
         if (se.fit) {
             varh <- c(0, cumsum(afit$varhaz))[j1+1]
-            xbar <- rbind(0, afit$xbar)[j1+1,,drop=F]
+            xbar2 <- rbind(0, xbar)[j1+1,,drop=F]
         }
         if (ncol(y)==2) {
             if (se.fit) {
-                dt <- (chaz * newx[indx2,]) - xbar
+                dt <- (chaz * newx[indx2,]) - xbar2
                 se[indx2] <- sqrt(varh + rowSums((dt %*% object$var) *dt)) *
                     newrisk[indx2]
             }
@@ -379,9 +383,9 @@ for (i in ustrata) {
 
             if (se.fit) {
                 varh2 <- c(0, cumsum(afit$varhaz))[j2 +1L]
-                xbar2 <- rbind(0, afit$xbar)[j2 + 1L,,drop=F]
-                dt <- (chaz * newx[indx2,]) - xbar
-                dt2 <- (chaz2 * newx[indx2,]) - xbar2
+                xbar3 <- rbind(0, xbar)[j2 + 1L,,drop=F]
+                dt <- (chaz * newx[indx2,]) - xbar2
+                dt2 <- (chaz2 * newx[indx2,]) - xbar3
 
                 v2 <- varh2 + rowSums((dt2 %*% object$var) *dt2)
                 v1 <- varh +  rowSums((dt %*% object$var) *dt)

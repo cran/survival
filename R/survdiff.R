@@ -5,16 +5,29 @@ survdiff <- function(formula, data, subset, na.action, rho=0, timefix=TRUE) {
 
     if (!inherits(formula, 'formula'))
         stop("The 'formula' argument is not a formula")
+    # make Surv(), strata() etc in a formula resolve to the survival namespace
+    if (missing(formula)) stop("a formula argument is required")
+    newform <- removeDoubleColonSurv(formula)
+    if (!is.null(newform)) {
+        formula <- newform$formula
+        if (newform$newcall) Call$formula <- formula
+    }
 
     Terms <- if(missing(data)) terms(formula, 'strata')
 	     else              terms(formula, 'strata', data=data)
     m$formula <- Terms
+
     m[[1L]] <- quote(stats::model.frame)
     m <- eval(m, parent.frame())
     
     y <- model.extract(m, "response")
     if (!inherits(y, "Surv")) stop("Response must be a survival object")
-    if (attr(y, 'type') != 'right') stop("Right censored data only")
+    if (attr(y, "type") %in% c("mright", "mcounting"))
+        stop("survdiff not defined for multi-state data")
+    if (attr(y, "type") == "counting")
+        stop("survdiff not defined for counting process data")
+    if (attr(y, 'type') != "right") 
+        stop("Right censored data only")
     ny <- ncol(y)
     n <- nrow(y)
 

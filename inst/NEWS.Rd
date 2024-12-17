@@ -1,12 +1,94 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.8-2}{
+  \itemize{
+    \item Round 2 of updates, to pass reverse dependency checks. In
+    3.8-1 I had made a silly copy-paste mistake in the update to
+    survfit, and also added a new test for my changes (doublecolon.R).
+    Of course, the only check that I forgot to include in the
+    doublecolon file was for ... survfit (coxph, survdiff, survreg,
+    survcheck, and concordance were all there).
+}}
+\section{Changes in version 3.8-1}{
+  \itemize{
+    \item Changes needed to pass reverse dependency checks, largely
+    tightening things up wrt to the formula fix. In summary, the
+    survival package routines now ensure that anything in a formula that
+    is a part of the package, is found in the package first.  There is
+    no need for things like coxph(survival::Surv(time, status) ~ ph.ecog
+    + survival::strata(inst), data=lung), in fact you should not do
+    this. Using survival::coxph rather than coxph is a completely
+    different question, these updates have no bearing on that, only on
+    functions within a formula.  Note that prior to this update using
+    survival::strata(inst) above would give the wrong answer; because ::
+    mucks up formula processing the term would not be recognized as a
+    stratum, and the resulting fit equivalent to using factor(inst).
+}}
+
+\section{Changes in version 3.8-0}{
+  \itemize{
+    \item Survival curves which used the id option, for a coxph fit with
+    time dependent coefficients, would have too small a std error after
+    the transition. Github issue 282
+    \item Error in the robust variance in survreg, when there were case
+    weights. (Forgot the weighted=TRUE argument to an internal resid
+    call.) Github issue 287
+    \item Fix an oversight in anova.coxph. A comparison of a stratified
+    to an unstratified model is not valid; it now checks for this and
+    issues an error.  Also, very long variable names would crash anova.
+    \item Extend the fix to strata of 3.7-3. Now Surv, strata, cluster,
+    and pspline calls internal to a coxph, survfit, survreg, survdiff,
+    or concordance formula are forced to be internal to the survival
+    package, and will not accidentally pick a local copy of the
+    function.
+}}    
+\section{Changes in version 3.7-3}{
+  \itemize{
+    \item Incorporate a copy of strata() local to coxph, something
+    already done with tt(), so that using strata() in a formula does not
+    search for the function.  Also, preprocess any coxph formula to replace
+    survival::strata() with strata() and likewise with cluster().  The
+    reason for this is that strata is a special in coxph formulas (see
+    the specials argument to the terms function) and will not be
+    properly recognized when survival:: is prepended. 
+    \item Update survreg6.c. If the first Newton-Raphson step was
+    particularly bad the trial solution could have NA or NaN values for
+    the loglikelihood, first, and/or second derivatives.  The
+    "is this solution worse than the prior one" test was not picking
+    this up to initiate step halving.  Github issue 263. 
+}}
+
+\section{Changes in version 3.7-2}{
+  \itemize{
+    \item The change to ties documented below for 3.4.2 actually never
+    happened, due to a typo.  Now fixed.  This forced multiple additions
+    of ties='breslow' to the test suite, when comparing multi-state to
+    single state fits.
+    \item Fix an inconsistency: survfit would label a transition from
+    state 1 to 3 as "1.3", coxph as "1:3". Use a colon in both places.  
+}}
+
+\section{Changes in version 3.7-1}{
+  \itemize{
+    \item Update survreg to allow an interval of (0,t) for the Weibull,
+    lognormal, and other distributions with lower bound of 0.  (Internally,
+    it replaces these with the equivalent left censored value.)
+    Addresses github issue 234.
+    \item Change the default confidence intervals to "plain" for plots
+    of the cumulative hazard, which concurs with the default of "log" for
+    the survival curve.
+    \item Add the braking data as part of the 'reliability' bundle.
+    \item Add the cumprob option to plot.survfit and lines.survfit. It
+    is applicable to multi-state models.
+    \item Add cex and pch options to plot.cox.zph.
+}}
 \section{Changes in version 3.7-0}{
   \itemize{
     \item Add n.id element to the coxph object, for a call that uses the
     id argument
     \item Remove as.integer.Surv and as.numeric.Surv; essentially treat Surv as
-a matrix for this purpose.  The as.numeric.Surv method never worked anyway, as
-it should have been as.double.Surv
+a matrix for this purpose.  (The as.numeric.Surv method never worked anyway, as
+it should have been as.double.Surv).
     \item Run all tests and submit to CRAN
 }}
 \section{Changes in version 3.6-5}{

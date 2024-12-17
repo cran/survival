@@ -110,7 +110,36 @@ text(event$t2, event$id+.2, as.character(event$state))
 
 
 ###################################################
-### code chunk number 6: competecheck
+### code chunk number 6: methods.Rnw:1241-1244 (eval = FALSE)
+###################################################
+## temp1 <- outer(hazard, z, '*') - xbar
+## temp2 <- apply(temp1, 2, cumsum)
+## v2 <-  rowSums((temp2 %*% vmat)* temp2)
+
+
+###################################################
+### code chunk number 7: tdcoef
+###################################################
+vet2 <- survSplit(Surv(time, status) ~ ., data= veteran, cut=c(90, 180), 
+                  episode= "tgroup", id="id", start="time1", end="time2")
+vfit2 <- coxph(Surv(time1, time2, status) ~ trt + prior +
+                  I(karno/10):strata(tgroup), data=vet2)
+vfit2
+
+cdata <- data.frame(time1 = rep(c(0,90,180), 2),
+                    time2 =  rep(c(90,180, 365), 2),
+                    status= rep(0,6),   #necessary, but ignored
+                    tgroup= rep(1:3, 2),
+                    trt  =  rep(1,6),
+                    prior=  rep(0,6),
+                    karno=  rep(c(40, 75), each=3),
+                    curve=  rep(1:2, each=3))
+cdata
+vsurv <- survfit(vfit2, newdata=cdata, id=curve)
+
+
+###################################################
+### code chunk number 8: competecheck
 ###################################################
 m2 <- mgus2
 m2$etime <- with(m2, ifelse(pstat==0, futime, ptime))
@@ -127,7 +156,7 @@ nrisk <- mean(mfit$n.risk[y3,1])
 
 
 ###################################################
-### code chunk number 7: checknafld
+### code chunk number 9: checknafld
 ###################################################
 ndata <- tmerge(nafld1[,1:8], nafld1, id=id, death= event(futime, status))
 ndata <- tmerge(ndata, subset(nafld3, event=="nafld"), id, 
@@ -155,7 +184,7 @@ nfit <- survfit(Surv(age1, age2, event) ~1, ndata, id=id, start.time=50,
 netime <- (nfit$time <=90 & rowSums(nfit$n.event) > 0)
 # the number at risk at any time is all those in the intial state of a transition
 #  at that time
-from <- as.numeric(sub("\\.[0-9]*", "", colnames(nfit$n.transition)))
+from <- as.numeric(sub(":[0-9]*", "", colnames(nfit$n.transition)))
 fmat <- model.matrix(~ factor(from, 1:5) -1)
 temp <- (nfit$n.transition %*% fmat) >0 # TRUE for any transition 'from' state
 frisk <- (nfit$n.risk * ifelse(temp,1, 0))
@@ -164,7 +193,7 @@ maxrisk <- apply(frisk[netime,],2,max)
 
 
 ###################################################
-### code chunk number 8: skiplist1
+### code chunk number 10: skiplist1
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 sort2 <- order(ndata$age2)
@@ -173,7 +202,7 @@ plot(1:200, rev(sort2)[1:200], xlab="Addition to the list",
 
 
 ###################################################
-### code chunk number 9: skiplist2
+### code chunk number 11: skiplist2
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 # simulate a skiplist with period 3

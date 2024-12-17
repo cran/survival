@@ -16,16 +16,26 @@ survfit.formula <- function(formula, data, weights, subset,
                             entry=FALSE,  time0=FALSE, ...) {
 
     Call <- match.call()
+    if (missing(formula)) stop("a formula argument is required")
+    newform <- removeDoubleColonSurv(formula)
+    if (!is.null(newform)) {
+        formula <- newform$formula
+        if (newform$newcall) Call$formula <- formula
+    }
     Call[[1]] <- as.name('survfit')  #make nicer printout for the user
+
     # create a copy of the call that has only the arguments we want,
     #  and use it to call model.frame()
     indx <- match(c('formula', 'data', 'weights', 'subset','na.action',
                     'istate', 'id', 'cluster', "etype"), names(Call), nomatch=0)
-    #It's very hard to get the next error message other than malice
-    #  eg survfit(wt=Surv(time, status) ~1) 
-    if (indx[1]==0) stop("a formula argument is required")
     temp <- Call[c(1, indx)]
     temp[[1L]] <- quote(stats::model.frame)
+    # make sure we evaluate Surv, strata etc in the survival namespace
+    newform <- removeDoubleColonSurv(formula)
+    if (!is.null(newform)) {
+        temp$formula <- newform$formula
+        if (newform$newcall) Call$formula <- formula
+    }
     mf <- eval.parent(temp)
 
     Terms <- terms(formula, c("strata", "cluster"))

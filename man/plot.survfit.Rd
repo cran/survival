@@ -11,7 +11,7 @@
  conf.offset=.012,
  conf.type = c("log", "log-log", "plain", "logit", "arcsin"),
  mark, noplot="(s0)", cumhaz=FALSE,
- firstx, ymin, \dots)
+ firstx, ymin, cumprob=FALSE, \dots)
 }
 \arguments{
   \item{x}{
@@ -126,17 +126,18 @@
     region. If this is a single number then each curve's bars are offset
     by this amount from the prior curve's bars, if it is a vector the values are
     used directly.}
-     \item{conf.type}{
-	One of \code{"plain"}, \code{"log"} (the default),
+  \item{conf.type}{
+       One of \code{"none"}, \code{"plain"}, \code{"log"} (the default),
 	\code{"log-log"} or \code{"logit"}.  Only
 	enough of the string to uniquely identify it is necessary.
 	The first option causes confidence intervals not to be
-	generated.  The second causes the standard intervals
+	generated.  The second causes the  intervals
 	\code{curve +- k *se(curve)}, where k is determined from
 	\code{conf.int}.  The log option calculates intervals based on the
 	cumulative hazard or log(survival). The log-log option bases the
 	intervals on the log hazard or log(-log(survival)), and the
-	logit option on log(survival/(1-survival)). 
+	logit option on log(survival/(1-survival)) The default is
+	"plain" for a plot of the cumulative hazard. 
       }
   \item{mark}{a historical alias for \code{pch}}
   \item{noplot}{for multi-state models, curves with this label will not
@@ -149,13 +150,20 @@
     argument}
   \item{firstx}{this will normally be given as part of the \code{xlim}
     argument.}
+  \item{cumprob}{for a multi-state curve, plot the probabilities in
+    state 1, (state1 + state2), (state1 + state2 + state3), \ldots.
+    If \code{cumprob} is an integer vector the totals will be in the
+    order indicated. }
   \item{\dots}{other arguments that will be passed forward to the
     underlying plot method, such as xlab or ylab.}
 }
 \value{
 a list with components \code{x} and \code{y}, containing the coordinates of the last point 
 on each of the curves (but not the confidence limits).   
-This may be useful for labeling. 
+This may be useful for labeling.
+If \code{cumprob=TRUE} then \code{y} will be a matrix with one row per
+curve and \code{x} will be all the time points.  This may be useful for
+adding shading.
 }
 \description{
 A plot of survival curves is produced, one curve for each strata. 

@@ -12,15 +12,25 @@ concordance.formula <- function(object, data,
     timewt <- match.arg(timewt)
     if (missing(ymin)) ymin <- NULL
     if (missing(ymax)) ymax <- NULL
-    
+    if (missing(object)) stop("a formula argument is required")
+    formula <- object  # clearer to read below
+
+    # make Surv(), strata() etc in a formula resolve to the survival namespace
+    newform <- removeDoubleColonSurv(formula)
+    if (!is.null(newform)) {
+        formula <- newform$formula
+        if (newform$newcall) Call$formula <- formula
+    }
+   
     index <- match(c("data", "weights", "subset", "na.action", 
                      "cluster"),
                    names(Call), nomatch=0)
     temp <- Call[c(1, index)]
     temp[[1L]] <-  quote(stats::model.frame)
     special <- c("strata", "cluster")
-    temp$formula <- if(missing(data)) terms(object, special)
-                    else              terms(object, special, data=data)
+    temp$formula <- if(missing(data)) terms(formula, special)
+                    else              terms(formula, special, data=data)
+
     mf <- eval(temp, parent.frame())  # model frame
     if (nrow(mf) ==0) stop("No (non-missing) observations")
     Terms <- terms(mf)

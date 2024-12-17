@@ -1,6 +1,7 @@
 \documentclass{report}[notitlepage,11pt]
 \usepackage{Sweave}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{makeidx}
 
 \addtolength{\textwidth}{1in}
@@ -19,11 +20,15 @@
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\Lhat}{\hat\Lambda}
 \newcommand{\lhat}{\hat\lambda}
+\newcommand{\Shat}{\hat S}
 \newcommand{\KM}{{\rm KM}}
 \newcommand{\NA}{{\rm NA}}
 \newcommand{\FH}{{\rm FH}}
 \newcommand{\Ybar}{\overline Y}
 \newcommand{\Nbar}{\overline N}
+\newcommand{\xbar}{\overline x}
+\newcommand{\tmu}{\tilde \mu}
+\newcommand{\bhat}{\hat\beta}
 
 
 \title{Further documentation on code and methods in the survival package}
@@ -36,22 +41,37 @@ library(survival)
 \makeindex
 \begin{document}
 \maketitle
-
 \chapter{Introduction}
+\begin{quote}
+Kernighan's Law:  ``Everyone knows that debugging is twice as
+hard as writing a program in the first place. So if you're as clever as 
+you can be when you write it, how will you ever debug it?''
+\end{quote}
+
+The most complex code in the survival package arises out of two aspects.
+First, some of the mathematical formulas underlying the code are themselves
+complex, a second is the work I have done to avoid $O(n^2)$ computations
+in the algorithms. 
+A consequence of this is that a few comment lines interspersed into the source
+code will never be enough information.  Anyone reading it, including myself,
+is likely to ask ``what the heck is he trying to \emph{do} here?'' 
+A higher level overview is needed that can include equations and
+talk about higher level concepts.
+
   For many years I have used the noweb package to intersperse technical
 documentation with the source code for the survival package.
 However, despite its advantages, the uptake of noweb by the R community
 in general has been nearly nil. 
 It is increasingly clear that no future maintainer will continue the 
-work --- 
+work, e.g.,
 on the github page I have yet to recieve a suggested update that actually
-fixed the .Rmd source file instead of the .R file derived from it.  This means
+fixed the .Rnw source file instead of the .R file derived from it.  This means
 that I can't merge a suggested change automatically, but have to replicate it
 myself.
 
 This document is a start at addressing this.  As routines undergo maintainance,
 I will remove the relevant .Rnw file in the noweb directory and work directly
-on the C and R code, migrating the ``extra'' material into this document.
+on the C and R code, migrating the extra material into this document.
 In this
 vignette are discussions of design issues, algorithms, and detailed
 formulas.  In the .R and .c code I will place comments of the form
@@ -64,7 +84,7 @@ The three advantages are
   \item The methods document will be a more ready source of documentation for
     those who want to know technical details, but are not currently modifying
     the code.
-  \item (minor) I expect it will be useful to have the methods document and
+  \item (minor) I expect it will be useful to have the methods document and the
     R or C code open simultaneously in 2 windows, when editing. 
 \end{itemize}
 However, this conversion will be a long process.  
@@ -613,13 +633,12 @@ The C code for survfit has adapted case 3 above, for all three of the hazard,
 survival, and AUC.
 A rationale is that if the data set is very large the user can choose 
 \code{std.err =FALSE} as an option, then later use the residuals function to
-get values at selected times.  When the number of deaths gets over 1000, which
-is where we begin to really notice the $O(nd)$ slowdown, a plot only needs
-100 points to look smooth. Most use cases will only need variance at a few
-points.  Another reason is that for ordinary survival, robust variance is almost
+get values at selected times.  When the number of deaths gets over 1000
+is where we begin to really notice the $O(nd)$ slowdown, but a plot only needs
+100 points to look smooth
+Most use cases will only need variance at a 1--3 points.
+Another reason is that for ordinary survival, robust variance is almost
 never requested unless there is clustering.
-
-
 
 \section{Aalen-Johansen}
 In a multistate model let the hazard for the $jk$ transition be 
@@ -660,7 +679,7 @@ reduces to the cumulative incidence (CI) estimator.
 Interestingly, the exponential form \eqref{AJexp} is
 almost never used for survfit.formula, but is always used for the curves after
 a Cox model.
-For survfit.formula, but of the forms obey the basic probability rules that
+Both of the forms obey the basic probability rules that
 $0 \le p_k(t) \le 1$ and $\sum_k p_k(t) =1$; all probabilities are between 0 and
 1 and the sum is 1.
 The analog of \eqref{AJmat} has been proposed by some authors for Cox model 
@@ -693,7 +712,7 @@ A variant of this is if a given subject changed curves at time 15, which occurs
 when users are estimating the ``extended Kaplan-Meier'' curves proposed by 
 Snapinn \cite{Snapinn05}, in which case the subject will be counted as censored
 at time 15 wrt the first curve, and an entry at time 15 for the second.
-(I myself consider this approach to be statistically unsound.)
+(I myself consider Snapinn's estimate to be statistically unsound.)
 
 If a subject changed case weights between the (0,10) and (10,15) interval we
 do not count them as separate entry and exits for the weighted n.enter
@@ -726,10 +745,10 @@ impossible to clearly define the number at risk.
 But perhaps there are use cases for 2 and/or 4?
  
 One data example I have used in the past for the Cox
-model is a subject on a research protocol, over 20 years ago now, 
+model is a subject on a research protocol, over 30 years ago now, 
 who was completely lost to follow-up for nearly 2 years and then reappeared.
 Should they be counted as ``at risk'' in that interim?  
-I argue no, on the grounds that the were not at risk for an ``event that would
+I argued no, on the grounds that the were not at risk for an ``event that would
 have been captured'' in our data set --- we would never have learned of a
 disease progression.
 Someone should not be in the denominator of the Cox model (or KM) at a
@@ -804,7 +823,7 @@ an error in that case.
 The code does its summation starting at the largest time and moving left,
 adding and subtracting from the number at risk (by state) as it goes. 
 In most data sets the number at risk decreases over time, going from right
-to left results in more additions than subtractions and thus a smidge less
+to left results in more additions than subtractions and thus less
 potential roundoff error. 
 Since it is possible for a subject's intervals to have different case
 weights, the number at risk \emph{does} need to be updated at time 6 for
@@ -928,17 +947,16 @@ a matrix of the same form as $U$ and can be efficiently updated.
 Each row of the grouped $C$ is computed with the same effort as a row of
 the ungrouped matrix. 
   
-Let $C$ be the per observation influence matrix, $D$ a diagonal matrix
+Let $C$ be the per observation influence matrix, $W$ a diagonal matrix
 of per-observation weights, and $B$ the $n$ by $g$ 01/ design matrix that
 collapses observations by groups.
 For instance, \code{B = model.matrix(~ factor(grp) -1)}.
-The the weighted and collapsed influence is $V= B'DC$, and the infinitesimal
+The the weighted and collapsed influence is $V= B'WC$, and the infinitesimal
 jackknife variances are the column sums of the squared elements of V,
-\code{colSums(V*V)}. A feature of the IJ is that the column sums of $DC$ and of
-$B'DC$ are zero.
+\code{colSums(V*V)}. A feature of the IJ is that the column sums of $WC$ and of
+$B'WC$ are zero.
 In the special case where each subject is a group and the weight for a 
-subject is constant over time, then $B'D = WB'$ where $W$ is a diagonal matrix
-of per-subject weights, i.e, one can collapse and then weight rather than
+subject is constant over time, then one can collapse and then weight rather than
 weight and then collapse. 
 The survfitci.c routine (now replaced by survfitaj.c) made this assumption,
 but unfortunately the code had no test cases with disparate weights within
@@ -1095,8 +1113,277 @@ For the NAFLD example in the survival vignette, for instance, this is true for
 all but 161 out of the 6108 unique event times (5\%).  For the remainder of
 the event times it suffices to create a temporary copy of $U(t-)$.
 
+\chapter{Cox model}
+\section{Fitting}
+To be filled in.
+\section{Absolute risk}
+\index{coxph:survival}
+\subsection{Cumulative hazard and survival curves}
+The survival curves from a fitted coxph model default to the Breslow
+estimate = exp(cumulative hazard).  
+We also support the simple product-limit estimate (for which I have concerns,
+see more in the multi-state section), and the Kalfleisch-Prentice modification
+of the product-limit form. 
 
-\subsection{Residuals}
+Predicted survival curves are always for a particular set of covariates.
+We do not have much sympathy for the notion of \emph{the} baseline hazard,
+which textbooks define as the predicites survival for all $x$ equal to zero,
+since it can easily lead to overflow or underflow errors in the exponential
+function.
+The coxph object includes a \code{means} component, which contains a 
+workable vector of centering constants, i.e., a set for which the exponential
+will not be a problem.  
+The labels of ``means'' is historical, as individual elements of the vector are
+not necessarily a mean, 0/1 covariates for instance are given a centering
+constant of zero.  Let $c$ be that centering vector, and define
+$r(z;c) = \exp[(z-c)\beta]$ be the recentered risk score for a hypothetical
+subject with covariate vector $z$.
+The predicted cumulative hazard for a new subject with covariate vector
+$z$ is
+\begin{align} 
+  \lhat(t;z) &= \frac{\sum_i w_i dN_i(t)}{\sum_i Y_i(t)w_i r(x_i;z)} \nonumber \\
+             &= e^{(z-c)\beta} \lhat(t; c) \nonumber \\
+  \Lambda(t; z) &= \int_0^t \lhat(s; z) ds \nonumber \\
+               &=  e^{(z-c)\beta}\Lambda(t;c) \label{coxcumhaz}\\
+   \Shat(t; z) &= e^{-\Lambda(t; z)} \nonumber \\
+           &= \Shat(t; c)^{e^{(z-c)\beta}} \label{coxsurv}
+\end{align}
+
+Per above we can compute the survival curve for any covariate $z$ from
+the ``baseline'' curve for $x=c$. 
+Any vector $c$ that will ensure that the above can be calculated
+without roundoff error will suffice for safety, the survival code uses the
+mean component from the fit.
+To be clear, for most data sets use of $c=0$ as a centering constant
+will be just fine; it is sufficient to keep the $r(x_i,c)$ values far enough 
+away from the \code{double.min.exp} and \code{double.max.exp} components of
+\code{.Machine} (around 1000 on many machines) such that weighted means and
+variances, using $r(x_i,c)$ as the weights, do not lose precision.
+One case we have seen is where someone is looking at a seasonal effect
+and uses a Date variable for the covariate.  Say that the study were centered
+in 2022, then the mean $x$ value is approximately 19000.
+(Even then we would be okay if $\beta$ is small enough).
+
+If a user requested the product-limit form, then the predicted survival is
+\begin{align*} 
+  \Shat(t; z) &= \prod_{s\le t} [1- lhat(t;z)] \\
+              &\ne \left(\prod_{s\le t} [1- lhat(t;c)]\right)^{e^{(z-c)\beta}}
+\end{align*}
+ 
+A key issue is that if $r(x_i;z)$ is very small, e.g., when 
+computing the predicted curve for a very high risk subject,
+then $1- \lhat(t;z)$ may be negative, leading to an invalid survival estimate.
+For this reason the survival package does not support using a product-limit form.
+
+\index{survival:{Kalbfleisch-Prentice estimate}}
+An alternative estimate of $\lhat$ proposed by Kalbfleisch and Prentice 
+avoids this issue of an invalid estimate.  
+Also, it collapses to the Kaplan-Meier when $\beta=0$, something that some 
+consider to be a major plus. 
+In this author's opinion it is a ``meh''; a numerical difference that is tiny
+until the number at risk falls below 20, and even then much smaller than the
+se of the estimate. 
+For ordinary survival, Fleming and Harrington showed the exp(-cumulative hazard)
+actually had a smaller MSE than the KM, but again the difference is so small
+that no one really cares.
+For completeness, our software allows the KP as an option.  The variance of
+$\log(S)$, however, is assumed to be exactly the same as that of the
+exponential estimate, i.e., the variance of $\Lambda$.  Creating a special
+variance estimate is just too much work
+
+
+The KP approach computes a multiplicative increment $z(t)$ as the 
+solution to equation \eqref{KPhaz1}.
+If there is a single event at time $t$, this reduces to the closed form
+of \eqref{KPhaz2}, where $d$ is shorthand for the index of the death at
+that time point.  Otherwise the code uses simple bisection on the interval [0,1),
+which must contain the solution.
+A bit of algebra confirms that the final estimate is mathematically independent
+of the centering vector $c$. 
+
+\begin{align}
+  \sum  w_i Y_i(t) r(x_i;c) &= \sum dN_i(t) w_i \frac{r(x_i;c)}{1- z(t)^{r(x_i;c)}}
+      \label{KPhaz1}  \\
+    z(t) &= 1- w_d\frac{r(x_d;c)}{\left(\sum  w_i Y_i(t) r(x_i;c)\right)^
+        {1/r(x_d;c)}} \label{KPhaz2} \\
+      \Shat(t; z) &= \left(\prod_{s \le t} z(t)\right)^{e^{(z-c)\beta}} \label{KPhaz3}
+\end{align}
+
+\subsection{Variance}
+
+The variance of $\Lhat(t;z)$ has two terms, the first an analog to the
+variance increment for the Nelson-Aalen estimate, the second accounts for the
+variance of $\bhat$. 
+Let $\tmu(t;z)$ be the cumulative weighted differnce between $z$ and the
+running mean
+\begin{equation}
+  \tmu(t;z) = \int_0^t (z- \xbar(s)) d\Lambda(s; z) 
+               e^{(z-c)\beta} \int_0^t (z- \xbar(s)) d\Lambda(s; c) \label{tmu}
+\end{equation}
+This is a weighted average distance between $z$ and the center of the data.
+The variance is
+\begin{equation*}
+  \rm{var}\Lhat(t;z) = \left[e^{2(z-c)\beta} \int_0^t \frac{\lhat(s;c)}
+    {\sum_i w_i Y_i(s) r(x_i; c)} \right] + \tmu(t;z)'V \tmu(t;z)
+\end{equation*}
+
+The \code{agsurv} routine returns individual terms of the integral as
+a vector \code{varhaz}, the first term of the variance is then a weighted
+cumulative sum.
+A matrix with a row for each time point is returned as \code{xbar}, containing
+the product of $\lhat(t;c)$ with $\xbar(t)$.  (Note the $\xbar$ itself does not
+depend on centering.) The routine also returns the vector $\lambda(t;c)$.
+
+The second term of the variance cannot be treated as a cumulative sum of squares,
+we need to first add and \emph{then} multiply. 
+In the pseudo code below, hazard and xbar are results from agsurv and vmat the
+variance matrix from the coxph model.
+<<echo=TRUE, eval=FALSE>>=
+temp1 <- outer(hazard, z, '*') - xbar
+temp2 <- apply(temp1, 2, cumsum)
+v2 <-  rowSums((temp2 %*% vmat)* temp2)
+@ 
+\begin{itemize}
+  \item temp1 is a matrix where each row is $\lambda(t;c) (z- \xbar(t))$
+  \item each row of temp2 is the integral up to that point
+  \item element $i$ of v2 contains the result of 
+    \code{temp2[i,] \%*\% vmat \%*\% t(temp2[i,])}.  
+    The use of both matrix multiplication and elementwise multiplication, in
+    the right order, is important.
+\end{itemize}  
+We can offset the use of $\lambda(t;c)$ instead of $\lambda(t;z)$ at the 
+end, but creation and summation of the $z-\xbar$ matrix needs to be
+done separately for each $z$.  
+
+\subsection{Time-dependent coefficients}
+\index{survival:{time-dependent coefficients}}
+Look at an example from the time-dependent vignette.
+
+<<tdcoef>>=
+vet2 <- survSplit(Surv(time, status) ~ ., data= veteran, cut=c(90, 180), 
+                  episode= "tgroup", id="id", start="time1", end="time2")
+vfit2 <- coxph(Surv(time1, time2, status) ~ trt + prior +
+                  I(karno/10):strata(tgroup), data=vet2)
+vfit2
+
+cdata <- data.frame(time1 = rep(c(0,90,180), 2),
+                    time2 =  rep(c(90,180, 365), 2),
+                    status= rep(0,6),   #necessary, but ignored
+                    tgroup= rep(1:3, 2),
+                    trt  =  rep(1,6),
+                    prior=  rep(0,6),
+                    karno=  rep(c(40, 75), each=3),
+                    curve=  rep(1:2, each=3))
+cdata
+vsurv <- survfit(vfit2, newdata=cdata, id=curve)
+@   
+
+In the code \code{slist} will have one curve per stratum, 3 in the above case.
+The \code{id} for this new curve has nothing to do with any id variable in
+the original fit, here it is an id for the resulting curve.
+The algorithm is executed once per new curve
+\begin{itemize}
+  \item For each row of data corresponding to this id,
+    pluck off the appropriate rows of slist[[stratum of this row]],
+        i.e.  the time, n.censor, n.event, etc components.
+  \item Glue these together into a new curve
+\end{itemize}
+
+The (time1, time2) values in the new data correspond to the time values in the
+chosen stratum; in this case those are consistent, but one could have
+strata on different time scales.  The time values in the new curve will
+be 
+\begin{itemize}
+  \item time values for the stratum of row 1
+  \item (time2[1] - time1[2]) + time values for the stratum of row 2
+  \item (time2[2] - time2[3]) + time values for the stratum of row 3
+  \item \ldots
+\end{itemize}
+The idea is that if stratum 1 went from 30 to 100 and stratum 2 from 150 to
+200, we want our new time scale to be from 30 to 150. 
+In the case above these splicing constants are all zero, which is what I
+expect, but users do things I have never thought of.
+
+The underlying routine agsurv returns results for the hazard function centered
+at $c$ = the means component of the coxph result.
+But from this point forward, we need to do separate computations for each
+new id, a simple loop since there are unlikely to be many separate id values.
+Let $j$ be the rows of newdata that corresond to the first id. 
+For each of these rows pull off the hazard increments, increments of term 1
+of the variance, and the $\tmu$ values of \eqref{tmu}; multiple the first
+and third by risk[j], the second by risk[j] squared, and save them.
+When that is done,
+\begin{itemize}
+  \item Compute the cumulate hazard, cumsum(unlist(hazard increments))
+  \item Exponential survial is exp(-cum haz), KP survival is cumprod of the
+    KP contributions
+  \item The first term of the variance is again cumsum(unlist(var1))
+  \item For the second term we need the $tmu$ matrix, using cumsum(unlist)
+    for each column, separately.  Then the quadratic form can be computed.
+\end{itemize}
+
+I am moderately confident of the statisical theory for this in the case of a
+time-dependent covariate, where each new id covers the same range of time, 
+without holes or overlaps.  For the more complex cases I am much less certain,
+and would myself use a jackknife or boostrap.
+
+
+\chapter{Multistate hazard model}
+\section{Absolute risk}
+\index{cox:survival}
+To begin, first remember that predicitons from a Cox model are always for
+\emph{someone}, that is, some particular covariate vector $z$.
+This includes survival curves and other estimates of absolute risk.  
+Put aside the notion of ``the'' baseline survival curve from the start.
+For a multistate model the predicted curve is a matrix product
+\begin{align*}
+  r_i(z) &= \exp((x_i-z) \beta) \\
+  \lambda_{jk}(t;z) & = \frac{\sum_i w_i dN_{ijk}(t)}{\sum_i w_i r_i(z) Y_{ij}(t)} 
+      \\
+  p(t;z) &= p(0) \prod_{s\le t} e^{A(s;z)} \\
+  A(s;z) &= \left( \begin{array}{cccc}
+        \square & \lambda_{12}(s;z) & \lambda_{13}(s;z) & \ldots \\
+        \lambda_{21}(s;z) & \square & \lambda_{23}(s;z) & \ldots \\
+        \vdots & \vdots & \vdots & \ddots \end{array} \right)
+\end{align*}
+In the above $j$, $k$ are states, $i$ is an observation.  
+The diagonal elements are such that row sums are zero.
+
+The mstate package uses the first order Taylor series  $\exp(A) \approx I + A$,
+for $p(t;z)$, which is parallel to the formula in the Aalen-Johansen.
+We do not, for a couple of reasons.
+\begin{itemize}
+  \item If the chosen $x$ corresponds to a particularly high relative hazard,
+    then the diagonal element if $I+A$ can be negative, and 
+    $I+A$ is no longer a valid transition matrix.
+  \item Consistency with the single state Cox model's Breslow estimate,
+    which uses the exponential.
+    The I+A approximation has never been seriously proposed for the simple 
+    Cox model, probably because of the point just above.
+\end{itemize}
+
+For matrices, $\exp(A)\exp(B) \ne \exp(A+B)$
+unless $AB= BA$, which does not hold for this application: we cannot avoid
+the matrix multiplication.
+For transition matrices such as these $\exp(A(s))$ will have row sums of 1
+and all elements non-negative, numerically they are very well behaved 
+arguments to the matrix exponential function.
+Per section \ref{matexp}, for non-tied death times (only 1 event at this time)
+$A$ and $\exp(A)$ have a simple closed form and computation will be fast.
+
+For simple survival the above reduces to $\exp(-\Lambda(t;z)$, 
+and in that case the
+variance of the cumulative hazard estimate has been derived by (ref),
+not using the IJ as
+\begin{align*}
+  v(t;z) &= d'{\cal I}^-1 d +
+      \int_0^t \frac{\sum_i dN_i(t)}{\sum_i Y_i(t) r_i(z)} \\
+      d(t;z) &= \int_0^t (\xbar(s)-z) d\Lambda(s; z)
+\end{align*}
+
+
+\chapter{Residuals}
+\section{Survival}
 \index{Aalen-Johansen!residuals}
 The residuals.survfit function will return the IJ values at selected times,
 and is the more useful interface for a user.
@@ -1185,7 +1472,7 @@ once for every death time $k$ such that $Y_i(d_k) =1$ (i.e., each $B$ term
 that it is part of), and once more for each prior reporting time.
 
 I have not explored whether this idea will work in practice, nor do I see how
-to extend ti to the AUC computation.
+to extend it to the AUC computation.
 
 
 <<competecheck, echo=FALSE>>=
@@ -1246,7 +1533,7 @@ nfit <- survfit(Surv(age1, age2, event) ~1, ndata, id=id, start.time=50,
 netime <- (nfit$time <=90 & rowSums(nfit$n.event) > 0)
 # the number at risk at any time is all those in the intial state of a transition
 #  at that time
-from <- as.numeric(sub("\\.[0-9]*", "", colnames(nfit$n.transition)))
+from <- as.numeric(sub(":[0-9]*", "", colnames(nfit$n.transition)))
 fmat <- model.matrix(~ factor(from, 1:5) -1)
 temp <- (nfit$n.transition %*% fmat) >0 # TRUE for any transition 'from' state
 frisk <- (nfit$n.risk * ifelse(temp,1, 0))
@@ -1258,11 +1545,11 @@ As a second case consider the NAFLD data used as an example in the survival
 vignette, a 5 state model with death and 0, 1, 2, or 3 metabolic comorbidities
 as the states.
 For a survival curve on age scale, using age 50 as a starting point and computing
-the influence at age 90, the data set has `r nrow(ndata2)` rows that overlap
+the influence at age 90, the data set has \Sexpr{nrow(ndata2)} rows that overlap
 the age 50-90 interval, while the
-average risk set size is $r=$ `r round(mean(nrisk))`, $<12$\% of the data rows.
-There are `r sum(netime)` unique event times between 50 and 90 of
-which `r sum(rowSums(nfit\$n.transition[netime,]) ==1)` have only a single %$
+average risk set size is $r=$ \Sexpr{round(mean(nrisk))}, $<12$\% of the data rows.
+There are \Sexpr{sum(netime)} unique event times between 50 and 90 of
+which \Sexpr{sum(rowSums(nfit$n.transition[netime,]) ==1)} have only a single %$
 event type and the remainder 2. 
 
 In this case the first algorithm can take advantage of sparse $H$ matrices and
@@ -1287,6 +1574,72 @@ For $U$ the matrix sequence was $I$, $H_3I$, $H_2H_3I$, \ldots, it is now starts
 with $w_3I$, at the next step we multiply the prior matrix by $H_3$ and add 
 $w_2I$, at the third multiply the prior matrix by $H_2$ and add $w_1$, etc.
 
+\section{Mulistate hazard models}
+
+For multistate models, or for simple models with multiple events per
+subject,  we will use the IJ estimate of variance. 
+As a preliminar write down the martingale process for subject $i$
+\begin{align*}
+ M_{mjk}(t) &= \int_0^t dN_{mjk}(s) - Y_{mj}(s)e^{r_m(z)}d\Lambda_{jk}(t;z) \\
+          &= \int_0^t dN_{mjk}(s) - Y_{mj}(s) e^{r_m(z)}\frac{\sum_i w_i dN_{ijk}(s)}
+                          {\sum_iY_{ij}(s) e^{r_i(z)}}
+\end{align*}
+Because of cancellation of $\exp(z)$ in the numerator and denominator the
+second expression is independent of the target value $z$.
+Computationally, we will
+always use a centering constant $c$ = the \code{mean} component of the fit
+object to forestall any round off issues in the exp function.
+ 
+\begin{align}
+  \frac{\partial \sum_i w_i Y_{ij}(t) r_i(t;z)}{\partial w_m} &=
+  Y_{mj}(t)r_m(t;z) + \sum_i w_iY_{ij}(t) r_i(t;z) 
+    \left[ \sum_p(x_{ip}- z_p)
+     \frac{\partial \beta_p}{\partial w_m} \right] \label{ajij1} \\
+     &= Y_m(t)r_m(t;z) + \sum_i w_iY_i(t) r_i(t;z) (x_i- z)D_m' \label{ajij2} \\
+ \frac{\partial\lambda_{jk}(t;z)}{\partial w_m} &= 
+    \frac{dN_{mjk}(t) -  dM_m(t)} {\sum_i w_i r_i(z) Y_{ij}(t)} 
+    - \frac{\left[\sum_iw_i dN_{ijk}(t)\right] 
+           \left[\sum_i  w_iY_i(t) r_i(t;z) (x_i- z)D_m' \right]}
+           {\left[\sum_i w_i r_i(z) Y_{ij}(t) \right]^2}      \nonumber \\
+    &= a - b \label{ajij3} \\
+    a &= \exp(z-c)\frac{dN_{mjk}(t) -  dM_m(t)} {\sum_i w_i r_i(c) Y_{ij}(t)} 
+             \nonumber \\
+    b &= \exp(z-c)\lambda_{jk}(t;c) (\xbar(t) -z)D'_m \label{ajij4}
+\end{align}
+
+$D_m$ is row $m$ of the 
+dfbeta matrix for the Cox model's coefficent vector $\beta$; $D$ is an $n$
+by $p$ matrix where $n$ is the number of observations and $p$ the number
+of coefficients; treat $x_i-z$ as a row vector, 
+the $i$th row of the $X$ matrix, recentered.
+The first term of equation \eqref{ajij3} is essentially the leverage of the
+ordinary cumulative hazard, with $w_i r_i$ replacing $w_i$. 
+The second term is the the impact of $w_m$ as mediated through
+its effect on the model coefficients.
+Much like confidence intervals for the fitted line in a linear regression,
+the impact is greater when $z$ is far from the mean of the covariates.
+
+Any row of the data will be at
+risk in exactly one state for the (time1, time2) interval of that data row,
+so $Y_{ij}(t)$ is non-zero for only one $j$.
+The second term is the the impact of $w_m$ as mediated through
+its effect on the model coefficients.
+In the AJ estimate this meant that any row of the data only has an
+effect on hazards that originate from that state.
+For the MSH model, a coefficient that is common to two transitions means that
+all observations at risk for either transition will also have an IJ term
+for both.
+
+When the same covariate affects two transitions but with disjoint coefficients,
+the \code{stacker} routine will have created an expanded $X$ matrix which
+has separate columns for the two coefficients.
+Likewise, the $D$ matrix will have a separate column for each coefficient and
+will be semi-sparse, in that it has zeros for data rows that do not contribute
+to a give coefficient.
+Over all rows, the right hand portion of equation \eqref{ajij4} is
+\code{rowSums((X- rep(z, each=nrow(X)))* D)}. 
+
+
 
 \section{Skiplists}
 \index{skiplist}
@@ -1309,7 +1662,7 @@ so that ordering by observation's ending time skips wildly across data rows.
 For the nafld data example above, the next figure shows the row number of the
 first 200 additions to the risk set, when going from largest time to smallest.
 For the example given above, the maximum number at risk in each of the 5
-states is (`r paste(apply(nfit\$n.risk, 2, max), collapse=', ')`).  %$
+states is (\Sexpr{paste(apply(nfit$n.risk, 2, max), collapse=', ')}).  %$
 
 <<skiplist1, fig=TRUE>>=
 sort2 <- order(ndata$age2)
@@ -1318,7 +1671,7 @@ plot(1:200, rev(sort2)[1:200], xlab="Addition to the list",
 @ 
 
 Using $p=4$ as recommended by Pugh \cite{Pugh90} leads to $\log_4(1420) =5$
-linked lists; 1420 is the maximum number of the $n$ =`r nrow(ndata)` rows at
+linked lists; 1420 is the maximum number of the $n$ =\Sexpr{nrow(ndata)} rows at
 risk in any one state at any one time.  
 The first is a forward linked list containing all those currently at risk,
 the second has 1/4 the elements, the third 1/16, 1/64, 1/256.  
@@ -1363,6 +1716,130 @@ Since the height of a inserted node is chosen randomly there is always the
 possiblity
 of a long final search on level 1, but even a string of 10 is unlikely:
 $(3/4)^{10} < .06$.  
+
+
+\chapter{Misc numerics}
+\section{Matrix exponentials and transition matrices}
+For multi-state models, we need to compute the exponential of the transition
+matrix, sometimes many times.
+The matrix exponential is formally defined as
+\begin{equation*}
+  \exp(A) = I + \sum_{j=1}^\infty A^i/i!
+  \end{equation*}
+The computation is nicely solved by the expm package
+\emph{if} we didn't need derivatives and/or high speed.  
+We want both.
+
+We take advantage of three special cases to speed things up.  Each
+depends on the structure of $A$, which has the transition rates from
+state $j$ to state $k$ in off diagonal element $A_{jk}$ (non negative),
+and diagonal elements such that each row sums to zero.
+$P= \exp(A)$ is the transition probabilty matrix for this time point,
+each row of $P$ sums to 1 and all elements are non-negative.
+
+\begin{enumerate}
+  \item  If all the non-zero rates fall into a single row, or they all
+    fall into a single column, then there are simple closed form formulas
+    shown below. 
+  \item If the rate matrix $R$ is upper triangular and the (non-zero) diagonal
+    elements are distinct, there is a fast matrix decomposition algorithm.
+    If the transition matrix is acylic then it can be rearranged to be in upper
+    triangular form.  The decomposition also gives a simple expression for
+    the derivative.
+  \item In the general case we use a Pade-Laplace algorithm: the same found 
+    in the matexp package, but also supply derivatives if requested.
+\end{enumerate}
+
+When derivatives are needed, the routine is also passed an array \code{dR} whose
+$(j,k,i)$ element is the derivative of $A_{jk}$ with respect to parameter 
+$\theta_i$.
+In the case of infinitesimal jackknife compuations, which is what is most
+used in the survival package, $\theta$ will be the per-subject leverage
+on each of the underlying hazards at that time.  
+(Or a group of subjects, for a grouped jackknife).
+Since the rows of $P$ must sum to one, note that the rows of any derivative of
+$P$ will sum to zero, i.e., 
+$dR_{jji}= -\sum_{k!=j} dR_{jki}$.
+Since zero rates only occur for transitions that are not possible
+($\exp(X\beta) \lambda(t)$ is 0 only if $\lambda(t)$ is 0)
+the derivative will be non-zero only if the rate is non-zero. 
+
+Let $P(t)= \exp(A(t))$. 
+If there is only one non-zero diagonal element, $A_{jj}$ say, then
+\begin{align*} 
+    P_{jj} &= e^{-A_{jj}} \\
+    P_{jk} &= \left(1- e^{-A_{jj}}\right) \frac{A_{jk}}/{\sum_{l\ne j} A_{jl}} \\
+    P_{kk} &= 1; k\ne j 
+\end{align*}
+and all other elements of $P$ are zero.
+If there is only a single event at this time, which turns out to be the most
+common case with continuous time data, then $P$ and its derivative have only
+two non-zero elements, corresponding to $k$= current state of the observation
+with an event.  It is not true that the derivative is zero for other subjects
+than the $i$ who had an event, as everyone has an impact on $\hat \beta$ and
+thus on the estimated rate at that time.
+
+\begin{align*}
+  \frac{\partial P_{jj}}{\partial \theta_{jki}} &=
+     -P_{jj} \partial{A_{jk}} \partial{\theta_{jki}} \\
+ \frac{\partial P_{jk}}{\partial \theta_{jki}} &=
+     P_{jj} \partial{A_{jk}} \partial{\theta_{jki}} \\
+\end{align*}
+
+If there are multiple events at this time point but all have the same
+starting state, the     
+The derivative of $P$ with respect to $\theta_{jki}$ will be 0 for all rows
+except row $j$.
+\begin{align*} 
+ \frac{\partial P_{jk}}{\partial \theta_{jki}} &= eta_{jk}A_{jj} 
+     \;\mbox{single event type} \\
+    \frac{\partial A_{jk}}{\partial \eta_{jm}}&=  
+      A_{jj} eta_{jm}\frac{A_{jm}}{\sum_{l\ne j} A_{jl}} +
+      (A_{jj} -1) \frac{\eta_{jm} (1- \sum_{l\ne j} A_{jl})}{(\sum_{l\ne j} A_{jl})^2}
+\end{align*}
+
+
+If all non-zero rates lie in a single column $k$, then 
+\begin{align*} 
+  P_{jj} = exp(-A_{jk}) \quad j\ne k\\
+  P_{jk} = 1- P_{jj} \quad j \ne k\\
+  P_{kk} =1
+\end{align*}
+
+If time is continuous then most events will be at a unique event time, and the
+first formula will thus be the most common case.  This formula also holds
+for competing risks.  If there is a shared hazard
+for a set of transitions to a single state $k$ (often death), then for a 
+unique event time (or tied events of the same type) the second formula will hold.
+
+The matrix decomposition is use when
+the state space is acylic, the case for many survival problems.  
+The states can be reordered so that A is always upper triangular.
+In that case, the diagonal elements of A are the eigenvalues.  If these
+are unique (ignoring the zeros), then an algorithm of Kalbfleisch and Lawless
+gives both A and the derivatives of A in terms of a matrix decomposition.
+For the remaining cases use the Pade' approximation as found in the
+matexp package.
+
+The overall stategy is the following:
+\begin{enumerate} 
+  \item Call \code{survexpmsetup} once, which will decide if the matrix is
+    acyclic, and return a reorder vector if so or a flag if it is not.
+    This determination is based on the possible transitions, e.g., on the
+    transitions matrix from survcheck.
+  \item Call \code{survexpm} for each individual transition matrix.
+    In that routine
+    \begin{itemize}
+      \item First check for the simple cases, otherwise
+      \item Do not need derivatives: call survexpm
+      \item Do need derivatives
+        \begin{itemize}
+          \item If upper triangular and no tied values, use the deriv routine
+          \item Otherwise use the Pade routine
+        \end{itemize}
+    \end{itemize}
+\end{enumerate}
+
 
 
 \printindex

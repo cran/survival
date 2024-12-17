@@ -304,7 +304,10 @@ survfitAJ <- function(X, Y, weights, id, cluster, robust, istate,
         sd0 <- NULL
         if (is.null(p0)) {  # a per-curve p0
             if (ny==2) atrisk <- indx2
+            else if (t0== min(Y[,1])) atrisk <- (indx2 & Y[,1] <=t0 & Y[,2]>=t0)
             else atrisk <- (indx2 & Y[,1] < t0 & Y[,2] >= t0)
+            # the second else above prevents the error message below in the
+            #  case that everyone starts at the same time, but p0 not specified
             if (!any(atrisk)) 
                 stop(paste("no one at risk for one of the curves, at the",
                            "default time 0; specify a start.time"))
@@ -324,7 +327,7 @@ survfitAJ <- function(X, Y, weights, id, cluster, robust, istate,
                 U0 <- rowsum(utemp, c2[indx2]) # collapse
                 sd0 <- sqrt(colSums(U0^2))
             } 
-        } else p00 <- p0
+        } else p00 <- as.numeric(p0)  # just in case they passsed integers
 
         fit <- .Call(Csurvfitaj, Y, sort1[indx]-1L, sort2[indx]-1L, 
                      utime, as.integer(istate) -1L, weights, c2, nclust, p00,
@@ -350,7 +353,7 @@ survfitAJ <- function(X, Y, weights, id, cluster, robust, istate,
     }
 
     # Names for the cumulative hazard
-    cname <- paste(trmat[,1], trmat[,2], sep='.')
+    cname <- paste(trmat[,1], trmat[,2], sep=':')
 
     # Turn the result into a survfit type object
     # The C routine returns weighted and unweighted versions of the counts:
@@ -426,10 +429,10 @@ survfitAJ <- function(X, Y, weights, id, cluster, robust, istate,
                             grabit2(curves, "n.transition"),
                             grabit2(curves, "n.censor"),
                             grabit2(curves, "n.enter"))
-            colnames(counts) <- c(paste0("nrisk:", 1:nstate),
-                                  paste0("ntrans:", cname),
-                                  paste0("ncensor:", 1:nstate),
-                                  paste0("nenter:", 1:nstate))
+            colnames(counts) <- c(paste0("nrisk ", 1:nstate),
+                                  paste0("ntrans ", cname),
+                                  paste0("ncensor ", 1:nstate),
+                                  paste0("nenter ", 1:nstate))
         } else {
             counts <- cbind(grabit2(curves, "n.risk"),
                             grabit2(curves, "n.transition"),

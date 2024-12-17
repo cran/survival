@@ -1,5 +1,4 @@
 # Automatically generated from the noweb directory
-#tt <- function(x) x
 coxph <- function(formula, data, weights, subset, na.action,
         init, control, ties= c("efron", "breslow", "exact"),
         singular.ok =TRUE,  robust,
@@ -9,6 +8,8 @@ coxph <- function(formula, data, weights, subset, na.action,
     missing.ties <- missing(ties) & missing(method) #see later multistate sect
     ties <- match.arg(ties)
     Call <- match.call()
+    if (missing(formula)) stop("a formula argument is required")
+    
     ## We want to pass any ... args to coxph.control, but not pass things
     ##  like "dats=mydata" where someone just made a typo.  The use of ...
     ##  is simply to allow things like "eps=1e6" with easier typing
@@ -20,14 +21,32 @@ coxph <- function(formula, data, weights, subset, na.action,
             stop(gettextf("Argument %s not matched", 
                           names(extraArgs)[indx==0L]), domain = NA)
     }
+    
+    # Gather any leftover arguments into a coxph.control call
+    # If there is a control argument, force a call to coxph.control to both
+    #  fill it out with all the elements and do sanity checks
     if (missing(control)) control <- coxph.control(...) 
+    else if (is.list(control)) control <- do.call(coxph.control, control)
+    else stop("control argument must be a list")
 
+    # make Surv(), strata() etc in a formula resolve to the survival namespace
+    if (is.list(formula)) {
+        newform <- removeDoubleColonSurv(formula[[1]])
+        if (!is.null(newform)) {
+            formula[[1]] <- newform$formula
+            if (newform$newcall) Call$formula <- newform$formula
+        }
+    } else {
+        newform <- removeDoubleColonSurv(formula)
+        if (!is.null(newform)) {
+            formula <- newform$formula
+            if (newform$newcall) Call$formula <- formula  #save the nicer version
+        }
+    }
     # Move any cluster() term out of the formula, and make it an argument
     #  instead.  This makes everything easier.  But, I can only do that with
     #  a local copy, doing otherwise messes up future use of update() on
     #  the model object for a user stuck in "+ cluster()" mode.
-    if (missing(formula)) stop("a formula argument is required")
-    
     ss <- "cluster"
     if (is.list(formula))
         Terms <- if (missing(data)) terms(formula[[1]], specials=ss) else
@@ -60,7 +79,6 @@ coxph <- function(formula, data, weights, subset, na.action,
     indx <- match(c("formula", "data", "weights", "subset", "na.action",
                     "cluster", "id", "istate"),
                   names(Call), nomatch=0) 
-    if (indx[1] ==0) stop("A formula argument is required")
     tform <- Call[c(1,indx)]  # only keep the arguments we wanted
     tform[[1L]] <- quote(stats::model.frame)  # change the function called
 
@@ -98,13 +116,6 @@ coxph <- function(formula, data, weights, subset, na.action,
     special <- c("strata", "tt", "frailty", "ridge", "pspline")
     tform$formula <- if(missing(data)) terms(formula, special) else
                                       terms(formula, special, data=data)
-
-    # Make "tt" visible for coxph formulas, without making it visible elsewhere
-    if (!is.null(attr(tform$formula, "specials")$tt)) {
-        coxenv <- new.env(parent= environment(formula))
-        assign("tt", function(x) x, envir=coxenv)
-        environment(tform$formula) <- coxenv
-    }
 
     # okay, now evaluate the formula
     mf <- eval(tform, parent.frame())
@@ -155,9 +166,14 @@ coxph <- function(formula, data, weights, subset, na.action,
             stop("multi-state models do not currently support pspline terms")
         if (length(attr(Terms, "specials")$ridge) >0)
             stop("multi-state models do not currently support ridge penalties")
-        if (!missing.ties) method <- ties <- "breslow"
+        if (missing.ties) method <- ties <- "breslow"
     }
     
+    # the code was never designed for multiple fraily terms, but of course
+    #  someone tried it
+    if (length(attr(Terms, "specials")$frailty) >1)
+            stop("multiple frailty terms are not supported")
+
     if (control$timefix) Y <- aeqSurv(Y)
     if (length(attr(Terms, 'variables')) > 2) { # a ~1 formula has length 2
         ytemp <- innerterms(formula[1:2])
@@ -190,10 +206,6 @@ coxph <- function(formula, data, weights, subset, na.action,
         }
         if (!hasinteractions) dropterms <- stemp$terms 
     } else istrat <- NULL
-
-    if (hasinteractions && multi)
-        stop("multi-state coxph does not support strata*covariate interactions")
-
 
     timetrans <- attr(Terms, "specials")$tt
     if (missing(tt)) tt <- NULL

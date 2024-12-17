@@ -4,12 +4,18 @@ survreg <- function(formula, data, weights, subset, na.action,
 
     Call <- match.call()    # save a copy of the call
 
+    # make Surv(), strata() etc in a formula resolve to the survival namespace
+    if (missing(formula)) stop("a formula argument is required")
+    newform <- removeDoubleColonSurv(formula)
+    if (!is.null(newform)) {
+        formula <- newform$formula
+        if (newform$newcall) Call$formula <- formula
+    }
+    
     # Move any cluster() term out of the formula, and make it an argument
     #  instead.  This makes everything easier.  But, I can only do that with
     #  a local copy, doing otherwise messes up future use of update() on
     #  the model object for a user stuck in "+ cluster()" mode.
-    if (missing(formula)) stop("a formula argument is required")
-    
     ss <- c("cluster", "offset")
     Terms <- if (missing(data)) terms(formula, specials=ss) else
                  terms(formula, specials=ss, data=data)
@@ -118,7 +124,15 @@ survreg <- function(formula, data, weights, subset, na.action,
     #   said transform.
     #  
     logcorrect <- 0   #correction to the loglik due to transformations
-    Ysave <- Y  # for use in the y component
+    # deal with the lower bound of zero
+    if (attr(Y, "type") == "interval" &&
+        dlist$name %in% c("Weibull", "Exponential", "Rayleigh", "Log Normal",
+                          "Log logisit")) {
+        fix <- (Y[,1]==0 & Y[,3]==3)  #interval censored with lower bound of 0
+        if (any(fix)) Y[fix,] <- cbind(Y[fix,2], 1,2) # convert to left censored
+    }
+    
+    Ysave <- Y  # for use in the y component of the returned list
     if (!is.null(dlist$trans)) {
 	tranfun <- dlist$trans
 	exactsurv <- Y[,ncol(Y)] ==1
@@ -257,10 +271,12 @@ survreg <- function(formula, data, weights, subset, na.action,
         fit$naive.var <- fit$var
         if (!model) fit$model <- m  #temporary addition, so resid doesn't
                                     # have to reconstruct
-        if (length(cluster))
-             fit$var <- crossprod(rowsum(residuals.survreg(fit, 'dfbeta'), 
-                                         cluster))
-        else fit$var <- crossprod(residuals.survreg(fit, 'dfbeta'))
+        if (length(cluster)) 
+            dfbeta <- residuals.survreg(fit, "dfbeta", weighted=TRUE, 
+                                        collapse=cluster)
+        else dfbeta <- residuals.survreg(fit, "dfbeta", weighted=TRUE)
+        fit$var <- crossprod(dfbeta)
+
         if (!model) fit$model <- NULL  # take it back out
         }
 

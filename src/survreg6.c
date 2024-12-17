@@ -47,7 +47,7 @@ SEXP survreg6(SEXP maxiter2,   SEXP nvarx,  SEXP y,
 	      SEXP offset2,    SEXP beta2,  SEXP nstratx,
 	      SEXP stratax,    SEXP epsx,   SEXP  tolx,
 	      SEXP dist,       SEXP dexpr,  SEXP rho) {
-    int i,j;	
+    int i,j, bad;	
     int n, maxiter,
 	ny;
     double *newbeta;
@@ -209,7 +209,6 @@ SEXP survreg6(SEXP maxiter2,   SEXP nvarx,  SEXP y,
 	goto alldone;
 	}
 
-
     /*
     ** here is the main loop
     */
@@ -224,10 +223,25 @@ SEXP survreg6(SEXP maxiter2,   SEXP nvarx,  SEXP y,
 
     for (iter=1; iter<= maxiter; iter++) {
 	/* 
-	**   Am I done?  Check for convergence, then update betas
+	** When a Newton-Raphson step goes seriously awry, we can end up with
+	**   an infinite or not-a-number loglik, or the same for a first or
+	**   second derivative.
+	** the isnan and isinf function return 1 on failure, 0 for valid
 	*/
-	if (!isnan(newlk) && 0== isinf(newlk) && 
-	    fabs(1-(*loglik/newlk))<=eps && halving==0 ) { /* all done */
+	bad = isnan(newlk) + isinf(newlk);  /* an invalid value */
+	for (j=0; j< nvar2; j++) {
+	    bad += isnan(imat[j][j]) + isinf(imat[j][j]);
+	    bad += isnan(u[j]) + isinf(u[j]);
+	}
+	/* 
+	**   Am I done?  Check for convergence, then update betas.
+	**   Most often the relative change in loglik will signal convergence,
+	**   the second absolute check can occur when the final 
+	**    loglik settles at a value very near 0.
+	*/
+	if (bad== 0 &&  halving==0 &&
+	    (fabs(1- *loglik/newlk) <=eps || 
+	     fabs(*loglik - newlk)  <=eps)) { /* all done */
 	    *loglik = newlk;
 	    *flag = cholesky3(imat, nvar2, 0, NULL, tol_chol);
 
@@ -242,37 +256,34 @@ SEXP survreg6(SEXP maxiter2,   SEXP nvarx,  SEXP y,
 	    goto alldone;
 	    }
 	
-	if (isnan(newlk) || 0 != isinf(newlk) || newlk < *loglik)   {    
+	if (bad > 0  || newlk < *loglik)   {    
 	    /*it is not converging ! */
-	    for (j=0; j<5 && newlk < *loglik; j++) {
-		halving++;
-		for (i=0; i<nvar2; i++)
-		    newbeta[i] = (newbeta[i] + beta[i]) /2; 
-		/*
-		** Special code for sigmas.  Often, they are the part
-		**  that gets this routine in trouble.  The prior NR step
-		**  may have decreased one of them by a factor of >10, in which
-		**  case step halving isn't quite enough.  Make sure the new
-		**  try differs from the last good one by no more than 1/3
-		**  approx log(3) = 1.1
-		**  Step halving isn't enough of a "back away" when a
-		**  log(sigma) goes from 0.5 to -3, or has become singular.
-		*/
-		if (halving==1) {  /* only the first time */
-		    for (i=0; i<nstrat; i++) {
-			if ((beta[nvar+i]-newbeta[nvar+i])> 1.1)
-			    newbeta[nvar+i] = beta[nvar+i] - 1.1;  
-			}
-		    }
-		newlk = (*dolik)(n,      nvar,             nstrat,  1,
-				 newbeta,asInteger(dist),  strat,   offset,
-				 time1,  time2,            status,  wt,
-				 covar,  imat,             JJ,      u,
-				 dexpr,  rho,              zptr,
-				 0,      NULL,             NULL,    NULL); 
+	    halving++;
+	    for (i=0; i<nvar2; i++)
+		newbeta[i] = (newbeta[i] + 2*beta[i]) /3.0; 
+	    /*
+	    ** Special code for sigmas.  Often, they are the part
+	    **  that gets this routine in trouble.  The prior NR step
+	    **  may have decreased one of them by a factor of >10, in which
+	    **  case step halving isn't quite enough.  Make sure the new
+	    **  try differs from the last good one by no more than 1/3
+	    **  approx log(3) = 1.1
+	    **  Step halving isn't enough of a "back away" when a
+	    **  log(sigma) goes from 0.5 to -3, or has become singular.
+	    */
+	    if (halving==1) {  /* only the first time */
+		for (i=0; i<nstrat; i++) {
+		    if ((beta[nvar+i]-newbeta[nvar+i])> 1.1)
+			newbeta[nvar+i] = beta[nvar+i] - 1.1;  
 		}
 	    }
-
+	    newlk = (*dolik)(n,      nvar,             nstrat,  1,
+			     newbeta,asInteger(dist),  strat,   offset,
+			     time1,  time2,            status,  wt,
+			     covar,  imat,             JJ,      u,
+			     dexpr,  rho,              zptr,
+			     0,      NULL,             NULL,    NULL); 
+	}
 	else {    /* take a standard NR step */
 	    halving=0;
 	    *loglik = newlk;
@@ -295,17 +306,26 @@ SEXP survreg6(SEXP maxiter2,   SEXP nvarx,  SEXP y,
 			 dexpr,  rho,              zptr,
 			 0,      NULL,             NULL,    NULL); 
 	for (i=0; i<nvar2; i++) usave[i] = u[i];
-	}   /* return for another iteration */
-    *iter2 = maxiter;
-    *loglik = newlk;
+    }   /* return for another iteration */
+
+    *iter2 = maxiter; 	
+    if (halving ==0 && isnan(newlk)==0 && isinf(newlk)==0 && newlk >= *loglik) {
+	/* Accept the final step */
+	for (i=0; i< nvar2; i++) beta[i]= newbeta[i];
+    } else {
+	/* Last step was not a success, get imat for last good iter */
+	(*dolik)(n,      nvar,             nstrat,  0,
+	     beta,asInteger(dist),  strat,   offset,
+	     time1,  time2,            status,  wt,
+	     covar,  imat,             JJ,      u,
+	     dexpr,  rho,              zptr,
+	     0,      NULL,             NULL,    NULL); 
+    }
     cholesky3(imat, nvar2, 0, NULL, tol_chol);
     chinv2(imat, nvar2); 
     for (i=1; i<nvar2; i++) {
         for (j=0; j<i; j++)  imat[i][j] = imat[j][i];
-        }
-    
-    for (i=0; i<nvar2; i++)
-	beta[i] = newbeta[i];
+    }
     *flag= 1000;
 
     /*

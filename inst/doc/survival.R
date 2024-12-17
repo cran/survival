@@ -846,22 +846,17 @@ tldata <- merge(tldata, with(nafld1, data.frame(id=id, days=futime, death=status
 
 # Add in the comorbidities of interest.  None of these 4 happen to have
 #  duplicates (MI does, for instance).  
-# Start by removing the the 13 rows with a "confirmed NAFLD" (actual NAFLD + 1 year)
-#  that is after the actual last follow-up date.
 # Treat diabetes before day 0 as diabetes on day 0.
-badrow <- which(nafld3$days > nafld1$futime[match(nafld3$id, nafld1$id)])
-fixnf3 <- nafld3[-badrow,]
-
-tldata <- merge(tldata, with(subset(fixnf3, event=="diabetes"),
+tldata <- merge(tldata, with(subset(nafld3, event=="diabetes"),
                            data.frame(id=id, days=pmax(0,days), diabetes=1)),
                    all=TRUE, by=c("id", "days"))
-tldata <- merge(tldata, with(subset(fixnf3, event=="htn"),
+tldata <- merge(tldata, with(subset(nafld3, event=="htn"),
                            data.frame(id=id, days=pmax(0,days), htn=1)),
                      all=TRUE, by=c("id", "days"))
-tldata <- merge(tldata, with(subset(fixnf3, event=="dyslipidemia"),
+tldata <- merge(tldata, with(subset(nafld3, event=="dyslipidemia"),
                            data.frame(id=id, days= pmax(0, days), dyslipid=1)),
                        all=TRUE, by=c("id", "days"))
-tldata <- merge(tldata, with(subset(fixnf3, event=="nafld"),
+tldata <- merge(tldata, with(subset(nafld3, event=="nafld"),
                            data.frame(id=id, days= pmax(0,days), nafld=1)),
                     by=c("id", "days"), all=TRUE)
 
@@ -912,7 +907,7 @@ round(coef(nfit2), 3)
 
 
 ###################################################
-### code chunk number 65: survival.Rnw:2440-2442 (eval = FALSE)
+### code chunk number 65: survival.Rnw:2435-2437 (eval = FALSE)
 ###################################################
 ## fit2 <- coxph(Surv(time, status) ~ trt + trt*time + celltype + karno,
 ##                 data = veteran)
@@ -973,8 +968,8 @@ acoef <- seq(0, .25, length=100)
 profile <- matrix(0, 100, 2)
 for (i in 1:100) {
     icoef <- c(fit1$coef[1], acoef[i], fit1$coef[3])
-    tfit <- coxph(Surv(futime, fustat) ~ rx + age + resid.ds, ovarian,
-                  init= icoef, iter.max=0)
+    tfit <- coxph(Surv(futime, fustat) ~ rx + offset(acoef[i]*age) + resid.ds, 
+                  ovarian)
     profile[i,1] <- tfit$loglik[2]
     delta <- c(0, acoef[i]- fit1$coef[2], 0)
     profile[i,2] <- fit1$loglik[2] - delta%*% imat %*% delta/2
@@ -992,8 +987,8 @@ legend(.11, -58, c("Cox likelihood", "Wald approximation"), lty=1, lwd=2,
 myfun <- function(beta) {
     icoef <- coef(fit1)
     icoef[2] <- beta
-    tfit <- coxph(Surv(futime, fustat) ~ rx + age + resid.ds, ovarian,
-                  init = icoef, iter.max=0)
+    tfit <- coxph(Surv(futime, fustat) ~ rx + offset(age*beta) + resid.ds, 
+                  ovarian)
     (fit1$loglik - tfit$loglik)[2] - qchisq(.95, 1)/2 
 }
 uniroot(myfun, c (0, .2))$root  # lower
@@ -1001,7 +996,7 @@ uniroot(myfun, c(.2, .5))$root  # upper
 
 
 ###################################################
-### code chunk number 71: survival.Rnw:3490-3491
+### code chunk number 71: survival.Rnw:3485-3486
 ###################################################
 with(subset(aml, x=="Nonmaintained"), Surv(time, status))
 
