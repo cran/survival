@@ -35,20 +35,20 @@ legend(1.5, .85, c("Responders", "Non-responders"),
 
 
 ###################################################
-### code chunk number 4: timedep.Rnw:201-203 (eval = FALSE)
+### code chunk number 4: timedep.Rnw:202-204 (eval = FALSE)
 ###################################################
 ## fit <- coxph(Surv(time1, time2, status) ~ age + creatinine, 
 ##              data=mydata)
 
 
 ###################################################
-### code chunk number 5: timedep.Rnw:274-275 (eval = FALSE)
+### code chunk number 5: timedep.Rnw:275-276 (eval = FALSE)
 ###################################################
 ## newdata <- tmerge(data1, data2, id, newvar=tdc(time, value), ...)
 
 
 ###################################################
-### code chunk number 6: timedep.Rnw:320-321
+### code chunk number 6: timedep.Rnw:321-322
 ###################################################
 cgd0[1:4,]
 
@@ -141,20 +141,20 @@ rbind('baseline fit' = coef(fit1),
 
 
 ###################################################
-### code chunk number 12: timedep.Rnw:619-620
+### code chunk number 12: timedep.Rnw:620-621
 ###################################################
 attr(pbc2, "tcount")
 
 
 ###################################################
-### code chunk number 13: timedep.Rnw:622-624
+### code chunk number 13: timedep.Rnw:623-625
 ###################################################
 #grab a couple of numbers for the paragraph below
 atemp <- attr(pbc2, "tcount")[2:3,]
 
 
 ###################################################
-### code chunk number 14: timedep.Rnw:705-711 (eval = FALSE)
+### code chunk number 14: timedep.Rnw:706-712 (eval = FALSE)
 ###################################################
 ## temp <- subset(pbc, id <= 312, select=c(id:sex, stage))
 ## pbc2 <- tmerge(temp, temp, id=id, death = event(time, status))
@@ -270,9 +270,18 @@ abline(coef(vfit3)[3:4], lwd=2, lty=3, col=2)
 ###################################################
 vfit4 <-  coxph(Surv(time, status) ~ trt + prior + karno + tt(karno),
                 data=veteran,
-                tt = function(x, t, ...) x* nsk(t, knots=c(5, 100, 200, 400),
-                                                Boundary.knots = FALSE))
+                tt = function(x, t, ...) x* nsk(t, knots=c(100, 200),
+                                                Boundary.knots = c(5,400)))
 vfit4
+# look at the spline term
+smat <- cbind(1, nsk(1:600,  knots=c(100, 200), Boundary.knots = c(5,400)))
+estimate <- smat%*% coef(vfit4)[3:6]
+sd.est  <- sqrt(diag(smat %*% vcov(vfit4)[3:6, 3:6] %*% t(smat)))
+ytemp <- c(estimate) + outer(sd.est, c(0, -1.96, 1.96), '*')
+
+matplot(1:600/30.5, ytemp, type='l', lty=c(1,2,2), lwd=c(2,1,1), col=1,
+    xlab="Months post randomization", ylab="Estimated Karnofsky effect")
+abline(0,0, lty=3)
 
 
 ###################################################
@@ -362,12 +371,12 @@ anova(vfit1, vfit5)
 tdata <- expand.grid(trt=0, prior=0, karno=30, month=seq(1,13, length=50))
 yhat <- predict(vfit5, newdata=tdata, se.fit=TRUE, reference="zero")
 yy <- yhat$fit+ outer(yhat$se.fit, c(0, -1.96, 1.96), '*')
-matplot(seq(1,13, length=50), yy, type='l', lty=c(1,2,2), col=1, lwd=c(1,2,2),
+matplot(seq(1,13, length=50), yy, type='l', lty=c(1,2,2), col=1, lwd=c(2,1,1),
         xlab="Month of fu", ylab="Effect, Karnofsky 60 vs 90")
 
 
 ###################################################
-### code chunk number 32: timedep.Rnw:1291-1298
+### code chunk number 32: timedep.Rnw:1295-1302
 ###################################################
 function(x, t, riskset, weights){ 
     obrien <- function(x) {
@@ -379,7 +388,7 @@ function(x, t, riskset, weights){
 
 
 ###################################################
-### code chunk number 33: timedep.Rnw:1308-1310
+### code chunk number 33: timedep.Rnw:1312-1314
 ###################################################
 function(x, t, riskset, weights) 
     unlist(tapply(x, riskset, rank))

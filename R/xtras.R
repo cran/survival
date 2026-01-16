@@ -10,6 +10,30 @@ vcov.coxph <- function (object, complete=TRUE, ...) {
     else vmat
 }
 
+vcov.coxphms <- function (object, complete=TRUE, matrix=FALSE, ...) {
+    # conform to the standard vcov results
+    vmat <- object$var
+    vname <- names(object$coefficients)
+    dimnames(vmat) <- list(vname, vname)
+    cmap <- object$cmap
+    if (!complete && any(is.na(coef(object)))) {
+        keep <- !is.na(coef(object))
+        vmat <- vmat[keep, keep, drop=FALSE]
+        cmap <- cmap[keep,]
+    }
+    
+    if (!matrix) vmat
+    else {
+        v2 <- array(0, dim=c(dim(vmat), ncol(cmap)),
+                    dimnames= c(dimnames(vmat), transition=list(colnames(cmap))))
+        for (i in 1:ncol(cmap)) {
+            j <- cmap[,i]
+            v2[j>0, j>0, i] <- vmat[j,j]
+        }
+        v2
+    }
+}
+
 vcov.survreg<-function (object, complete=TRUE, ...) {
     if (!complete && any(is.na(coef(object)))) {
         keep <- !is.na(coef(object))
@@ -41,6 +65,8 @@ extractAIC.coxph.null <- function(fit, scale, k=2, ...) {
 }
 
 labels.survreg <- function(object, ...) attr(object$terms, "term.labels")
+labels.coxph <- function(object, ...) attr(object$terms, "term.labels")
+labels.aareg <- function(object, ...) attr(object$terms, "term.labels")
 
 
 # This function is just like all.vars -- except that it does not recur
@@ -192,4 +218,86 @@ addSurvFun <- function(formula, found) {
         assign(i, get(i), envir= myenv)
     environment(formula) <- myenv
     formula
+}
+
+# This is useful for a timeline data set; for a counting process one the
+#  tdc function in tmerge already does this.
+# Replace any NA with the most recent non-NA, for each id separately
+#  Better known as "last value carried forward"
+#
+lvcf <- function(id, x, time) {
+    # the input will normally already be sorted by time, and users will
+    #  then omit that argument
+    if (!missing(time)) indx <- order(id, time)
+    else indx <- order(id)   
+
+    # factors are really slow in replacement, convert to integer
+    if (is.factor(x)) {
+        xlev <- levels(x)
+        x <- as.integer(x)
+        for (i in seq(along=x)) {
+            j <- indx[i]
+            if (i==1 || !is.na(x[j]) || id[j]!= id[jlag]) current <- x[j]
+            else x[j] <- current
+            jlag <- j
+        }
+        factor(x, seq(along.with= xlev), xlev) # return to factor form
+    } else {
+        for (i in seq(along=x)) {
+            j <- indx[i]
+            if (i==1 || !is.na(x[j]) || id[j]!= id[jlag]) current <- x[j]
+            else x[j] <- current
+            jlag <- j
+        }
+        x
+    }
+}
+
+# A function useful for timeline data.  Turn repeated instances of an
+#  outcome to "censored".  This can be important for a MSH, we don't want to
+#  count a visit where nothing changed as a "new" event.  For an AJ survival
+#  curve it actually doesn't matter, since p(state) doesn't change if someone
+#  "transitions" from state xyz to state xyz; leaving as is just makes the 
+#  output object a bit longer (it may add another time point).
+nostutter <- function(id, x, censor=0, single=FALSE) {
+    # censor is the code to use for censoring, 
+    # the output will have censor as the first code
+    if (is.character(x) | is.numeric(x)) x <- as.factor(x)
+    if (is.factor(x)) {
+        newlev <- unique(c(censor, levels(x)))
+        iscensor <-( x== censor)  # already marked as censored
+        x <- as.integer(x)
+        x[iscensor] <- 0
+    } else stop("invalid variable type")        
+    
+    n <- length(id)
+    if (length(x) != n) stop("wrong length for x or id")
+    if (single) {
+        used <- logical(1L+ length(levels(x)))
+        for (i in 1:n) {
+            if (i==1 || (id[i] != id[i-1] && !used[x[i]])) {
+                if (is.na(x[i])) current <- 0 
+                else {
+                    current <- x[i]
+                    uses[x[i]] <- TRUE
+                }
+            } else if (!is.na(x[i])) {
+                if (x[i]== current) x[i] <- 0
+                else if (x[i] >0) current <- x[i]
+            }
+        }
+    } else{
+        for (i in 1:n) {
+            if (i==1 || id[i] != id[i-1]) {
+                if (is.na(x[i])) current <- 0 else current <- x[i]
+            } else if (!is.na(x[i])) {
+                if (x[i]== current) x[i] <- 0
+                else if (x[i] >0) current <- x[i]
+            }
+        }
+    }
+
+    # if censor were level 3 of 5 in input, then the unique x at
+    #  this point would be 0, 1, 2, 4, 5
+    factor(x, sort(unique(x)), newlev)  
 }

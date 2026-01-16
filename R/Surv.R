@@ -2,8 +2,7 @@
 # Package up surivival type data as a structure
 #
 Surv <- function(time, time2, event,
-	      type=c('right', 'left', 'interval', 'counting', 'interval2',
-                     "mstate"),
+	      type=c('right', 'left', 'interval', 'counting', 'interval2'),
 		       origin=0) {
 
     if (missing(time)) stop ("Must have a time argument")
@@ -18,7 +17,10 @@ Surv <- function(time, time2, event,
     # and missing(event) instead?  Because we want to assume that 
     # "Surv(a,b)" has the variable b matched to event rather than time2.
     #
-    mtype <- match.arg(type)
+    if (!missing(type) && type =="mstate") {
+        warning("type= 'mstate' is deprecated, use a factor variable as status")
+        mtype <- "mstate"
+    }  else mtype <- match.arg(type) 
     
     # If type is missing or it is "mstate", I need to figure out for myself
     #  whether I have (time, time2, status) or (time, status) data

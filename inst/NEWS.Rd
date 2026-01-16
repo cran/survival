@@ -1,12 +1,66 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.8-6}{
+  \itemize{
+    \item Small error in plot.survfit. If there were censoring at 20 and
+    40, say, a plot with xmax=30, mark.time=TRUE would add an incorrect
+    censoring mark at 30.
+    \item Issue with summary.survfitms when the times arg was a single
+    value.  A drop=FALSE was needed, or print.summary.survfitms failed.
+}}
+\section{Changes in version 3.8-5}{
+  \itemize{
+    \item Fix error in survfit_confint that showed up in a CRAN test
+    (simple typo, but led to an error message).
+    \item Add a stronger test case for the data.frame option of
+    summary.survfit and fix the errors it uncovered (github issue
+    305). The return for data.frame=TRUE has been changed to include the
+    values from newdata rather than the row numbers of newdata.
+    That is, for survfit from a coxph fit, if newdata had age=c(50,60)
+    and sex=0:1, then the resuling data.frame will have age and sex
+    variables rather than data=1 or 2.
+    \item Add suggested text wrt to the actions of subset to the help files
+    for coxph, survreg, and survfit. This parallels changes in lm and
+    glm, see github issue 324.
+}}
+\section{Changes in version 3.8-4}{
+  \itemize{
+    \item The rmean option for print.survfit for a single and multi
+    state model were not in harmony when start.time was present. The
+    former added start.time to the result, the second not.  Make them
+    agree (don't add it).
+    \item Fix error in stacker (called by coxph) that only arose if
+    there were shared strata that differ in both starting and ending
+    state.  A rare case, but it arises with curves for TD covariates.
+    \item Add the lvcf and nostutter functions, both useful when
+    creating certain multistate data sets.
+    \item Deprecate the type="mstate" option of Surv; a factor variable
+    for 'status' is the better option.
+    \item Add code to ignore the robust option to coxph for a penalized
+    model; this combination makes no sense (to me) and does not appear in
+    any examples. However, to my dismay a user pointed that in the
+    current code this did not outright fail, and instead produces
+    *something* that is returned as a purported variance.  (Is is a
+    sensible idea? I'm curious, but someone else will need to
+    answer the question.)
+    \item Fix error in survfit_confint that would sometime produce
+    spurious NA.  Export the survfit_confint function due to a request.
+    \item Allow character indices for [.cox.zph, per github issue 299
+    \item Major update of residuals.coxphms, i.e., residuals from a
+    multistate hazards model (MSH), i.e., create the necessary test
+    suites to verify results. The Schoenfeld residuals, which have one
+    row per observed event, gain a "transition" attribute.
+    \item Add "mark.col" and "cumprob" options to plot.survfit. The
+    latter is used for stacked plots of multistate data.
+    \item Address github issue 328.
+}}
 \section{Changes in version 3.8-2}{
   \itemize{
     \item Round 2 of updates, to pass reverse dependency checks. In
     3.8-1 I had made a silly copy-paste mistake in the update to
     survfit, and also added a new test for my changes (doublecolon.R).
     Of course, the only check that I forgot to include in the
-    doublecolon file was for ... survfit (coxph, survdiff, survreg,
+    doublecolon file was for the survfit function (coxph, survdiff, survreg,
     survcheck, and concordance were all there).
 }}
 \section{Changes in version 3.8-1}{

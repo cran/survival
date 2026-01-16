@@ -106,7 +106,7 @@
 	cumulative hazard or log(survival). The log-log option bases the
 	intervals on the log hazard or log(-log(survival)), the
 	logit option on log(survival/(1-survival))
-	and arcsin on arcsin(survival). 
+	and arcsin on arcsin(sqrt(survival)). 
       }
       \item{conf.lower}{
 	a character string to specify modified lower limits to the curve, the 
@@ -279,6 +279,13 @@ details. Some of the methods defined for survfit objects are
   (number of clusters, number of states, number of times), or a matrix
   for single state data.  When there are multiple curves, the
   influence is a list with one element per curve.
+
+  All of weights, subset and offset are evaluated in the same way as variables
+in formula, that is first in data and then in the environment of
+formula. Note that values calculated inside the formula, such as
+mean(x), are evaluated before subsetting - which may lead to unexpected
+results if used with subset. For more information see the Details
+section of \code{model.frame}.
 }
 
 \section{References}{

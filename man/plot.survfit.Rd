@@ -9,8 +9,8 @@
  xlim, ylim, xmax, fun, 
  xlab="", ylab="", xaxs="r",  conf.times, conf.cap=.005,
  conf.offset=.012,
- conf.type = c("log", "log-log", "plain", "logit", "arcsin"),
- mark, noplot="(s0)", cumhaz=FALSE,
+ conf.type = c("log", "log-log", "plain", "logit", "arcsin", "none"),
+ mark, mark.col, noplot="(s0)", cumhaz=FALSE,
  firstx, ymin, cumprob=FALSE, \dots)
 }
 \arguments{
@@ -18,7 +18,7 @@
     an object of class \code{survfit}, usually returned by the
     \code{survfit} function. 
   }
-  \item{conf.int}{
+  \item{conf.int}{if TRUE/FALSE,
     determines whether pointwise confidence intervals will be plotted.
     The default is to 
     do so if there is only 1 curve, i.e., no strata, using 95\% confidence
@@ -30,7 +30,7 @@
     controls the labeling of the curves.  If set to \code{FALSE}, no
     labeling is done. 
     If \code{TRUE}, then curves are marked at each censoring time.
-    If \code{mark} is a
+    If \code{mark.time} is a
     numeric vector then curves are marked at the specified time points. 
   }
   \item{pch}{
@@ -78,8 +78,9 @@
   \item{xmax}{
     the maximum horizontal plot coordinate.  This can be used to shrink
     the range of a plot.  It shortens the curve before plotting it, so
-    that unlike using the \code{xlim} graphical parameter, warning
+    unlike using the \code{xlim} graphical parameter, warning
     messages about out of bounds points are not generated.
+    It also \emph{looks} nicer when lines don't touch the right margin.
   }
   \item{fun}{
     an arbitrary function defining a transformation of the survival
@@ -127,11 +128,11 @@
     by this amount from the prior curve's bars, if it is a vector the values are
     used directly.}
   \item{conf.type}{
-       One of \code{"none"}, \code{"plain"}, \code{"log"} (the default),
-	\code{"log-log"} or \code{"logit"}.  Only
-	enough of the string to uniquely identify it is necessary.
-	The first option causes confidence intervals not to be
-	generated.  The second causes the  intervals
+       One of \code{"plain"}, \code{"log"} (the default),
+	\code{"log-log"}, \code{"logit"}, or \code{"arcsin"} or \code{"none"}.
+	Only enough of the string to uniquely identify it is necessary.
+	The last option causes confidence intervals not to be
+	generated.  The plain option gives intervals
 	\code{curve +- k *se(curve)}, where k is determined from
 	\code{conf.int}.  The log option calculates intervals based on the
 	cumulative hazard or log(survival). The log-log option bases the
@@ -139,7 +140,10 @@
 	logit option on log(survival/(1-survival)) The default is
 	"plain" for a plot of the cumulative hazard. 
       }
-  \item{mark}{a historical alias for \code{pch}}
+  \item{mark}{a historical alias for \code{pch} (in S pch could only be
+    character). This option is deprecated, use mark.time and pch}
+  \item{mark.col}{color(s) for the marks, if different than the colors
+    the curves}
   \item{noplot}{for multi-state models, curves with this label will not
     be plotted.  (Also see the \code{istate0} argument in
     \code{survcheck}.)}
@@ -153,7 +157,7 @@
   \item{cumprob}{for a multi-state curve, plot the probabilities in
     state 1, (state1 + state2), (state1 + state2 + state3), \ldots.
     If \code{cumprob} is an integer vector the totals will be in the
-    order indicated. }
+    order indicated.  This implies \code{conf.type="none"}}
   \item{\dots}{other arguments that will be passed forward to the
     underlying plot method, such as xlab or ylab.}
 }

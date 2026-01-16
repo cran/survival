@@ -23,8 +23,11 @@ events <- data.frame(
   time = c(3, 5, 8))
 b2 <- tmerge(base, events, id = id, got_flu = cumevent(time, got_flu),
                has_flu = tdc(time, has_flu))
+# The above should give a warning message re replacement of "has_fu"
 
 all.equal(b2$got_flu, c(0,0,1,0,0,0,3,0))
+# Per the above-- a cumevent result is only non-zero at a new event time.
+# b2$id= 1, 2,2,2,2,2,2,2; a tdc would be 0,0, 1,1,1,3,3.
 
 
 # Tied times in the merger data set
@@ -40,7 +43,7 @@ all.equal(b3$x3, c(1,0,0,0,2,0,4,0,0,0))
 all.equal(b3$x4, c(1,0,0,0,2,0,9,0,0,0))
 
 # Multiple overlapping time windows in the first step.
-#  Should generate an error message
+#  Should generate an error message "duplicate identifiers"
 test <- tryCatch(
             {tmerge(pbcseq[, c("id", "trt", "age", "sex")], pbcseq, id,
                death = event(futime, status==2))},

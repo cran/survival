@@ -59,16 +59,12 @@ cmat3 <- matrix(0, 3, 3, dimnames = list(state3, state3))
 cmat3[1,2] <- cmat3[2,1] <- cmat3[-3, 3] <- 1
 statefig(c(1,2), cmat3, offset=.03, cex=1.5)
 
-state4 <- c("0", "1", "2", "...")
-cmat4 <- matrix(0, 4,4, dimnames= list(state4, state4))
-cmat4[1,2] <- cmat4[2,3] <- cmat4[3,4] <- 1
-statefig(c(1,1,1,1), cmat4, bcol=c(1,1,1,0), cex=c(1.5, 1.5, 1.5, 3))
 par(oldpar)
 @
  \caption{Four multi-state models.  The upper left panel depicts simple 
    survival, the upper right depicts sequential events,
 the lower left is an example of competing risks, and
- the lower right panel is a multi-state illness-death model.}
+ the lower right panel is an illness-death model.}
  \label{mfig1}
 \end{figure}
 
@@ -785,13 +781,16 @@ females (by adding \code{strata(sex)} to the right hand side of the
 
 
 A Cox model fit to the constructed data set yields the Fine-Gray
-models for PCM and for death.  
+models for PCM and for death. Per \cite{Geskus11}, the robust
+variance estimate from the coxph call should closely match the variance
+formula in Fine and Gray, model coefficients will be identical.
+
 <<fg2, fig=TRUE>>=
 fgfit1 <- coxph(Surv(fgstart, fgstop, fgstatus) ~ sex, data=pcmdat,
-               weights= fgwt)
+               weights= fgwt, id=id)
 summary(fgfit1)
 fgfit2 <- coxph(Surv(fgstart, fgstop, fgstatus) ~ sex, data=deathdat,
-               weights= fgwt)
+               weights= fgwt, id=id)
 fgfit2
 
 mfit2 <- survfit(Surv(etime, event) ~ sex, data=mgus2) #reprise the AJ
@@ -862,10 +861,10 @@ if true for one, they will not be true for the other.
 Now consider a multivariate fit on age, sex, and serum m-spike.
 <<fg3>>=
 fgfit2a <- coxph(Surv(fgstart, fgstop, fgstatus) ~ age + sex + mspike,
-                 data=pcmdat, weights=fgwt)
+                 data=pcmdat, weights=fgwt, id=id)
 
 fgfit2b <-  coxph(Surv(fgstart, fgstop, fgstatus) ~ age + sex + mspike,
-                 data=deathdat, weights=fgwt)
+                 data=deathdat, weights=fgwt, id=id)
 round(rbind(PCM= coef(fgfit2a), death=coef(fgfit2b)), 3)
 @ 
 The Fine-Gray fits show an effect of all three  variables on the subdistribution

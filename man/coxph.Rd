@@ -1,10 +1,5 @@
 \name{coxph}
 \alias{coxph}
-\alias{print.coxph.null}
-\alias{print.coxph.penal}
-\alias{coxph.penalty}
-\alias{coxph.getdata}
-\alias{summary.coxph.penal}
 \title{
   Fit Proportional Hazards Regression Model 
 }
@@ -152,6 +147,13 @@ However, arguments to offset are not scaled since there are situations
 where a large offset value is a purposefully used.
 In general, however, users should not avoid very large numeric values
 for an offset due to possible loss of precision in the estimates.
+
+All of weights, subset and offset are evaluated in the same way as variables
+in formula, that is first in data and then in the environment of
+formula. Note that values calculated inside the formula, such as
+\code{mean(x)} or \code{pspline(x)}, are evaluated before subsetting --
+which may lead to unexpected results if used with subset.
+For more information see the Details section of \code{model.frame}.
 }
 \section{Case weights}{
 Case weights are treated as replication weights, i.e., a case weight of
@@ -164,8 +166,11 @@ of the data will not give exactly the same coefficients as the weights option,
 and in this case the weighted fit is arguably the correct one.
 
 When the model includes a \code{cluster} term or the \code{robust=TRUE}
-option the computed variance treats any weights as sampling weights;
-setting all weights to 2 will in this case give the same variance as weights of 1.
+option the computed variance is based on an infinitesimal jackknife,
+which treats any weights as sampling weights;
+setting all weights to 2 will in this case give the same variance as
+weights of 1.  If there are any non-integer weights, the code also
+defaults \code{robust=TRUE}.
 }
 \section{Special terms}{
   There are a few special terms that may be used in the model equation:
@@ -223,7 +228,14 @@ independence variance (generalized estimating equations), the
 infinitesimal jackknife, and the Wei, Lin, Weissfeld (WLW) estimate.
 
 If there is an \code{id} or \code{cluster} argument in the call, or
-\code{robust=TRUE}, the robust variance is computed.
+\code{robust=TRUE}, or there are non-integer case weights, the robust
+variance is the default.  If there are multiple rows per id
+and no id has more than one event and the underlying proportional
+hazards model is exactly correct, then the multiple rows for a given
+id will represent independent increments and the variance (robust or standard)
+obtained without an \code{id} statement will be an unbiased estimate.
+But it will not be equal to the estimate with \code{id} specified and we
+do not recommend it.
 }
 
 \section{Convergence}{

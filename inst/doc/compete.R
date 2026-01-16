@@ -35,10 +35,6 @@ cmat3 <- matrix(0, 3, 3, dimnames = list(state3, state3))
 cmat3[1,2] <- cmat3[2,1] <- cmat3[-3, 3] <- 1
 statefig(c(1,2), cmat3, offset=.03, cex=1.5)
 
-state4 <- c("0", "1", "2", "...")
-cmat4 <- matrix(0, 4,4, dimnames= list(state4, state4))
-cmat4[1,2] <- cmat4[2,3] <- cmat4[3,4] <- 1
-statefig(c(1,1,1,1), cmat4, bcol=c(1,1,1,0), cex=c(1.5, 1.5, 1.5, 3))
 par(oldpar)
 
 
@@ -263,10 +259,10 @@ dfit2 <- survfit(Surv(fgstart, fgstop, fgstatus) ~ sex,
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 fgfit1 <- coxph(Surv(fgstart, fgstop, fgstatus) ~ sex, data=pcmdat,
-               weights= fgwt)
+               weights= fgwt, id=id)
 summary(fgfit1)
 fgfit2 <- coxph(Surv(fgstart, fgstop, fgstatus) ~ sex, data=deathdat,
-               weights= fgwt)
+               weights= fgwt, id=id)
 fgfit2
 
 mfit2 <- survfit(Surv(etime, event) ~ sex, data=mgus2) #reprise the AJ
@@ -291,10 +287,10 @@ rcurve <- survfit(cfitr, newdata=ndata)
 ### code chunk number 18: fg3
 ###################################################
 fgfit2a <- coxph(Surv(fgstart, fgstop, fgstatus) ~ age + sex + mspike,
-                 data=pcmdat, weights=fgwt)
+                 data=pcmdat, weights=fgwt, id=id)
 
 fgfit2b <-  coxph(Surv(fgstart, fgstop, fgstatus) ~ age + sex + mspike,
-                 data=deathdat, weights=fgwt)
+                 data=deathdat, weights=fgwt, id=id)
 round(rbind(PCM= coef(fgfit2a), death=coef(fgfit2b)), 3)
 
 
@@ -364,7 +360,7 @@ hgfit$cmap
 
 
 ###################################################
-### code chunk number 24: compete.Rnw:1026-1029 (eval = FALSE)
+### code chunk number 24: compete.Rnw:1025-1028 (eval = FALSE)
 ###################################################
 ## list(1: c("pcm", "death") ~ hgb / common,
 ##      1:0  ~ hgb / common,

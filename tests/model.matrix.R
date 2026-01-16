@@ -1,6 +1,7 @@
+library(survival)
 options(na.action=na.exclude) # preserve missings
 options(contrasts=c('contr.treatment', 'contr.poly')) #ensure constrast type
-library(survival)
+aeq <- function(x, y, ...) all.equal(as.vector(x), as.vector(y), ...)
 
 #
 # Test out the revised model.matrix code
@@ -44,7 +45,8 @@ all.equal(attr(xx, "contrasts"),
           list("strata(x2)"= "contr.treatment", z="contr.treatment"))
 
 fit3b <-   coxph(Surv(time, status) ~ strata(x2)*z, test1, iter=0, x=TRUE)
-all.equal(fit3b$x, xx)
+aeq(attr(xx, "strata"), fit3b$strata)
+aeq(fit3b$x, xx)
 
 
 # A model with  a tt term

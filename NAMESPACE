@@ -24,15 +24,14 @@ export(Surv, Surv2, Surv2data, aeqSurv, aareg, agreg.fit,
        coxph.wtest, finegray, format.Surv, 
        frailty,  frailty.gamma, 
        frailty.gaussian, frailty.t, is.Surv, 
-       is.na.Surv, is.ratetable, nsk,
-       match.ratetable, neardate,
+       is.na.Surv, is.ratetable, lvcf, nsk,
+       match.ratetable, neardate, nostutter,
        psurvreg, qsurvreg, dsurvreg, pseudo,
        pspline, pyears, ratetableDate, ratetable,
        ridge, royston, rsurvreg, rttright,statefig, strata, 
        survSplit, survcheck, survcondense, survdiff, survexp,  survfit,
-       survfit0, survfit.formula,
-       coxsurv.fit, survfitKM,
-       survobrien,  
+       survfit0, survfit_confint, survfit.formula,
+       coxsurv.fit, survfitKM, survobrien,  
        survpenal.fit, 
        survreg, survreg.control, survreg.fit,
        survreg.distributions, survregDtest, tcut, totimeline, fromtimeline,
@@ -107,6 +106,8 @@ S3method(is.na, Surv2)
 S3method(is.na, coxph.penalty)
 S3method(is.na, ratetable)
 S3method(is.na, ratetable2)
+S3method(labels, aareg)
+S3method(labels, coxph)
 S3method(labels, survreg)
 S3method(levels, Surv)
 S3method(levels, tcut)
@@ -224,6 +225,7 @@ S3method(unique, Surv)
 S3method(vcov, cch)
 S3method(vcov, concordance)
 S3method(vcov, coxph)
+S3method(vcov, coxphms)
 S3method(vcov, survfit)
 S3method(vcov, survreg)
 S3method(weights, coxph)

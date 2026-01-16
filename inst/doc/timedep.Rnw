@@ -156,26 +156,27 @@ The alarm about this incorrect approach has been sounded often
 re-discovered.
 A slightly subtler form of the error is discussed in Redmond et al.
 \cite{Redmond83}.  The exploration was motivated by a flawed analysis presented
-in Bonadonna et al. \cite{Bonadonna81} which looked at the effect of total dose.
+in Bonadonna et al. \cite{Bonadonna81}.
 Breast cancer chemotherapy patients were
 divided into three groups based on whether the patient eventually
 received $>85$\%, 65--85\% or $<65$\% of the dose planned at the start of
 their treatment. 
-Per the above, this approach leads to a severe bias
+This approach leads to a severe bias
 since early deaths do not finish all their cycles of chemotherapy and hence
-by definition get a lower dose.
+by definition get a lower dose.  E
+It is early death which predicts a low total dose, and not vice-versa.
 A proportional hazards model using total dose received shows a very strong
 effect for dose, so much so that it could encourage a treating physician to
 defer necessary dose reductions in response to treatment toxicity.
 This false result actively harmed patients.
 
-Redmond looked at a variant of this: create a variable $p$ for each subject
-which
-is the fraction of the target dose \emph{up to} the last entry for that subject.
+Redmond also looked at a further variant of this: 
+create a variable $p$ for each subject which is the fraction of the
+the target dose, received \emph{up to} the last entry for that subject.
 A subject who died after receiving only 6 weeks of a planned 12 week regimen
 could still score 100\%.
 This looks like it should cure the bias issue,
-but as it turns out it leads to bias in the other direction.  The reason
+but it turns out to give bias in the other direction.  The reason
 is that dose reductions due to toxicity occur more often in the later cycles
 of treatment, and thus living longer leads to smaller values of $p$.
 A proportional hazards regression fit to $p$ implies that a smaller dose is
@@ -188,7 +189,7 @@ For dose it would measure cumulative dose to date.
 There are many variations on the error: interpolation of the values of a
 laboratory test linearly between observation times, removing subjects who do
 not finish the treatment plan, imputing the date of an adverse event as midway
-between observation times, etc. 
+between observation times, etc.  
 Using future data will often generate large positive or negative bias in the 
 coefficients, but sometimes it generates little bias at all.
 It is nearly impossible to predict a priori which of these will occur in any
@@ -1041,26 +1042,29 @@ flexible than R, i.e., you cannot simply write
 
 A more general approach is to allow a flexible fit on the right hand
 side, as shown in the following code.
-(The Boundary.knots=FALSE argument simply says that the \code{knots} argument
-contains \emph{all} the knots, i.e., don't separate them into two sets.)
 
 <<vet4>>=
 vfit4 <-  coxph(Surv(time, status) ~ trt + prior + karno + tt(karno),
                 data=veteran,
-                tt = function(x, t, ...) x* nsk(t, knots=c(5, 100, 200, 400),
-                                                Boundary.knots = FALSE))
+                tt = function(x, t, ...) x* nsk(t, knots=c(100, 200),
+                                                Boundary.knots = c(5,400)))
 vfit4
+# look at the spline term
+smat <- cbind(1, nsk(1:600,  knots=c(100, 200), Boundary.knots = c(5,400)))
+estimate <- smat%*% coef(vfit4)[3:6]
+sd.est  <- sqrt(diag(smat %*% vcov(vfit4)[3:6, 3:6] %*% t(smat)))
+ytemp <- c(estimate) + outer(sd.est, c(0, -1.96, 1.96), '*')
+
+matplot(1:600/30.5, ytemp, type='l', lty=c(1,2,2), lwd=c(2,1,1), col=1,
+    xlab="Months post randomization", ylab="Estimated Karnofsky effect")
+abline(0,0, lty=3)
 @ 
 
-The \code{nsk} function is a variant if \code{ns} such that the coefficients
-are the predicted values at knots 2, 3, \ldots - the predicted value at knot
-1, the \code{Boundary= FALSE} argument omits addition of extra knots at the 
-boundary times of t=1 and 999.
-We see a large decrease in effect from time= 5 to time 100,
-a coefficient of essentially -.060 + .048 = -.012 for Karnofsky at this later
-point, with minimal changes thereafter.
-Unfortunately, follow-on functions such as \code{cox.zph} within the 
-survival package do not work reliably.  We will come back to this example
+We see a large decrease in effect over the first 5 months, to near zero;
+with very wide CI for any changes thereafter.
+Unfortunately, follow-on functions such as \code{termplot}, which would have
+made the plot much simpler, or \code{cox.zph} to test for PH do not work
+with this specialized fit.  We will come back to this example
 in the next section, using another approach.
 @ 
 
@@ -1255,7 +1259,7 @@ anova(vfit1, vfit5)
 tdata <- expand.grid(trt=0, prior=0, karno=30, month=seq(1,13, length=50))
 yhat <- predict(vfit5, newdata=tdata, se.fit=TRUE, reference="zero")
 yy <- yhat$fit+ outer(yhat$se.fit, c(0, -1.96, 1.96), '*')
-matplot(seq(1,13, length=50), yy, type='l', lty=c(1,2,2), col=1, lwd=c(1,2,2),
+matplot(seq(1,13, length=50), yy, type='l', lty=c(1,2,2), col=1, lwd=c(2,1,1),
         xlab="Month of fu", ylab="Effect, Karnofsky 60 vs 90")
 @ 
 

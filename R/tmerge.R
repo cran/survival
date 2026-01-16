@@ -76,22 +76,22 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
         for (i in seq(along=tevent$name)) {
             ename <- tevent$name[i]
             if (is.numeric(data1[[ename]])) {
-                if (!is.numeric(tevent$censor[[i]]))
+                if (!is.numeric(tevent$censor[[i]][1]))
                     stop("event variable ", ename, 
                          " no longer matches it's original class")
             }
             else if (is.character(data1[[ename]])) {
-                if (!is.character(tevent$censor[[i]]))
+                if (!is.character(tevent$censor[[i]][1]))
                     stop("event variable ", ename, 
                          " no longer matches it's original class")
             }
             else if (is.logical(data1[[ename]])) {
-                if (!is.logical(tevent$censor[[i]]))
+                if (!is.logical(tevent$censor[[i]][1]))
                     stop("event variable ", ename,
                          " no longer matches it's original class")
             }
             else if (is.factor(data1[[ename]])) {
-                if (levels(data1[[ename]])[1] != tevent$censor[[i]])
+                if (levels(data1[[ename]])[1] != tevent$censor[[i]][1])
                     stop("event variable ", ename,
                          " has a new first level")
             }
@@ -377,7 +377,7 @@ tmerge <- function(data1, data2, id, ..., tstart, tstop, options) {
             dstart[newrows] <- dstop[newrows-1] <- icount$etime
             newdata[[topt$tstartname]] <- dstart
             newdata[[topt$tstopname]]  <- dstop
-            for (ename in tevent) newdata[newrows-1, ename] <- tcens[[ename]]
+            for (ename in tevent) newdata[newrows-1, ename] <- tcens[[ename]][[1]]
 
             # refresh indices
             baseid <- newdata[[topt$idname]]
