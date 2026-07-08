@@ -46,5 +46,3 @@ fudays <- with(ndata, as.numeric(end.dt - enroll.dt))
 fuyrs  <- with(ndata, as.numeric(end.age- enroll.age))
 cox1 <- coxph(Surv(fudays, status) ~ x, data=ndata)
 cox2 <- coxph(Surv(fuyrs,  status) ~ x, data=ndata)
-
-

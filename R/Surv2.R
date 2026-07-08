@@ -7,16 +7,35 @@ Surv2 <- function(time, event, repeated=FALSE) {
     if (inherits(time ,"difftime")) time <- unclass(time)
     if (!is.numeric(time)) stop ("Time variable is not numeric")
     nn <- length(time)
-    if (!is.logical(repeated) || length(repeated) != 1)
+    if ( length(repeated) != 1 || 
+         !(is.logical(repeated) || is.character(repeated) && repeated=="first"))
         stop("invalid value for repeated option")
 
     if (missing(event)) stop("must have an event argument")
     if (length(event) != nn) stop ("Time and event are different lengths")
+
+    # Special code to allow for 0/1/NA or FALSE/TRUE/NA, but if missing time
+    #  leave NA as is 
+    if (any(is.na(event) & !is.na(time))) { # there are solo NA events
+        if (is.numeric(event) && any(event==0)) fill <- 0
+        else if (is.logical(event) && any(!event)) fill <- FALSE
+        else if (is.factor(event)) fill <- levels(event)[1]
+        else fill <- NA  # I don't think this can happen
+        event[is.na(event) & !is.na(time)] <- fill
+    } # end special
+    
     event <- as.factor(event)
     states <- levels(event)[-1]
     status <- as.integer(event) -1L # usually time is not integer, but
     ss <- cbind(time=time, status=status) # sometimes it is
  
+    # Retain any attributes of the input arguments. Originally requested
+    #  by the rms package
+    inputAttributes <- list()
+    if (!is.null(attributes(time)))
+        inputAttributes$time  <-attributes(time)
+    if (!missing(event) && !is.null(attributes(event)))
+        inputAttributes$event <- attributes(event)
     # In rare cases there are no column names, and I have discovered that
     #  people depend on them.
     cname <- dimnames(ss)[[2]]
@@ -25,6 +44,8 @@ Surv2 <- function(time, event, repeated=FALSE) {
                                            
     if (any(is.na(states) | states=='') )
         stop("each state must have a non-blank name")
+    if (length(inputAttributes) > 0) 
+        attr(ss, "inputAttributes") <- inputAttributes
     attr(ss, "states") <- states
     attr(ss, "repeated") <- repeated
     class(ss) <- 'Surv2'

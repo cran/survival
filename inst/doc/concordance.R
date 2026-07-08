@@ -291,5 +291,3 @@ ytest <- matrix(rexp(20), ncol=2) %*% chol(matrix(c(1, .98, .98, 1), 2))
 cor(ytest)
 lfit <- lm(ytest[,1] ~ ytest[,2])
 zci(lfit)
-
-

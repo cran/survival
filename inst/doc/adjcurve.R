@@ -441,5 +441,3 @@ sfit6  <- survexp(~group,  data=saspop, ratetable=cfit6)
 plot(sfit6, fun='event', xscale=365.25, mark.time=FALSE, lty=1, col=c(1,2,4),
      xlab="Years from sample", ylab="Deaths")
 lines(sfit5, fun='event', xscale=365.25, lty=2, col=c(1,2,4))
-
-

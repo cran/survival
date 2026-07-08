@@ -1020,5 +1020,3 @@ for( i in 1:7) {
 matplot(1:7, cmat[,c(1,3,5)], xaxt='n', pch='bec',
         xlab="Time divisor", ylab="Coefficient for node4")
 axis(1, 1:7, c(1, floor(1:6 *365/12)))
-
-

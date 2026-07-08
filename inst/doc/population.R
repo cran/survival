@@ -278,5 +278,3 @@ options(contrasts = c("contr.treatment", "contr.poly"))  # restore
 ### code chunk number 26: sizes
 ###################################################
 with(flchain, table(sex, age2))
-
-

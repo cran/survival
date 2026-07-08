@@ -1,9 +1,12 @@
-# Automatically generated from the noweb directory
+# The parent routine for Cox models.  Do all the work to set them
+# up, let coxfit/agfit will do the heavy lifting, then put the results back
+# together
+
 coxph <- function(formula, data, weights, subset, na.action,
-        init, control, ties= c("efron", "breslow", "exact"),
-        singular.ok =TRUE,  robust,
-        model=FALSE, x=FALSE, y=TRUE,  tt, method=ties, 
-        id, cluster, istate, statedata, nocenter=c(-1, 0, 1), ...) {
+                  init, control, ties= c("efron", "breslow", "exact"),
+                  singular.ok =TRUE,  robust,
+                  model=FALSE, x=FALSE, y=TRUE,  tt, method=ties, 
+                  id, cluster, istate, statedata, nocenter=c(-1, 0, 1), ...) {
 
     missing.ties <- missing(ties) & missing(method) #see later multistate sect
     ties <- match.arg(ties)
@@ -30,6 +33,7 @@ coxph <- function(formula, data, weights, subset, na.action,
     else stop("control argument must be a list")
 
     # make Surv(), strata() etc in a formula resolve to the survival namespace
+    # see  
     if (is.list(formula)) {
         newform <- removeDoubleColonSurv(formula[[1]])
         if (!is.null(newform)) {
@@ -81,6 +85,7 @@ coxph <- function(formula, data, weights, subset, na.action,
                   names(Call), nomatch=0) 
     tform <- Call[c(1,indx)]  # only keep the arguments we wanted
     tform[[1L]] <- quote(stats::model.frame)  # change the function called
+    tform$na.action <- na.pass  # defer any missing value work to later
 
     # if the formula is a list, do the first level of processing on it.
     if (is.list(formula)) {
@@ -104,7 +109,6 @@ coxph <- function(formula, data, weights, subset, na.action,
         newform <- reformulate(tlab, dformula[[2]])
         environment(newform) <- environment(dformula)
         formula <- newform
-        tform$na.action <- na.pass  # defer any missing value work to later
     }
     else {
         multiform <- FALSE   # formula is not a list of expressions
@@ -120,34 +124,18 @@ coxph <- function(formula, data, weights, subset, na.action,
     # okay, now evaluate the formula
     mf <- eval(tform, parent.frame())
     Terms <- terms(mf)
-
-    # Grab the response variable, and deal with Surv2 objects
-    n <- nrow(mf)
     Y <- model.response(mf)
-    isSurv2 <- inherits(Y, "Surv2")
-    if (isSurv2) {
-        # this is Surv2 style data
-        # if there were any obs removed due to missing, remake the model frame
-        if (length(attr(mf, "na.action"))) {
-            tform$na.action <- na.pass
-            mf <- eval.parent(tform)
-        }
-        if (!is.null(attr(Terms, "specials")$cluster))
-            stop("cluster() cannot appear in the model statement")
-        new <- surv2data(mf)
-        mf <- new$mf
-        istate <- new$istate
-        id <- new$id
-        Y <- new$y
-        n <- nrow(mf)
-    }       
-    else {
-        if (!is.Surv(Y)) stop("Response must be a survival object")
-        id <- model.extract(mf, "id")
-        istate <- model.extract(mf, "istate")
-    }
-    if (n==0) stop("No (non-missing) observations")
-    if (length(id) >0) n.id <- length(unique(id))
+    if (!(is.Surv(Y) || inherits(Y, "Surv2")))
+        stop("response must be a survival object")
+
+    # is this timeline data?  True if either the user typed Surv2 (deprecated)
+    #  or [ids with multiple rows and not (time, time2) form]
+    id <- model.extract(mf, "id")
+    if (inherits(Y, "Surv2")) {
+        # timeline data, convert to regular
+        mf <- surv2counting(mf)
+        Y <- model.response(mf)
+    }                      
 
     type <- attr(Y, "type")
     multi <- FALSE
@@ -155,7 +143,6 @@ coxph <- function(formula, data, weights, subset, na.action,
     else if (type!='right' && type!='counting')
         stop(paste("Cox model doesn't support \"", type,
                           "\" survival data", sep=''))
-    data.n <- nrow(Y)   #remember this before any time transforms
 
     if (!multi && multiform)
         stop("formula is a list but the response is not multi-state")
@@ -169,6 +156,26 @@ coxph <- function(formula, data, weights, subset, na.action,
         if (missing.ties) method <- ties <- "breslow"
     }
     
+    # Dealing with NA has been deferred; either timeline
+    #  data or multiple formulas forces this delay; the first is finished
+    if (missing(na.action)) {   #use the same na.action model.frame would have
+        nafun <- getOption("na.action")
+        if (is.character(nafun)) nafun <- get(nafun, pos="package:stats")
+    }
+    else if (is.function(na.action)) nafun <- na.action
+    else nafun <- get(na.action)
+    if (!multiform) {
+        mf <- nafun(mf)
+        Y <- model.response(mf) # get a new copy
+    }
+
+    n <- nrow(mf)
+    if (n==0) stop("No (non-missing) observations")
+    data.n <- n    #remember this before any time transforms
+    id <- model.extract(mf, "id")
+    if (length(id) >0) n.id <- length(unique(id))
+    istate <- model.extract(mf, "istate")
+
     # the code was never designed for multiple fraily terms, but of course
     #  someone tried it
     if (length(attr(Terms, "specials")$frailty) >1)
@@ -210,7 +217,7 @@ coxph <- function(formula, data, weights, subset, na.action,
     timetrans <- attr(Terms, "specials")$tt
     if (missing(tt)) tt <- NULL
     if (length(timetrans)) {
-        if (multi || isSurv2) stop("the tt() transform is not implemented for multi-state or Surv2 models")
+        if (multi) stop("the tt() transform is not implemented for multi-state models")
         # begin tt() preprocessing
         timetrans <- untangle.specials(Terms, 'tt')
         ntrans <- length(timetrans$terms)
@@ -299,11 +306,10 @@ coxph <- function(formula, data, weights, subset, na.action,
             }
         }
         attr(Terms, "predvars") <- pvars
-        # end tt() preprocessing
-        }
+    }
+    # end of the tt() section of code, which will have expanded mf and etc.
    
     xlevels <- .getXlevels(Terms, mf)
-
     # grab the cluster, if present.  Using cluster() in a formula is no
     #  longer encouraged
     cluster <- model.extract(mf, "cluster")
@@ -365,19 +371,53 @@ coxph <- function(formula, data, weights, subset, na.action,
     attr(Terms, "intercept") <- 1  # always have a baseline hazard
 
     if (multi) {
-        # check for consistency of the states, and create a transition
-        #  matrix
         if (length(id)==0) 
             stop("an id statement is required for multi-state models")
 
-        mcheck <- survcheck2(Y, id, istate)
-        # error messages here
-        if (mcheck$flag["overlap"] > 0)
-            stop("data set has overlapping intervals for one or more subjects")
-
-        transitions <- mcheck$transitions
-        istate <- mcheck$istate
+        # There is a bit of a dance here.  If there are multiple 
+        #  formulas (multiform=TRUE), then missing have not yet been dealt with
+        # They fall into 2 parts: missing values in Y, id, istate, wt, cluster
+        #  need to be removed before calling survcheck: any survcheck
+        #  errors due to these are "real" and we need to act on them. Plus,
+        #  for the first 3, survcheck2 isn't set up for missings.
+        #   If istate was missing, survcheck will have constructed one for us
+        # 2. Call covlist2 to get the transitions map 'tmap', which is needed by
+        # 3. Call multimiss to mark any observations that would generate only
+        #   missing linear predictors; these are removed from the model.frame.
+        #   Also update the transitions table
+        # 4. Fix up the na.action attribute of mf, istate, Y, etc
+        # 5. The stacker routine called further below tosses out an NA linear
+        #  predictors, i.e. from a row of data that generates NA for only some 
+        #  transitions and thus was retained at this step.
+        if (multiform) {
+            # Do the first step of NA: any missing Y, id, or istate
+            # will cause survcheck2 to fail, but further removed lines due
+            # to missing covariates can give a false positive from survcheck
+            drop <- (is.na(Y) | is.na(id))
+            if (!is.null(weights)) drop <- drop | is.na(weights)
+            if (!is.null(istate)) drop | missing(istate)
+            if (!is.null(cluster)) drop | missing(cluster)
+            if (all(drop)) stop("all observations deleted due to missing")
+            if (any(drop)) {
+                names(drop) <- rownames(mf) # needed for na.action, later
+                Y <- Y[!drop,,drop=FALSE]
+                id <- id[!drop]
+                istate <- istate[!drop]
+                mf <- mf[!drop,, drop=FALSE]
+            }
+        } 
+        mcheck <- survcheck2(Y, id, istate) # istate might be NULL
+        # look at mcheck error messages, if any
+        temp <- mcheck$flag[-match(control$survcheckallow,
+                                   names(mcheck$flag), nomatch=0)]
+        if (length(temp) & any(temp>0))
+            stop("data set fails survcheck for one or more subjects")
+        transitions <- mcheck$transitions  # needed for parsecovar2
         states <- mcheck$states
+        # if istate was missing, mcheck fills it in. If not missing then
+        # mcheck will have aligned to to match states (the input may have
+        # been a factor with fewer levels)
+        istate <- mcheck$istate
 
         #  build tmap, which has one row per term, one column per transition
         if (missing(statedata))
@@ -386,58 +426,41 @@ coxph <- function(formula, data, weights, subset, na.action,
         else covlist2 <- parsecovar2(covlist, statedata, dformula= dformula,
                                 Terms, transitions, states)
         tmap <- covlist2$tmap
-        if (!is.null(covlist)) {
-            miss0 <- is.na(Y) | is.na(id)  # id and Y are required
-            if (!is.null(weights)) miss0 <- miss0 | is.na(weights)
-            if (!is.null(istate))  miss0 <- miss0 | is.na(istate)
-            if (!is.null(cluster)) miss0 <- miss0 | is.na(cluster)
 
-            # first vector will be true if there is at least 1 transition for which all
-            #  covariates are present, second if there is at least 1 for which some are not
-            good.tran <- bad.tran <- rep(FALSE, nrow(Y))  
-
-            # If someone has a term like sex:trt in the model but no main effect for trt
-            # then we have no choice but to expand tmap to a 'per col of mf' form
-            tmap2 <- matrix(0, ncol(mf), ncol(tmap))  # will have 1 for "mf col was used"
-            temp <- sapply(strsplit(rownames(tmap), ":"),    
-                               function(x) match(x, colnames(mf)))
-            for (i in seq(along.with=temp)[-1]) {  # skip the (Baseline) row
-                tmap2[temp[[i]], tmap[i,] >0] <- 1
+        if (multiform){
+            #  Finish processing missing values, for which we needed tmap
+            mdrop <- multimiss(mf, Y, istate, tmap, states)
+            if (any(mdrop$omit)) { # missings were found
+                if (all(mdrop$omit))
+                    stop("all observations deleted due to missing values")
+                jj <- which(mdrop$omit)
+                mf <- mf[-jj,]
+                Y  <- Y[-jj]
+                istate <- istate[-jj]
+                id <- id[-jj]
+                n <- data.n <- nrow(mf) # reset n
+                n.id <- length(unique(id))
+                # update the transitions table, for the printout
+                #  only update row/cols which appear in both
+                indx1 <- match(rownames(mdrop$count), rownames(transitions),
+                               nomatch=0)
+                indx2 <- match( colnames(mdrop$count),colnames(transitions), 
+                               nomatch=0)
+                transitions[indx1, indx2] <- transitions[indx1, indx2] -
+                    mdrop$count[indx1>0, indx2>0]
             }
-
-            # create a missing indicator for each term
-            termiss <- matrix(0L, nrow(mf), ncol(mf))
-            for (i in 1:ncol(mf)) {
-                xx <- is.na(mf[[i]])
-                # spline terms have multiple columns; treat any missing as missing
-                if (is.matrix(xx)) termiss[,i] <- apply(xx, 1, any) 
-                else termiss[,i] <- xx
+            if (any(drop) || any(mdrop$omit)) {
+                # update the na.action, which is a list of rows relative to
+                #  the original mf
+                if (any(mdrop$omit)) drop[which(!drop)[mdrop$omit]] <- TRUE
+                dindex <- attr(nafun(ifelse(drop, NA, 0)), "na.action")
+                # why not just "dindex <- which(drop)"?  I want the na.action
+                #  object to have the proper class, the one it would have had
+                #  were model.frame used to remove missings
+                attr(mf, "na.action") <- dindex
             }
-
-            for (i in 1:ncol(tmap2)) { # for each transition
-                rindex <- which(as.integer(istate) == covlist2$mapid[i,1]) #relevant obs
-                j <- which(tmap[,i] >0)  # which cols of mf used in this transition
-                anymiss <- apply(termiss[rindex, j, drop=FALSE],1, any)
-                bad.tran[rindex] <- (bad.tran[rindex]  | anymiss)   #failed for this trans
-                good.tran[rindex]<- (good.tran[rindex] | !anymiss)  # success
-            }
-
-            # the value below was useful during testing, but isn't used directly
-            n.partially.used <- sum(good.tran & bad.tran & !miss0)   
-
-            omit <- (!good.tran & bad.tran) | miss0
-            if (all(omit)) stop("all observations deleted due to missing values")
-            temp <- setNames(seq(omit)[omit], attr(mf, "row.names")[omit])
-            attr(temp, "class") <- "omit"
-            mf <- mf[!omit,, drop=FALSE]
-            attr(mf, "na.action") <- temp
-            Y <- Y[!omit]
-            id <- id[!omit]
-            if (length(istate)) istate <- istate[!omit]  # istate can be NULL
-            n <- data.n <- nrow(mf) # reset n
         }
     }
-
 
     if (length(dropterms)) {
         Terms2 <- Terms[-dropterms]
@@ -502,18 +525,16 @@ coxph <- function(formula, data, weights, subset, na.action,
     if (multi) {
         if (length(strats) >0) {
             # tmap starts with a "(Baseline)" row, which we want
-            # strats is indexed off the data frame, which includes the response, so
-            #  turns out to be correct for the remaining rows of tmap
+            # strats is indexed off the data frame, which includes the response,
+            #  so turns out to be correct for the remaining rows of tmap
             smap <- tmap[c(1L, strats),] 
             smap[-1,] <- ifelse(smap[-1,] >0, 1L, 0L)
         }
         else smap <- tmap[1,,drop=FALSE]
-        cmap <- parsecovar3(tmap, colnames(X), attr(X, "assign"), covlist2$phbaseline)
+        cmap <- parsecovar3(tmap, colnames(X), attr(X, "assign"), 
+                            covlist2$phbaseline)
         xstack <- stacker(cmap, smap, as.integer(istate), X, Y, mf = mf,
                           states=states)
-
-        rkeep <- unique(xstack$rindex)
-        transitions <- survcheck2(Y[rkeep,], id[rkeep], istate[rkeep])$transitions
 
         Xsave <- X  # the originals may be needed later
         Ysave <- Y
@@ -679,7 +700,9 @@ coxph <- function(formula, data, weights, subset, na.action,
             fit$model <- mf
         }
         if (x)  {
-            if (multi) fit$x <- Xsave else fit$x <- X
+            if (multi) fit$x <- Xsave 
+            else fit$x <- X
+
             if (length(timetrans)) fit$strata <- istrat
             else if (length(strats)) fit$strata <- strata.keep
         }
@@ -695,10 +718,10 @@ coxph <- function(formula, data, weights, subset, na.action,
         fit$cmap <- cmap
         fit$smap <- smap   # why not 'stratamap'?  Confusion with fit$strata
         nonzero <- which(colSums(cmap)!=0)
-        fit$rmap <- cbind(row=xstack$rindex, transition= nonzero[xstack$transition])
-        
-        # add a suffix to each coefficent name.  Those that map to multiple transitions
-        #  get the first transition they map to
+        fit$rmap <- matrix(c(xstack$rindex, nonzero[xstack$transition]), 
+                           ncol=2, dimnames= list(NULL, c("row", "transition")))
+        # add a suffix to each coefficent name.  Those that map to multiple 
+        #  transitions get the first transition they map to
         single <- apply(cmap, 1, function(x) all(x %in% c(0, max(x)))) #only 1 coef
         cindx <- col(cmap)[match(1:length(fit$coefficients), cmap)]
         rindx <- row(cmap)[match(1:length(fit$coefficients), cmap)]

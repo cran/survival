@@ -1,4 +1,4 @@
-survcheck <- function(formula, data, subset, na.action,  id, istate, 
+survcheck <- function(formula, data, subset, na.action, id, istate, 
                       istate0="(s0)", timefix=TRUE, ...) {
     Call <- match.call()
     if (missing(formula)) stop("a formula argument is required")
@@ -13,50 +13,45 @@ survcheck <- function(formula, data, subset, na.action,  id, istate,
                   names(Call), nomatch=0) 
     tform <- Call[c(1,indx)]  # only keep the arguments we wanted
     tform$formula <- formula
+    tform$na.action <- quote(stats::na.pass)  # defer, due to timeline
     tform[[1L]] <- quote(stats::model.frame)  # change the function called
 
     mf <- eval(tform, parent.frame())
     Terms <- terms(mf)
 
     Y <- model.response(mf)
+    if (!(is.Surv(Y) || inherits(Y, "Surv2")))
+        stop("response must be a survival object")
 
-    isSurv2 <- inherits(Y, "Surv2")
-    if (isSurv2) {
-        # this is Surv2 style data
-        # if there were any obs removed due to missing, remake the model frame
-        if (length(attr(mf, "na.action"))) {
-            tform$na.action <- na.pass
-            mf <- eval.parent(tform)
-        }
-        if (!is.null(attr(Terms, "specials")$cluster))
-            stop("cluster() cannot appear in the model statement")
-        new2 <- surv2data(mf, check=TRUE)
-        mf <- new2$mf
-        istate <- new2$istate
-        id <- new2$id
-        Y <- new2$y
-        Ydup <- which(Y[,1] == Y[,2])
-        iddup <- id[Ydup]
-        if (anyNA(mf[-1]) || length(Ydup)) { 
-            if (missing(na.action)) temp <- get(getOption("na.action"))(mf[-1])
-            else temp <- na.action(mf[-1])
-            omit <- c(Ydup, unclass(attr(temp, "na.action")))
-            mf <- mf[-omit,]
-            Y <- Y[-omit]
-            id <- id[-omit]
-            istate <- istate[-omit]
-        }  else omit <- Ydup                   
-        n <- nrow(mf)
-    }       
-    else {
-        if (!is.Surv(Y)) stop("Response must be a survival object")
-        id <- model.extract(mf, "id")
-        istate <- model.extract(mf, "istate")
-        omit <- attr(mf, "na.action")
-        n <- nrow(Y)
+    # is this timeline data?  True if either the user typed Surv2 (deprecated)
+    #  or [ids with multiple rows and not (time, time2) form]
+    id <- model.extract(mf, "id")
+    if (inherits(Y, "Surv2")){
+        # timeline data, convert to regular
+        mf <- surv2counting(mf)
+    }                      
+    # Apply missing value logic after the code has dealt with timeline data
+    if (missing(na.action)) {  #use the same na.action model.frame would have
+        nafun <- getOption("na.action")
+        if (is.character(nafun)) nafun <- get(nafun, pos="package:stats")
     }
+    else if (is.function(na.action)) nafun <- na.action
+    else nafun <- get(na.action)
+
+    mf <- nafun(mf)
+    Y <- model.response(mf)       # grab the (possibly new) values
+    id <- model.extract(mf, "id")
+    n <- nrow(Y)
     if (n==0) stop("No (non-missing) observations")
 
+    # Deal with the near-ties problem
+    if (!is.logical(timefix) || length(timefix) > 1)
+        stop("invalid value for timefix option")
+    if (timefix) Y <- aeqSurv(Y) 
+    # fixing ties may have caused bad intervals, but we'll find them soon
+
+    istate <- model.extract(mf, "istate")
+    omit <- attr(mf, "na.action")
     type <- attr(Y, "type")
     if (type=="right") 
         Y <- Surv(Y[,1], factor(Y[,2], 0:1, 
@@ -65,10 +60,6 @@ survcheck <- function(formula, data, subset, na.action,  id, istate,
         Y <- Surv(Y[,1], Y[,2], factor(Y[,3], 0:1, c("censor", "event")))
     else if (!(type %in% c("mright", "mcounting")))
         stop("response must be right censored")
-    n <- nrow(Y)
-    if (!is.logical(timefix) || length(timefix) > 1)
-        stop("invalid value for timefix option")
-    if (timefix) Y <- aeqSurv(Y)
     
     if (is.null(id)) stop("an id argument is required")
     else if (length(id) !=n) stop("wrong length for id")
@@ -80,35 +71,18 @@ survcheck <- function(formula, data, subset, na.action,  id, istate,
     fit$n <- c(id = length(unique(id)), observations =length(id), 
                transitions = sum(temp))
     fit$flag <- c(fit$flag, "duplicate"=0)
-    if (isSurv2) {
-        # make any numbering match the input data, not the retained data
-        toss1 <- new2$isort[new2$last]  # original obs numbers that were the
-                                       # last for a subject
-        dummy <- seq(along.with=new2$isort)[-toss1]  # rows we kept
-        if (length(Ydup)) {
-            fit$flag["duplicate"] <- length(Ydup)
-            # if rows i and i+1 are duplicate times, we see it as i, the
-            #  R duplicated function as i+1.  Mimic that rule.
-            fit$duplicate <- list(id= unname(iddup), row=dummy[Ydup]+1)
-        } 
 
-        if (length(omit)>0) dummy <- dummy[-omit]
-        for (i in c("overlap", "gap", "teleport", "jump")){
-            if (!is.null(fit[[i]]$row)) {
-                temp <- fit[[i]]
-                temp$row <- dummy[temp$row]
-                fit[[i]] <- temp
-            }
-        }
-    }
-    else if (length(omit)) {
-        dummy <- seq.int(1, n+ length(omit))[-omit]
-        for (i in c("overlap", "gap", "teleport", "jump")){
-            if (!is.null(fit[[i]]$row)) {
-                temp <- fit[[i]]
-                temp$row <- dummy[temp$row]
-                fit[[i]] <- temp
-            }
+    # Make the row numbers agree with the original data BEFORE missings
+    #  were removed, it's easier for the users
+    # It would be nice to do this wrt timeline data as well, but the 
+    #  surv2data function doesn't return that information
+    if (is.null(omit))  dummy <- seq.int(1, n)
+    else dummy <- seq.int(1, n+ length(omit))[-omit]
+    for (i in c("overlap", "gap", "teleport", "jump")){
+        if (!is.null(fit[[i]]$row)) {
+            temp <- fit[[i]]
+            temp$row <- dummy[temp$row]
+            fit[[i]] <- temp
         }
     }
 
@@ -199,6 +173,7 @@ survcheck2 <- function(y, id, istate=NULL, istate0="(s0)") {
     sindx <- match(ystate, states)
     stat2 <- ifelse(y[,ny]==0, 0L, sindx[pmax(1L, y[,ny])])
     id2 <- match(id, unique(id))  # we need unique integers
+    storage.mode(y) <- "double"
     if (ncol(y)==2) {
         index <- order(id, y[,1])
         check <- .Call(Cmulticheck, rep(0., n), y[,1], stat2, id2,

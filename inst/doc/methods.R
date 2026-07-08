@@ -110,7 +110,14 @@ text(event$t2, event$id+.2, as.character(event$state))
 
 
 ###################################################
-### code chunk number 6: methods.Rnw:1241-1244 (eval = FALSE)
+### code chunk number 6: methods.Rnw:1127-1129 (eval = FALSE)
+###################################################
+## survival::coxph(survival::Surv(time, status) ~ 
+##                     age + sex + survival::strata(inst), data=lung)
+
+
+###################################################
+### code chunk number 7: methods.Rnw:1308-1311 (eval = FALSE)
 ###################################################
 ## temp1 <- outer(hazard, z, '*') - xbar
 ## temp2 <- apply(temp1, 2, cumsum)
@@ -118,7 +125,7 @@ text(event$t2, event$id+.2, as.character(event$state))
 
 
 ###################################################
-### code chunk number 7: tdcoef
+### code chunk number 8: tdcoef
 ###################################################
 vet2 <- survSplit(Surv(time, status) ~ ., data= veteran, cut=c(90, 180), 
                   episode= "tgroup", id="id", start="time1", end="time2")
@@ -139,7 +146,7 @@ vsurv <- survfit(vfit2, newdata=cdata, id=curve)
 
 
 ###################################################
-### code chunk number 8: competecheck
+### code chunk number 9: competecheck
 ###################################################
 m2 <- mgus2
 m2$etime <- with(m2, ifelse(pstat==0, futime, ptime))
@@ -156,7 +163,7 @@ nrisk <- mean(mfit$n.risk[y3,1])
 
 
 ###################################################
-### code chunk number 9: checknafld
+### code chunk number 10: checknafld
 ###################################################
 ndata <- tmerge(nafld1[,1:8], nafld1, id=id, death= event(futime, status))
 ndata <- tmerge(ndata, subset(nafld3, event=="nafld"), id, 
@@ -193,7 +200,7 @@ maxrisk <- apply(frisk[netime,],2,max)
 
 
 ###################################################
-### code chunk number 10: skiplist1
+### code chunk number 11: skiplist1
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 sort2 <- order(ndata$age2)
@@ -202,7 +209,7 @@ plot(1:200, rev(sort2)[1:200], xlab="Addition to the list",
 
 
 ###################################################
-### code chunk number 11: skiplist2
+### code chunk number 12: skiplist2
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 # simulate a skiplist with period 3
@@ -219,5 +226,3 @@ y1 <- yval[indx]
 y2 <- yval[y.ht==3]
 lines(c(0, y2[1], y2[1], y1[5], y1[5], max(yval[yval < 100])),
       c(3,3, 2,2,1,1), lwd=2, col=2, lty=3)
-
-

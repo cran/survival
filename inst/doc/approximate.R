@@ -82,5 +82,3 @@ rbind(Cox= coef(kfit1), poisson=coef(kfit4a)[1:2],
       poisson2 = coef(kfit4b)[2:3], poisson3 = coef(kfit4c)[2:3],
       binomial2 = coef(kfit4d)[2:3], binomial3 = coef(kfit4e)[2:3])
 
-
-

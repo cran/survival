@@ -160,5 +160,3 @@ matplot(50:99, exp(matrix(yy-ref, ncol=6)), type='l', lty=c(1,1,2,2,2,2),
         xlab="Age", ylab="Relative risk")
 legend(55, 20, c("Female", "Male"), lty=1, lwd=2, col=1:2, bty='n')
 abline(h=1)
-
-

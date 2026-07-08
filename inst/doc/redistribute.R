@@ -115,5 +115,3 @@ segments(cutoff[ii]+eps, yhat[ii, 5], cutoff[ii]+eps, yhat[ii,6], col=2)
 matplot(cutoff, cstat[,3:4], type='l', lty=1, lwd=2, ylim=c(0, max(cstat[,3:4])),
         xlab= "Cutoff (tau)", ylab="Standard error")
 par(oldpar)
-
-

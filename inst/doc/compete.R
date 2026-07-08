@@ -1,7 +1,7 @@
 ### R code from vignette source 'compete.Rnw'
 
 ###################################################
-### code chunk number 1: compete.Rnw:23-29
+### code chunk number 1: compete.Rnw:26-32
 ###################################################
 options(continue="  ", width=60)
 options(SweaveHooks=list(fig=function() par(mar=c(4.1, 4.1, .3, 1.1))))
@@ -360,7 +360,7 @@ hgfit$cmap
 
 
 ###################################################
-### code chunk number 24: compete.Rnw:1025-1028 (eval = FALSE)
+### code chunk number 24: compete.Rnw:1028-1031 (eval = FALSE)
 ###################################################
 ## list(1: c("pcm", "death") ~ hgb / common,
 ##      1:0  ~ hgb / common,
@@ -386,5 +386,3 @@ stacked <- rbind(temp1, temp2)
 allfit <- coxph(Surv(time, status) ~ hgb + (age + sex+ mspike)*strata(group),
                  data=stacked)
 all.equal(allfit$loglik, hgfit$loglik)
-
-

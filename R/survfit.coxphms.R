@@ -109,7 +109,9 @@ function(formula, newdata, se.fit=FALSE, conf.int=.95, individual=FALSE,
         !is.null(attr(object$terms, 'offset'))) {
         
         mf <- model.frame(object)
-        }
+        y <- model.extract(mf, "response")
+        istate <- model.extract(mf, "istate")
+    }
     else mf <- NULL  #useful for if statements later
     position <- NULL
     Y <- object[['y']]
@@ -145,7 +147,7 @@ function(formula, newdata, se.fit=FALSE, conf.int=.95, individual=FALSE,
         }
 
     }
-    istate <- model.extract(mf, "istate")
+    if (is.null(istate)) istate <- model.extract(mf, "istate") # not already done
 
     #deal with start time, by throwing out observations that end before then
     if (!missing(start.time)) {

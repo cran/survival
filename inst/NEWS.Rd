@@ -1,5 +1,38 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.8-9}{
+  \itemize{
+    \item Minor fix to model.matrix.coxph. Fixes a bug I introduced,
+    which led to failure in reverse CRAN checks.
+    \item Submit to CRAN
+}}
+\section{Changes in version 3.8-8}{
+  \itemize{
+    \item Add the timefix option to survSplit, after finding that the
+    roundoff issue can affect it as well.
+    \item Add full support for timeline style data, see the new timeline
+    vignette.  For multistate models this style data set is easier to
+    constuct than the counting process variant (you don't need tmerge),
+    so I suspect that users will shift to it for that use case. This
+    addresses github issue 264.
+    \item Parallel routines fromtimeline, Surv2data, timeline2counting
+    had been added at various times, merge and remove all but
+    fromtimeline, which is the oldest so most likely to have use.
+    \item Add the first argument to lvcf, to better support yes/no
+    variables.
+    \item Note: the coxph, survcheck, survfit, and survSplit routines
+    now accept a Surv2 argument, i.e., the routines that also allow
+    Surv(time1, time2, status) format.
+}}
+\section{Changes in version 3.8-7}{
+  \itemize{
+    \item Found and changed the lines that caused failure in survfit with
+    a non-syntactic name on the rhs.  Add test badname.R. Github issues
+    232 and 330.
+    \item Fix issue with clogit and update(): any update that changed
+    the data set size would fail; be more careful in constructing the
+    fake survival time.  Add to clogit.R test file. Github issue 331
+}}
 \section{Changes in version 3.8-6}{
   \itemize{
     \item Small error in plot.survfit. If there were censoring at 20 and
@@ -7,6 +40,7 @@
     censoring mark at 30.
     \item Issue with summary.survfitms when the times arg was a single
     value.  A drop=FALSE was needed, or print.summary.survfitms failed.
+    \item Version pushed to CRAN
 }}
 \section{Changes in version 3.8-5}{
   \itemize{

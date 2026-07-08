@@ -188,5 +188,3 @@ smat <- matrix(0, 4, 4, dimnames=list(states, states))
 smat[1,2:3] <- 1
 smat[2,3] <- smat[3,2] <- smat[3,4] <- smat[2,4] <- 1
 statefig(c(1,2,1), smat)
-
-

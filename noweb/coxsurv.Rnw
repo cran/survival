@@ -198,7 +198,9 @@ if (coxms || is.null(object$y) || is.null(object[['x']]) ||
     !is.null(attr(object$terms, 'offset'))) {
     
     mf <- model.frame(object)
-    }
+    y <- model.extract(mf, "response")
+    istate <- model.extract(mf, "istate")
+}
 else mf <- NULL  #useful for if statements later
 @ 
 
