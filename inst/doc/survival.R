@@ -236,7 +236,7 @@ legend(20, .4, c("Arm A", "Arm B"),
 ###################################################
 ### code chunk number 19: sfit0a
 ###################################################
-mdata <- tmerge(myeloid[,1:2], myeloid,  id=id,  death= event(futime, death),
+mdata <- tmerge(myeloid[,1:4], myeloid,  id=id,  death= event(futime, death),
                 sct = event(txtime), cr = event(crtime), 
                 relapse = event(rltime))
 temp <- with(mdata, cr + 2*sct  + 4*relapse + 8*death)
@@ -750,7 +750,7 @@ ndata$event <- factor(temp, 0:4,
 ndata$age1 <- ndata$age + ndata$tstart/365.25   # analysis on age scale
 ndata$age2 <- ndata$age + ndata$tstop/365.25
 
-check1 <- survcheck(Surv(age1, age2, event) ~ nafld + male, data=ndata, 
+check1 <- survcheck(Surv(age1, age2, event) ~ 1, data=ndata, 
                    id=id, istate=cstate)
 check1
 
@@ -839,82 +839,59 @@ print(mdata2[1:6,], na.print='.')
 ###################################################
 ### code chunk number 63: timeline2
 ###################################################
-tldata <- data.frame(nafld1[,1:7],
-                    days= 0,  death=0, iage=nafld1$age, nafld=0)
-tldata <- merge(tldata, with(nafld1, data.frame(id=id, days=futime, death=status)),
-               all=TRUE)
+# baseline visit
+base <- subset(nafld1, select=c(id, age, male, case.id))
+base$days <- 0
+base$nafld <- with(base, 1*(!is.na(case.id) & id==case.id)) #nafld at baseline
+base$case.id <- NULL  # no longer needed
 
-# Add in the comorbidities of interest.  None of these 4 happen to have
-#  duplicates (MI does, for instance).  
-# Treat diabetes before day 0 as diabetes on day 0.
-tldata <- merge(tldata, with(subset(nafld3, event=="diabetes"),
-                           data.frame(id=id, days=pmax(0,days), diabetes=1)),
-                   all=TRUE, by=c("id", "days"))
-tldata <- merge(tldata, with(subset(nafld3, event=="htn"),
-                           data.frame(id=id, days=pmax(0,days), htn=1)),
-                     all=TRUE, by=c("id", "days"))
-tldata <- merge(tldata, with(subset(nafld3, event=="dyslipidemia"),
-                           data.frame(id=id, days= pmax(0, days), dyslipid=1)),
-                       all=TRUE, by=c("id", "days"))
-tldata <- merge(tldata, with(subset(nafld3, event=="nafld"),
-                           data.frame(id=id, days= pmax(0,days), nafld=1)),
-                    by=c("id", "days"), all=TRUE)
+# cumulative MC count
+# times <=0 in nafld3 are conditions found at or before enrollment date
+# create the "number of comborbidities so far" variable
+temp2 <- subset(nafld3, event %in% c("diabetes", "dyslipidemia", "htn"),
+                c(id, days))      # only events of interest
+temp2$days <- pmax(0, temp2$days) # set prior events to day 0
+#cumulative count, but first make sure the data is sorted in subject/time order
+temp2 <- temp2[order(temp2$id, temp2$days),]
+findex <- match(temp2$id, temp2$id)
+temp2$mc <- 1+ 1:nrow(temp2) - (1:nrow(temp2))[findex]
+# keep the last of any rows that are tied on id and days (2 MC on same visit) 
+temp3 <- temp2[!duplicated(temp2[,1:2], fromLast=TRUE),]
 
-tldata$nafld <- with(tldata, ifelse(is.na(nafld.y), nafld.x, nafld.y))
+lfu <- subset(nafld1, select= c(id, futime, status)) # death or last fu
+names(lfu)[2] <- "days"
 
+ndata2 <- merge(base, temp3, by=c("id", "days"), all=TRUE) # other variables
+ndata2 <- merge(ndata2, lfu,   by=c("id", "days"), all=TRUE)# add futime
 
-###################################################
-### code chunk number 64: timeline3
-###################################################
-#
-# For cumulative events within subject we use a helper function
-cumevent <- function(id, time, status, istate) {
-    # do all the work on ordered data
-    ord <- order(id, time)
-    id2 <- id[ord]
-    time2 <- time[ord]
-    stat2 <- ifelse(is.na(status[ord]), 0, status[ord])
-    firstid <- !duplicated(id)
-    csum <- cumsum(stat2)
-    indx <- match(id2, id2)
-    cstat<- csum + stat2[indx] - csum[indx]  
-    cstat[stat2==0] <- 0
-          
-    if (!missing(istate)) cstat[firstid] <- istate
-
-    keep <- (firstid | (!is.na(stat2)& stat2 !=0))
-    newdata <- data.frame(id=id2[keep], time=time2[keep], status=cstat[keep])
-    newdata
-}
-
-temp1 <- rowSums(tldata[,c('diabetes', 'htn', 'dyslipid')], na.rm=TRUE)
-temp2 <- with(tldata, cumevent(id, days, pmax(temp1, 4*death, na.rm=TRUE)))
-state <- factor(pmin(temp2$status, 4), -1:4,
-                 c("censor", paste0(0:3, "mc"), "death"))
-tldata <- merge(tldata, data.frame(id=temp2$id, days=temp2$time, state=state),
-               all=TRUE)
-
-tldata$age <- with(tldata, days/365.25 + age[match(id, id)])
-check2 <- survcheck(Surv2(days, state) ~ 1, id=id, tldata)
-check2$transitions
+# manufacture the state variable, as a factor suitable for Surv2
+# it can't be "censor" as the first row for a subject -- they have to start
+# in a known state
+ndata2$mc[!duplicated(ndata2$id) & is.na(ndata2$mc)] <- 0
+temp <- with(ndata2, ifelse(!is.na(mc), mc+1,
+                    ifelse(!is.na(status) & status==1, 5, 0)))
+ndata2$state <-factor(temp, 0:5, 
+                      c("censor", "0mc", "1mc", "2mc", "3mc", "death"))
+# Fill in the age variable
+ndata2$age <- with(ndata2, age[match(id, id)] + days/365.25)
 
 nfit2 <- coxph(list(Surv2(age, state) ~ nafld + male,
                     "0mc":state("1mc", "2mc", "3mc") ~ nafld+ male / common,
                      2:3 + 2:4   ~ nafld + male / common,
                      0:"death" ~ male / common),  
-               data=tldata, id=id)
-round(coef(nfit2), 3)
+               data=ndata2, id=id)
+print(nfit2, digits=2)
 
 
 ###################################################
-### code chunk number 65: survival.Rnw:2435-2437 (eval = FALSE)
+### code chunk number 64: survival.Rnw:2410-2412 (eval = FALSE)
 ###################################################
 ## fit2 <- coxph(Surv(time, status) ~ trt + trt*time + celltype + karno,
 ##                 data = veteran)
 
 
 ###################################################
-### code chunk number 66: zphcheck1
+### code chunk number 65: zphcheck1
 ###################################################
 dtime <- unique(veteran$time[veteran$status==1]) # unique times
 newdata <- survSplit(Surv(time, status) ~ trt + celltype + karno,
@@ -933,7 +910,7 @@ fit2b <- coxph(Surv(tstart, time, status) ~ trt + celltype + karno +
 
 
 ###################################################
-### code chunk number 67: zph2
+### code chunk number 66: zph2
 ###################################################
 fit2 <- coxph(Surv(tstart, time, status) ~ trt + celltype + karno +
               tt(karno), data =newdata,
@@ -941,7 +918,7 @@ fit2 <- coxph(Surv(tstart, time, status) ~ trt + celltype + karno +
 
 
 ###################################################
-### code chunk number 68: zph2
+### code chunk number 67: zph2
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 zp0 <- cox.zph(fit0, transform='identity')
@@ -955,7 +932,7 @@ par(oldpar)
 
 
 ###################################################
-### code chunk number 69: profile1
+### code chunk number 68: profile1
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 fit1 <- coxph(Surv(futime, fustat) ~ rx + age + resid.ds, ovarian)
@@ -982,7 +959,7 @@ legend(.11, -58, c("Cox likelihood", "Wald approximation"), lty=1, lwd=2,
 
 
 ###################################################
-### code chunk number 70: profile2
+### code chunk number 69: profile2
 ###################################################
 myfun <- function(beta) {
     icoef <- coef(fit1)
@@ -996,13 +973,13 @@ uniroot(myfun, c(.2, .5))$root  # upper
 
 
 ###################################################
-### code chunk number 71: survival.Rnw:3485-3486
+### code chunk number 70: survival.Rnw:3460-3461
 ###################################################
 with(subset(aml, x=="Nonmaintained"), Surv(time, status))
 
 
 ###################################################
-### code chunk number 72: coarsen
+### code chunk number 71: coarsen
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 tdata <- subset(colon, etype==1)   # progression or death

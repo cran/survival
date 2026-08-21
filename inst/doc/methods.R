@@ -110,14 +110,14 @@ text(event$t2, event$id+.2, as.character(event$state))
 
 
 ###################################################
-### code chunk number 6: methods.Rnw:1127-1129 (eval = FALSE)
+### code chunk number 6: methods.Rnw:1126-1128 (eval = FALSE)
 ###################################################
 ## survival::coxph(survival::Surv(time, status) ~ 
 ##                     age + sex + survival::strata(inst), data=lung)
 
 
 ###################################################
-### code chunk number 7: methods.Rnw:1308-1311 (eval = FALSE)
+### code chunk number 7: methods.Rnw:1307-1310 (eval = FALSE)
 ###################################################
 ## temp1 <- outer(hazard, z, '*') - xbar
 ## temp2 <- apply(temp1, 2, cumsum)
@@ -146,7 +146,84 @@ vsurv <- survfit(vfit2, newdata=cdata, id=curve)
 
 
 ###################################################
-### code chunk number 9: competecheck
+### code chunk number 9: nafld1
+###################################################
+mstate <- c("0mc", "1mc", "2mc", "3mc", "death")
+mmat <- matrix(0, 5, 5, dimnames=list(mstate, mstate))
+mmat[1,2] <- mmat[2,3] <- mmat[3,4] <- 1
+mmat[1:4, 5] <- 1
+mmat[1,3] <- mmat[1,4] <- mmat[2,4] <- .5
+statefig(rbind(4,1), mmat, alty=c(1,2,1,2,2,1,1,1,1,1))
+
+
+###################################################
+### code chunk number 10: ndata
+###################################################
+ndata <- nafld1
+ndata$nafld <- with(ndata, 1*(id==case.id))
+caseid <-  subset(nafld1, id==case.id)$id
+tdata1 <- subset(ndata, case.id %in% caseid)
+# the endpoints of interest
+enddata <- subset(nafld3, (id %in% tdata1$id) & 
+                        (event %in% c("diabetes","dyslipidemia",  "htn")))
+ndata <- tmerge(tdata1[c(1,2,3,6,10)], tdata1, id=id, 
+                 death= event(futime, status),
+                 options=list(tstartname="day1", tstopname="day2"))
+ndata <- tmerge(ndata, enddata, id=id, mcount=cumtdc(days), 
+                 mevent= cumevent(days))
+
+ndata$cstate <- factor(ndata$mcount, 0:3, mstate[1:4])
+ndata$event  <- with(ndata, factor(ifelse(death==1, 4, mevent), 0:4, 
+                     c("censor", mstate[-1])))
+ndata$age1 <- ndata$age + ndata$day1/365.25   # analysis on age scale
+ndata$age2 <- ndata$age + ndata$day2/365.25
+
+check <- survcheck(Surv(age1, age2, event) ~ 1, ndata, id=id, istate=cstate)
+
+ndata$notzero <- 1*(ndata$cstate != "0mc")
+nfit <- coxph(list(Surv(age1, age2, event) ~ nafld + male,
+                    1:2 + 1:3 + 1:4 ~ nafld + male / common,
+                    2:3 + 2:4 ~ nafld + male/common,
+                    c(2,3,4):5 ~ notzero,
+                    0:5  ~ 1 / common), 
+               data=ndata, id= id, istate= cstate)
+print(nfit, digits=2)
+nfit$cmap
+nfit$smap
+nfit$share
+
+
+###################################################
+### code chunk number 11: amyloidsstate
+###################################################
+getOption("SweaveHooks")[["fig"]]()
+astate <- c(outer( c("miss", "low", "mod", "high"),c("ND", "dem"),
+                  paste, sep="\n"), "death")
+amat <- matrix(0, 9, 9, dimnames=list(astate, astate))
+for (i in 1:3) { amat[i, i+1] <- 1; amat[i+4, i+5] <- 1} # right arrows
+for (i in 1:4) {amat[i, i+4] <- 1} #down arrows
+amat[1:8,9] <- 1
+amat[1,3] <- amat[1,4] <- .6
+
+amat2 <- amat
+amat2[2,4] <- amat2[6,8] <- .6
+amat2[3,2] <- amat2[4,3] <- 1
+amat2[1,6] <- amat2[1,7] <- amat2[1,8] <- amat2[2,7] <- 1
+
+temp <- sum(amat2[,-9] >0)
+statefig(rbind(4,4,1), amat2, acol=rep(1:0, c(temp,8)),
+         alty= (1 + 1*(amat2 != amat))[amat2 >0], offset=.01)
+
+
+###################################################
+### code chunk number 12: methods.Rnw:1678-1680 (eval = FALSE)
+###################################################
+## fit <- coxph(list(Surv(time1, time2, state) ~ x1 + x2, 
+##                   1:2 + 2:3~ x3/common,  1:3 ~ x4- x2), ...)
+
+
+###################################################
+### code chunk number 13: competecheck
 ###################################################
 m2 <- mgus2
 m2$etime <- with(m2, ifelse(pstat==0, futime, ptime))
@@ -163,7 +240,7 @@ nrisk <- mean(mfit$n.risk[y3,1])
 
 
 ###################################################
-### code chunk number 10: checknafld
+### code chunk number 14: checknafld
 ###################################################
 ndata <- tmerge(nafld1[,1:8], nafld1, id=id, death= event(futime, status))
 ndata <- tmerge(ndata, subset(nafld3, event=="nafld"), id, 
@@ -200,7 +277,7 @@ maxrisk <- apply(frisk[netime,],2,max)
 
 
 ###################################################
-### code chunk number 11: skiplist1
+### code chunk number 15: skiplist1
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 sort2 <- order(ndata$age2)
@@ -209,7 +286,7 @@ plot(1:200, rev(sort2)[1:200], xlab="Addition to the list",
 
 
 ###################################################
-### code chunk number 12: skiplist2
+### code chunk number 16: skiplist2
 ###################################################
 getOption("SweaveHooks")[["fig"]]()
 # simulate a skiplist with period 3

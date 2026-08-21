@@ -1,8 +1,8 @@
 Title: Survival Analysis
 Priority: recommended
 Package: survival
-Version: 3.8-9
-Date: 2026-07-07
+Version: 3.8-11
+Date: 2026-08-15
 Depends: R (>= 4.1.0)
 Imports: graphics, Matrix, methods, splines, stats, utils
 LazyData: Yes
@@ -22,7 +22,7 @@ Description: Contains the core survival analysis routines, including
 License: LGPL (>= 2)
 URL: https://github.com/therneau/survival
 NeedsCompilation: yes
-Packaged: 2026-07-07 19:34:25 UTC; therneau
+Packaged: 2026-08-16 11:47:23 UTC; therneau
 Author: Terry M Therneau [aut, cre],
   Thomas Lumley [ctb, trl] (original S->R port and R maintainer until
     2009),
@@ -30,4 +30,4 @@ Author: Terry M Therneau [aut, cre],
   Crowson Cynthia [ctb]
 Maintainer: Terry M Therneau <terry.therneau@proton.me>
 Repository: CRAN
-Date/Publication: 2026-07-08 14:20:02 UTC
+Date/Publication: 2026-08-21 13:10:11 UTC

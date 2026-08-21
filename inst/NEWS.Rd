@@ -1,7 +1,34 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.8-11}{
+  \itemize{
+    \item Change the .Rd files to remove \code{data()} from the usage
+    section, making them more in line with base R and lazy loaded data
+    (suggestion from CRAN).
+    \item Submit to CRAN
+}}
+\section{Changes in version 3.8-10}{
+  \itemize{
+    \item Fix github issues 339 (incorrect weighted Schoenfeld
+    residuals), 338 (missing references), 332 (cox.zph failure in a
+    model with psline and an NA coefficient).
+    \item More work, and tests, for coxph models with shared baseline
+    hazards
+    \item Vignette updates for timeline data (Surv2)
+    \item Change my address from mayo.edu to proton.me (I retired July1)
+    \item Fix incorrect names in summary.surfit and aggregate.survfit found
+    by M Scholtz (git pull 340).
+    \item Fix github issue 341 (model.frame.coxph)
+}}
 \section{Changes in version 3.8-9}{
   \itemize{
+    \item Additions to coxph and stacker to more fully support shared
+    baseline hazards.  Rework survfit.coxphms to make use of those
+    changes.
+    \item Updates to DESCRIPTION and coxph.object.RD courtesy of
+    Sebastian Meyer.
+    \item Update survSplit to support timeline data.
+    \item Make small corrections to the nafld data set (missing case.id values)
     \item Minor fix to model.matrix.coxph. Fixes a bug I introduced,
     which led to failure in reverse CRAN checks.
     \item Submit to CRAN

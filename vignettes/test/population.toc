@@ -1,0 +1,17 @@
+\contentsline {section}{\numberline {1}Introduction}{1}{}%
+\contentsline {section}{\numberline {2}Solder Example}{3}{}%
+\contentsline {subsection}{\numberline {2.1}Data}{3}{}%
+\contentsline {subsection}{\numberline {2.2}Linear model}{5}{}%
+\contentsline {subsection}{\numberline {2.3}Missing cells}{6}{}%
+\contentsline {section}{\numberline {3}Generalized linear models}{7}{}%
+\contentsline {section}{\numberline {4}Free Light Chain}{9}{}%
+\contentsline {subsection}{\numberline {4.1}Linear models}{11}{}%
+\contentsline {section}{\numberline {5}Cox Models}{12}{}%
+\contentsline {section}{\numberline {6}Mathematics}{16}{}%
+\contentsline {section}{\numberline {7}SAS glim type III (SGTT) algorithm}{17}{}%
+\contentsline {subsection}{\numberline {7.1}NSTT}{19}{}%
+\contentsline {section}{\numberline {8}Conclusion}{21}{}%
+\contentsline {section}{\numberline {A}Miscellaneous notes.}{22}{}%
+\contentsline {subsection}{\numberline {A.1}Subsampling}{22}{}%
+\contentsline {subsection}{\numberline {A.2}Type 3}{22}{}%
+\contentsline {subsection}{\numberline {A.3}Additive models}{22}{}%

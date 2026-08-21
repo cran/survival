@@ -1,0 +1,45 @@
+\begin{thebibliography}{1}
+
+\bibitem{Chambers83}
+J.~M. Chambers, W.~S. Cleveland, B.~Kleiner, and P.~A. Tukey.
+\newblock {\em Graphical Methods for Data Analysis}.
+\newblock Wasdworth, Belmont, CA, 1983.
+
+\bibitem{Dispenzieri12}
+A.~Dispenzieri, J.~Katzmann, R.~Kyle, D.~Larson, T.~Therneau, C.~Colby,
+  R.~Clark, G.~Mead, S.~Kumar, L.J.~Melton III, and S.V. Rajkumar.
+\newblock Use of monclonal serum immunoglobulin free light chains to predict
+  overall survival in the general population.
+\newblock {\em Mayo Clinic Proc}, 87:512--523, 2012.
+
+\bibitem{Goodnight78}
+J.~Goodnight.
+\newblock Tests of hypotheses in fixed-effects linear models.
+\newblock Technical Report Technical Report R-101, SAS Institute, Inc., 1978.
+\newblock author formally changed to "SAS Institute" at a later date.
+
+\bibitem{SAS13}
+{SAS} {I}nstitute.
+\newblock {\em {SAS/STAT} 13.1 {U}ser's {G}uide}, chapter The four types of
+  estimable functions.
+\newblock {SAS} {I}nstitute {I}nc., Cary, NC, 2013.
+
+\bibitem{Kyle06}
+R.~Kyle, T.~Therneau, S.V. Rajkumar, D.~Larson, M.~Pleva, J.~Offord,
+  A.~Dispenzieri, J.~Katzman, and L.J.~Melton III.
+\newblock Prevalence of monoclonal gammopathy of undetermined significance.
+\newblock {\em New England J Medicine}, pages 1362--1369, 2006.
+
+\bibitem{Searle80}
+S.~R. Searle, F.~M. Speed, and G.~A. Milliken.
+\newblock Population marginal means in the linear model: an alternative to
+  least squares means.
+\newblock {\em Amer. Statistician}, 34:216--221, 1980.
+
+\bibitem{Yates34}
+F.~Yates.
+\newblock The analysis of multiple classifications with unequal numbers in the
+  different classes.
+\newblock {\em J. Amer. Stat. Assoc.}, 29:51--66, 1934.
+
+\end{thebibliography}
