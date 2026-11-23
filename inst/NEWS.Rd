@@ -1,5 +1,23 @@
 \name{NEWS}
 \title{NEWS file for the survival package}
+\section{Changes in version 3.8.13}{
+  \itemize{
+    \item Remove a duplicate example in the coxph.Rd file
+    \item The clabel attribute of a Surv object was not always
+    preserved; correct that
+    \item Address an odd error in plot.survfit, which saves the xmax
+    argument (if present) to be used in a later lines.survfit call.
+    If there was another plot command between the plot.survfit and
+    lines.survfit the xmax value was retained, but should not have been.
+    \item github issue 345, wrong variable name in pbcseq.Rd file
+    \item The test/dropspecial.R file verified an error in [.terms, an
+    error that is now fixed in base R. Update the file to drop that
+    check.
+    \item Fix error in survfitAJ, github issue 348
+    \item Address github issue 352, a labels attribute was not being
+    preserved by coxph(... model=TRUE)
+    \item submit to CRAN
+}}
 \section{Changes in version 3.8-12}{
   \itemize{
   \item Update Surv2 so that a 0/1 or TRUE/FALSE status is not turned
@@ -13,11 +31,12 @@
   the "censor" at time 10 really isn't a censoring, and 10 should not
   appear in the time component.  But sometimes it did, depending on the
   path through the code.  The curve was always correct, just with extra
-  time points.  Add tests/survfit3.R to C test for this.
+  time points.  Fix, and add tests/survfit3.R to verify.
   \item Fix subscripting errors in yates() for a coxph model with an NA
   coefficient, and add a test case. Git pull request 343 found the error
   but the code change needed more documentation/comments.  A similar
   length error is now fixed in survpenal.fit.
+  \item Post to CRAN
 }}
 \section{Changes in version 3.8-11}{
   \itemize{

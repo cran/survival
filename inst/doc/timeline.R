@@ -84,6 +84,7 @@ plot(psurv1c[4], col=3, lwd=2, conf.int=F, xscale=365.25,
      xlab= "Years from randomization", ylab="Death")
 lines(psurv1b[4], col=2, lwd=2, conf.int=F)
 lines(psurv1a[4], col=1, lwd=2, conf.int=F)
+legend("topleft", c("0-1", "1-4", "4+"), lty=1, lwd=2, col=1:3, bty='n')
 
 
 ###################################################
@@ -99,7 +100,7 @@ subset(lung2, id<4, c(id, time, death, inst, age, sex, ph.ecog, pat.karno))
 ### code chunk number 8: pbc3
 ###################################################
 # separate out death, and add it on the end 
-# death yes/no *is* observed every visit
+# alive/dead *is* observed every visit
 temp <- with(subset(pbcseq, !duplicated(id)),
              data.frame(id=id, day =futime, death= 1*(status==2)))
 pdata3 <- cbind(pbcseq[, -(2:3)], death=0)

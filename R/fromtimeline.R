@@ -3,8 +3,9 @@
 #  frame. 
 # The mf arg is most often the result of a call to coxph or survfit (or a
 #  survfit.coxphms or residuals.coxphms call that had to recreate the data), and
-#  that fcn is using this function to transform to CP style. As such, there will 
-#  normally be a column named "(id)", and perhaps "(istate)" and/or "(cluster)".
+#  that fcn is using this function to transform to CP style. 
+# As such, there will normally be a column named "(id)", and perhaps "(istate)"
+#   and/or "(cluster)".
 # The task is fairly simple:
 #   1. An id with 10 rows will have 9 rows in the new data set, 2-10 
 #     contribute the (time2, outcome) part of the survival response, and
@@ -22,6 +23,8 @@ surv2counting <- function(mf, repeated=FALSE, lvcf=TRUE) {
     y <- model.response(mf)
     n <- nrow(y)
     states <- attr(y, "states")
+    clabel <- attr(y, "clabel")
+    if (is.null(clabel)) clabel<- "censor"  # the default
     # the next line supports Surv2 objects
     if (missing(repeated) && !is.null(attr(y, "repeated"))) 
         repeated <- attr(y, "repeated")
@@ -31,7 +34,7 @@ surv2counting <- function(mf, repeated=FALSE, lvcf=TRUE) {
 
     # relax this some later day (or not?)
     if (any(is.na(id)) || any(is.na(y[,1])))
-        stop("id and time cannot be missing")
+        stop("id and/or time cannot be missing")
     
     # The data isn't necessarity sorted, don't reorder it
     isort <- order(id, y[,1])
@@ -148,8 +151,8 @@ surv2counting <- function(mf, repeated=FALSE, lvcf=TRUE) {
             stop("invalid value for repeated option")
     }
         
-    if (!is.null(states)) 
-        status <- factor(status, 0:length(states), c("censor", states))
+    if (!is.null(states))
+        status <- factor(status, 0:length(states), c(clabel, states))
 
     tstart <- y2[!last, 1]
     tstop  <- y2[!first,1]
@@ -161,7 +164,8 @@ surv2counting <- function(mf, repeated=FALSE, lvcf=TRUE) {
 
     #put the data back into the original order
     jj <- order(isort[!last])  # this line is not obvious, but it works!
-    mf2[jj,]
+    # make sure to keep any extra attributes of the variables
+    copyMostAttribNoTs(mf, mf2[jj,])
 }
    
 
@@ -189,21 +193,37 @@ fromtimeline <- function(formula, data, subset, id, repeated= FALSE,
         stop("data does not appear to be timeline data")
     new <- surv2counting(mf, repeated=repeated, lvcf=lvcf)
 
-    # Remove (id) and rename (istate) to istate
-    ii <- match("(istate)", names(new)) # added by surv2counting
-    if (!is.na(ii)) { # not added in some cases
+    # If the id is part of the data, the usual case where someone uses ~.
+    #  on the right hand side, then drop "(id)" as redundant, else rename it
+    if (is.name(Call$id)) {
+        idname <- as.character(Call$id)
+        if (idname %in% names(new)) new['(id)'] <- NULL # drop redundant
+        else {
+            ii <- match("(id)", names(new))
+            names(new)[ii] <- idname
+        }
+    } else {
+        # they used something odd for the id, punt
+        new['(id)'] <- NULL
+    }
+
+    # rename (istate) to istate
+    ii <- match("(istate)", names(new))
+    if (!is.na(ii)) { # istate not added in some cases
         if (!any(names(mf)== "istate")) names(new)[ii] <- "istate"
     }
-    new["(id)"] <- NULL
 
     #
     # Give new names to response, so that the data set is more useable
     #
     yy <- new[[1]] # the response is always variable 1
     states <- attr(yy, "states")
+    clabel <- attr(yy, "clabel")
+    if (is.null(clabel)) clabel <- "censor"
+
     ny <- ncol(yy)  # ny=2 for competing risks, for instance
     if (is.null(states)) status <- yy[,ny]     
-    else status <- factor(yy[,ny], 0:length(states), c("censor", states))
+    else status <- factor(yy[,ny], 0:length(states), c(clabel, states))
     if (ncol(yy) ==3) 
         tdata <- data.frame(tstart= yy[,1], tstop = yy[,2], status)
     else tdata <- data.frame(tstart=yy[,1], status)

@@ -161,13 +161,13 @@ A subtle and often confusing aspect of the counting process involves covariates
 versus events.
 The bilirubin, current state (bili3) and transition (bstate) variables in 
 the data frame all originate from the same values, but the first two apply
-to the entire interval and the last describes any transitions to a new state
-at the end of the interval.
+to the entire interval and the last describes the transition (if any)
+ to a new state at the end of the interval.
 Subject 1, for instance is in the bilirubin $> 4$ category for both the (0,192]
 and (192, 400] interval, their status (bevent) variable is censor (no change)
 at time 192 and death at time 400.
 Subject 2 moves between the states; the bstate variable
-looks ahead to the next state and only records changes of state.
+looks ahead to the next state and records changes of state.
 
 An important check for any counting process data set is the survcheck routine.
 <<check>>=
@@ -198,7 +198,7 @@ In particular
 \end{enumerate}
 
 The tmerge routine does a few things to help this process, e.g.,
-the tdc() and event() operators signal changes that should occur at
+the tdc() and event() operators describe changes that should occur at
 the start and end of an interval, respectively.  One particular action
 of tdc()
 is to fill in missing values using last value carried forward (LVCF).
@@ -219,12 +219,12 @@ with long follow-up. One patient completely disappeared from the surveillance
 system for 3 years, then re-appeared at the clinic one day and resumed regular
 appointments.  After some discussion, we assumed that neither death nor
 progression would have been discovered had they occured in the interim, but
-that the information post rejoining was useful, so we allowed disjoint intervals
-of follow up.  But this remains a rare case.  
+that the information post rejoining was useful, so we allowed two 
+disjoint intervals in their follow up.  But this remains a rare case.  
 
 Below are two fits, the first with bilirubin as a time-dependent
 covariate, the second with it a state.  The latter is a valid way 
-to create  time-dependent survival curves.
+to create  time-dependent survival curves based on initial state.
 
 <<pbc2b>>=
 pcox1 <- coxph(Surv(tstart, tstop, death) ~ bili3, pdata2,
@@ -240,6 +240,7 @@ plot(psurv1c[4], col=3, lwd=2, conf.int=F, xscale=365.25,
      xlab= "Years from randomization", ylab="Death")
 lines(psurv1b[4], col=2, lwd=2, conf.int=F)
 lines(psurv1a[4], col=1, lwd=2, conf.int=F)
+legend("topleft", c("0-1", "1-4", "4+"), lty=1, lwd=2, col=1:3, bty='n')
 @ 
 
 \section{Timeline data}
@@ -252,7 +253,7 @@ first recorded, the latter obeying the strict ``observed at that
 time'' rule.
 For simple survival for instance, the timeline form would have two rows per
 subject. The first 3 subjects of the lung cancer data set would appear
-as below (some variables omitted from the printout for width).
+as below (some variables are omitted from the printout for width).
 <<lung1, echo=FALSE>>=
 lung2 <- data.frame(id=1:228, time=0, death=0, lung[, -(2:3)])
 temp <- data.frame(id=1:228, time=lung$time, death= lung$status-1)
@@ -269,7 +270,7 @@ Here is code for the sequential pbc data set earlier.
 
 <<pbc3>>=
 # separate out death, and add it on the end 
-# death yes/no *is* observed every visit
+# alive/dead *is* observed every visit
 temp <- with(subset(pbcseq, !duplicated(id)),
              data.frame(id=id, day =futime, death= 1*(status==2)))
 pdata3 <- cbind(pbcseq[, -(2:3)], death=0)
@@ -329,7 +330,7 @@ One of the features of the multistate \code{coxph} call is the ability
 to have certain covariates apply to only a subset of the transitions.
 Say for instance that one of the states was surgical intervention, such
 as in the Crohn's disease data set, and that a particular covariate depended on
-availablity of tissue from that procedure.
+assessment of tissue from that procedure.
 Then by definition that covariate is only applicable to further 
 transitions after the surgical state.
 A user might choose to use a particular covariate for only a subset of
@@ -373,13 +374,14 @@ check1$transitions- fit$transitions
 The data set has 1009 observations on 646 subjects. 
 Since there is no istate option, all subjects are assumed to start in
 state 1, which will be labeled as ``(s0)'' on the printout.
-The result of check1 will have 646/1008, one observation is lost due to the
+The result of check1 will have 646/1008 (subjects/observations), 
+one observation is lost due to the
 missing event on row 421, but no subjects.
 The check2 result has 643/1004 since all rows with missing sex are removed.
 For the coxph model the transition table reflects events that are actually 
 counted for a transition.
 \begin{itemize}
-  \item One 1:2 transition is lost, obs 427, due to missing flt. Observation
+  \item One 1:2 transition is lost, obs 427, due to missing flt3. Observation
     422 is missing sex, but that is not used in the 1:2 model
   \item One 2:3 transition is lost, obs 423
   \item Two 1:3 transitions are lost, obs 425--426

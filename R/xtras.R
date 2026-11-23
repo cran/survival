@@ -309,3 +309,30 @@ nostutter <- function(id, x, censor=0, single=FALSE) {
     #  this point would be 0, 1, 2, 4, 5
     factor(x, sort(unique(x)), newlev)  
 }
+
+#
+# This tries to mimic the routine in R-devel/src/main/attrib.c, which is called
+#  by model.frame to fix up attributes after an na.action call. An na.action()
+#  call drops any variable labels, for instance, and we don't want to do that.
+#  Ditto if the user added their own 'xyz' or whatever attribute.
+# Unfortunately the routine is not exported by the core, so we have to fake it.
+copyMostAttribNoTs <- function(old, new) {
+    # new: a data frame after na.action
+    # old: the original data frame
+    nocopy <- c("names", "class", "tsp", "dim", "dimnames")
+ 
+    for (i in names(old)) { # for each covariate
+        atts <- attributes(old[[i]])
+        if (!is.null(atts)) {
+            indx <- match(names(atts), nocopy, nomatch=0)
+            if (any(indx==0)) {
+                # we need to copy these
+                attributes(new[[i]]) <- c(attributes(new[[i]]), atts[indx==0])
+            }
+        }
+    }
+    # At this point the actual routine has logic to ensure that the tsp
+    #  attribute is retained if the class contains ts (I think), but none of 
+    #  that applies to survival data, so we skip it. 
+    new
+}

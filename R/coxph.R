@@ -135,7 +135,8 @@ coxph <- function(formula, data, weights, subset, na.action,
         # timeline data, convert to regular
         mf <- surv2counting(mf)
         Y <- model.response(mf)
-    }                      
+        Surv2 <- TRUE
+    }  else Surv2 <- FALSE                   
 
     type <- attr(Y, "type")
     multi <- FALSE
@@ -157,15 +158,16 @@ coxph <- function(formula, data, weights, subset, na.action,
     }
     
     # Dealing with NA has been deferred; either timeline
-    #  data or multiple formulas forces this delay; the first is finished
+    #  data or multiple formulas forces this delay
     if (missing(na.action)) {   #use the same na.action model.frame would have
         nafun <- getOption("na.action")
         if (is.character(nafun)) nafun <- get(nafun, pos="package:stats")
     }
     else if (is.function(na.action)) nafun <- na.action
     else nafun <- get(na.action)
-    if (!multiform) {
-        mf <- nafun(mf)
+    if (!multiform && !Surv2) {
+        # surv2counting has already dealt with individual columns
+        mf <- copyMostAttribNoTs(mf, nafun(mf))
         Y <- model.response(mf) # get a new copy
     }
 
